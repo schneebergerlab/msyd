@@ -11,8 +11,7 @@ This file will find pansyntenic regions, either to use in multiple structural va
 
 def find_pansyn(coords):
     #TODO actually find pansynteny:
-    #   - use pairwise to ref or multiple alignments?
-    #       => start with pairwise to ref
+    #   - use pairwise to ref AND SyRI output (TODO loading)
     #   - identify syntenic regions to ref, possibly reusing code from syri(synsearch.pyx, ll. 500-550)
     #       - find regions sharing similar locations on the A genome, matching on aStart?
     #       - sorted join type algorithm?
