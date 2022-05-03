@@ -2,8 +2,13 @@
 # distutils: language = c++
 # cython: language_level = 3
 
+"""
+reads various fileformats and converts to a coordinate representation.
+Copied & adapted from SyRI 1.
+"""
+
 import numpy as np
-from syri.scripts.func import *
+from func import *
 import sys
 from collections import deque, defaultdict
 from scipy.stats import *
@@ -19,7 +24,7 @@ import psutil
 from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.map cimport map as cpp_map
 from libcpp.deque cimport deque as cpp_deq
-from syri.pyxFiles.function cimport getmeblocks, getOverlapWithSynBlocks
+from function cimport getmeblocks, getOverlapWithSynBlocks
 cimport numpy as np
 cimport cython
 
