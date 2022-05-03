@@ -17,6 +17,7 @@ def find_pansyn(coords):
     #       - find regions sharing similar locations on the A genome, matching on aStart?
     #       - sorted join type algorithm?
     #       - lifting pansyntenic regions? if lifting, what topology?
+    #   - FIRST see if simple intersectionworks, using np.intersect1d
     #   - output in file/plot in some clever way
     #       - maybe as chromosome "bands"?
     #       - maybe as % syntenic to each query? => clustering/rooted tree
