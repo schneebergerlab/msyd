@@ -485,3 +485,45 @@ def readCoords(coordsfin, chrmatch, cwdpath, prefix, args, cigar = False):
                 sys.exit()
             logger.warning('Reference chromosome ' + achr + ' has high fraction of inverted alignments with its homologous chromosome in the query genome (' + hombchr + '). Ensure that same chromosome-strands are being compared in the two genomes, as different strand can result in unexpected errors.')
     return coords, chrlink
+
+
+
+# pasted from plotsr, parsing syri output
+VARS = ['SYN', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
+def readsyriout(f):
+    from pandas import DataFrame
+    import numpy as np
+    from collections import deque, OrderedDict
+    import logging
+    # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
+    logger = logging.getLogger("readsyriout")
+    syri_regs = deque()
+    skipvartype = ['CPG', 'CPL', 'DEL', 'DUPAL', 'HDR', 'INS', 'INVAL', 'INVDPAL', 'INVTRAL', 'NOTAL', 'SNP', 'SYNAL', 'TDM', 'TRANSAL']
+    with open(f, 'r') as fin:
+        for line in fin:
+            l = line.strip().split()
+            # TODO: DECIDE WHETHER TO HAVE STATIC VARS OR FLEXIBLE ANNOTATION
+            if l[10] in VARS:
+                syri_regs.append(l)
+            else:
+                if l[10] not in skipvartype:
+                    skipvartype.append(l[10])
+                    logger.warning("{} is not a valid annotation for alignments in file {}. Alignments should belong to the following classes {}. Skipping alignment.".format(l[10], f, VARS))
+
+    try:
+        df = DataFrame(list(syri_regs))[[0, 1, 2, 5, 6, 7, 10]]
+    except KeyError:
+        raise ImportError("Incomplete input file {}, syri.out file should have 11 columns.".format(f))
+    df[[0, 5, 10]] = df[[0, 5, 10]].astype(str)
+    try:
+        df[[1, 2, 6, 7]] = df[[1, 2, 6, 7]].astype(int)
+    except ValueError:
+        raise ValueError("Non-numerical values used as genome coordinates in {}. Exiting".format(f))
+    # chr ID map
+    chrid = []
+    chrid_dict = OrderedDict()
+    for i in np.unique(df[0]):
+        chrid.append((i, np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]))
+        chrid_dict[i] = np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]
+    df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
+    return df, chrid_dict
