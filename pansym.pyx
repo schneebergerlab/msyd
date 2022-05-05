@@ -52,15 +52,18 @@ def find_pansyn(fins, ref="a", qry="b"):
         ret = pd.DataFrame(columns = left.columns) # or delete from left? might be faster
         ret = []
 
-        #print(left)
-        #print(right)
+        print(left.head(20))
+        print(right.head(20))
+        if len(right) == 0:
+            raise ValueError("right is empty!")
+        if len(left) == 0:
+            raise ValueError("left is empty!")
+
         riter = right.iterrows()
-        for lsyn in left.iterrows():
-            try:
-                rsyn = next(riter)
-            except StopIteration:
-                break
-            # for some reason, this iterates over tuples with the index
+        rsyn = next(riter)
+        liter = left.iterrows()
+        lsyn = next(liter)
+        while True:
             lsyn = lsyn[1]
             rsyn = rsyn[1]
 
