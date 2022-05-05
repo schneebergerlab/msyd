@@ -2,6 +2,7 @@
 # in python, probably not worth cythonizing
 
 import ingest
+import pansym
 
 import logging
 import logging.config
@@ -15,6 +16,9 @@ import numpy as np
 This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
+
+print(len(pansym.find_pansyn(sys.argv[1:])))
+sys.exit(0)
 
 
 parser = ap.ArgumentParser(formatter_class=ap.ArgumentDefaultsHelpFormatter)
@@ -96,6 +100,7 @@ logging.config.dictConfig({
     },
 },
 })
+
 
 coords, chrlink = ingest.readCoords(args.infile.name, args.chrmatch, args.dir, args.prefix, args, args.cigar)
 achrs = np.unique(coords.aChr).tolist()

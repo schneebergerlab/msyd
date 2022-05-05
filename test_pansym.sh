@@ -14,7 +14,7 @@ do
 		for k in $others
 		do
 			echo "$i & $j & $k"
-			/usr/bin/time -f "%E" python ../pansr/pansym.pyx ampril/${ref}_${i}syri.out ampril/${ref}_${j}syri.out ampril/${ref}_${k}syri.out
+			/usr/bin/time -f "%E" python ../pansr/main.py ampril/${ref}_${i}syri.out ampril/${ref}_${j}syri.out ampril/${ref}_${k}syri.out
 		done
 	done
 done

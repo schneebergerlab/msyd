@@ -1,5 +1,7 @@
+# -*- coding: utf-8 -*-
+# distutils: language = c++
+# cython: language_level = 3
 #!/usr/bin/python3
-# python right now, convert to cython later
 
 """
 This file will find pansyntenic regions, either to use in multiple structural variant calling or for separate analysis.
@@ -7,7 +9,6 @@ This file will find pansyntenic regions, either to use in multiple structural va
 import functools
 import pandas as pd
 import numpy as np
-import sys
 import ingest
 
 
@@ -102,4 +103,3 @@ def find_pansyn(fins, ref="a", qry="b"):
     return pansyns
 
 
-print(len(find_pansyn(sys.argv[1:])))
