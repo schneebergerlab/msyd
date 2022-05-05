@@ -41,10 +41,13 @@ def find_pansyn(fins, ref="a", qry="b"):
 
     syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
     
-    pansyns = functools.reduce(pd.merge, syns)
+    pansyns = functools.reduce(intersect_syns, syns)
 
     return len(pansyns)
 
+# take two dataframes of syntenic regions and compute the flexible intersection
+def intersect_syns(left, right):
+    return pd.merge(left, right) # equivalent to old strict intersection
 
 
 print(find_pansyn(sys.argv[1:]))
