@@ -63,22 +63,45 @@ def find_pansyn(fins, ref="a", qry="b"):
         rsyn = next(riter)
         liter = left.iterrows()
         lsyn = next(liter)
-        while True:
-            lsyn = lsyn[1]
-            rsyn = rsyn[1]
 
-            if lsyn[refchr] == rsyn[refchr]:
+        while True:
+            try: # python iterators suck, so this loop is entirely try-catch'ed
+                lsyn = lsyn[1]
+                rsyn = rsyn[1]
+
+                # this uses lexicalic comparisons on strings and is most likely very slow
+                # TODO possible improvement: store chromosomes as unsigned byte (cython)
+                if rsyn[refchr] > lsyn[refchr]:
+                    lsyn = next(liter)
+                    continue
+                if lsyn[refchr] > rsyn[refchr]:
+                    rsyn = next(riter)
+                    continue
+                
                 # left subregion of right
                 if lsyn[refstart] > rsyn[refstart] - tolerance and \
                     lsyn[refend] < rsyn[refend] + tolerance:
                         #ret = pd.concat([ret, lsyn])
                         ret.append(lsyn)
+                        lsyn = next(liter)
+                        continue
+
                 # right subregion of left
                 elif rsyn[refstart] > lsyn[refstart] - tolerance and \
-                        rsyn[refend] < lsyn[refend] + tolerance:
+                    rsyn[refend] < lsyn[refend] + tolerance:
                         ret.append(rsyn)
+                        rsyn = next(riter)
+                        continue
+
+                # determine which to skip if not subregion
+                if 
+
+
+            except StopIteration:
+                break
 
         del riter
+        del liter
         return ret
 
 
