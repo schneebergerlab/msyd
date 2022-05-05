@@ -42,7 +42,7 @@ def find_pansyn(fins, ref="a", qry="b"):
 
     syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
     # take two dataframes of syntenic regions and compute the flexible intersection
-    def intersect_syns(left, right, tolerance=10):
+    def intersect_syns(left, right):
         #return pd.merge(left, right) # equivalent to old strict intersection
         
         # they should already be sorted -- required for the rest of the algorithm
@@ -50,54 +50,46 @@ def find_pansyn(fins, ref="a", qry="b"):
         #right.sort_values([refchr, refstart, refend])
 
         ret = pd.DataFrame(columns = left.columns) # or delete from left? might be faster
-        ret = []
+        #ret = []
 
-        print(left.head(20))
-        print(right.head(20))
         if len(right) == 0:
             raise ValueError("right is empty!")
         if len(left) == 0:
             raise ValueError("left is empty!")
 
         riter = right.iterrows()
-        rsyn = next(riter)
+        rsyn = next(riter)[1]
         liter = left.iterrows()
-        lsyn = next(liter)
+        lsyn = next(liter)[1]
 
         while True:
             try: # python iterators suck, so this loop is entirely try-catch'ed
-                lsyn = lsyn[1]
-                rsyn = rsyn[1]
+                # this may be very slow, TODO benchmark
 
-                # this uses lexicalic comparisons on strings and is most likely very slow
+                # this uses lexicalic comparisons on strings and is most likely fairly slow
                 # TODO possible improvement: store chromosomes as unsigned byte (cython)
                 if rsyn[refchr] > lsyn[refchr]:
-                    lsyn = next(liter)
+                    lsyn = next(liter)[1]
                     continue
                 if lsyn[refchr] > rsyn[refchr]:
-                    rsyn = next(riter)
+                    rsyn = next(riter)[1]
                     continue
                 
-                # left subregion of right
-                if lsyn[refstart] > rsyn[refstart] - tolerance and \
-                    lsyn[refend] < rsyn[refend] + tolerance:
-                        #ret = pd.concat([ret, lsyn])
-                        ret.append(lsyn)
-                        lsyn = next(liter)
-                        continue
+                # determine overlap region
+                ovstart = max(rsyn[refstart], lsyn[refstart])
+                ovend = min(rsyn[refend], lsyn[refend])
 
-                # right subregion of left
-                elif rsyn[refstart] > lsyn[refstart] - tolerance and \
-                    rsyn[refend] < lsyn[refend] + tolerance:
-                        ret.append(rsyn)
-                        rsyn = next(riter)
-                        continue
+                if ovstart < ovend: # there is valid overlap
+                    ret = pd.concat([ret, pd.DataFrame(data=[[lsyn[refchr], ovstart, ovend]], columns=left.columns)])
+                    lsyn = next(liter)[1]
+                    rsyn = next(riter)[1]
+                # no valid overlap; one must be in front of the other
+                elif lsyn[refstart] > rsyn[refend]: # left is after right
+                    rsyn = next(riter)[1]
+                else: # right is after left
+                    lsyn = next(liter)[1]
 
-                # determine which to skip if not subregion
-                if 
-
-
-            except StopIteration:
+            except StopIteration: # nothing more to match
                 break
 
         del riter
@@ -107,7 +99,7 @@ def find_pansyn(fins, ref="a", qry="b"):
 
     pansyns = functools.reduce(intersect_syns, syns)
 
-    return len(pansyns)
+    return pansyns
 
 
-print(find_pansyn(sys.argv[1:]))
+print(len(find_pansyn(sys.argv[1:])))

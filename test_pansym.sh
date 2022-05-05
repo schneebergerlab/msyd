@@ -8,9 +8,9 @@ for i in $others
 do
 	for j in $others
 	do
-		echo "$i & $j"
-		/usr/bin/time -f "%E" python ../pansr/pansym.pyx ampril/${ref}_${i}syri.out ampril/${ref}_${j}syri.out
-		continue
+		#echo "$i & $j"
+		#/usr/bin/time -f "%E" python ../pansr/pansym.pyx ampril/${ref}_${i}syri.out ampril/${ref}_${j}syri.out
+		#continue
 		for k in $others
 		do
 			echo "$i & $j & $k"
