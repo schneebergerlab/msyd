@@ -24,7 +24,7 @@ import networkx as nx
 #       - maybe as % syntenic to each query? => clustering/rooted tree
 #       - use plotsr?
 
-def find_pansyn(fins, ref="a", qry="b"):
+def find_pansyn(fins, ref="a"):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Seems to be very conservative.
@@ -35,9 +35,6 @@ def find_pansyn(fins, ref="a", qry="b"):
     refchr = ref + "chr"
     refstart = ref + "start"
     refend = ref + "end"
-    qrychr = qry + "chr"
-    qrystart = qry + "start"
-    qryend = qry + "end"
 
     # helper function to extract only large, syntenic regions suitable for analysis from a DF
     def extract_syn_regions(df):
