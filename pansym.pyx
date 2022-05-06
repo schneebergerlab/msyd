@@ -44,6 +44,7 @@ def find_pansyn(fins, ref="a", qry="b"):
         return df.loc[df['type']=='SYN'][[refchr, refstart, refend]]
 
     syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
+
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
         #return pd.merge(left, right) # equivalent to old strict intersection
@@ -74,9 +75,11 @@ def find_pansyn(fins, ref="a", qry="b"):
                 # TODO possible improvement: store chromosomes as unsigned byte (cython)
                 if rsyn[refchr] > lsyn[refchr]:
                     lsyn = next(liter)[1]
+                    ldropped = ldropped + 1
                     continue
                 if lsyn[refchr] > rsyn[refchr]:
                     rsyn = next(riter)[1]
+                    rdropped = rdropped + 1
                     continue
                 
                 # determine overlap region
@@ -85,10 +88,12 @@ def find_pansyn(fins, ref="a", qry="b"):
 
                 if ovstart < ovend: # there is valid overlap
                     ret = pd.concat([ret, pd.DataFrame(data=[[lsyn[refchr], ovstart, ovend]], columns=left.columns)])
-                    lsyn = next(liter)[1]
-                    rsyn = next(riter)[1]
-                # no valid overlap; one must be in front of the other
-                elif lsyn[refstart] > rsyn[refend]: # left is after right
+                    # if an overlap has been found, the segments will not be dropped
+                    rdropped = rdropped -1
+                    ldropped = ldropped -1
+
+                # ratchet by dropping the segment with a smaller start
+                if lsyn[refstart] > rsyn[refstart]: # left is after right
                     rsyn = next(riter)[1]
                     rdropped = rdropped + 1
                 else: # right is after left
@@ -109,7 +114,7 @@ def find_pansyn(fins, ref="a", qry="b"):
 
 
 # use networkx for the graph algorithm backend
-# how to encode a region? by coordinates & chromosome?
+# how to encode a region? by organism, coordinates & chromosome?
 #  
 def exact_pansyn(fins):
     """
@@ -127,4 +132,7 @@ def exact_pansyn(fins):
 # make it possible to use this file as test
 if __name__ == "__main__": # testing
     import sys
-    print(len(find_pansyn(sys.argv[1:])))
+    df = find_pansyn(sys.argv[1:])
+    print(df)
+    print("regions:", len(df))
+    print("total lengths:", sum(map(lambda x: x[1][2]-x[1][1],df.iterrows())))
