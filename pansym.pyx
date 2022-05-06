@@ -115,7 +115,7 @@ def find_pansyn(fins, ref="a"):
 # how to encode a region? by organism, coordinates & chromosome?
 # how to recognize a region? match over organism, find start position/overlap within tolerances?
 # => n^2 algorithm probably
-# maybe store nodes sorted?
+# maybe store nodes sorted? networkx uses a dict by default, but can read from lists
 def exact_pansyn(fins):
     """
 
