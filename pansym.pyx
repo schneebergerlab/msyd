@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
+#!/usr/bin/python3
 # distutils: language = c++
 # cython: language_level = 3
-#!/usr/bin/python3
 
 """
 This file will find pansyntenic regions, either to use in multiple structural variant calling or for separate analysis.
@@ -10,11 +10,12 @@ import functools
 import pandas as pd
 import numpy as np
 import ingest
+import networkx as nx
 
 
 # notes
 #   - start with syri output, add alignment info later if needed
-#   - identify syntenic regions to ref, possibly reusing code from syri(synsearch.pyx, ll. 500-550)
+#   - identify syntenic regions to ref
 #       - find regions sharing similar locations on the A genome, matching on aStart?
 #       - sorted join type algorithm?
 #       - lifting pansyntenic regions? if lifting, what topology?
@@ -25,9 +26,10 @@ import ingest
 
 def find_pansyn(fins, ref="a", qry="b"):
     """
-    TODO docs
-    :param:
-    :return:
+    Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
+    Seems to be very conservative.
+    :param: a list of filenames of SyRI output to read in, as well as optionally specifying which sequence is the reference (default 'a').
+    :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic regions on the reference chromosome, as determined by an overlapping intersection
     """
     # columns to look for as start/end positions
     refchr = ref + "chr"
@@ -62,7 +64,8 @@ def find_pansyn(fins, ref="a", qry="b"):
         rsyn = next(riter)[1]
         liter = left.iterrows()
         lsyn = next(liter)[1]
-
+        ldropped = 0
+        rdropped = 0
         while True:
             try: # python iterators suck, so this loop is entirely try-catch'ed
                 # this may be very slow, TODO benchmark
@@ -87,14 +90,16 @@ def find_pansyn(fins, ref="a", qry="b"):
                 # no valid overlap; one must be in front of the other
                 elif lsyn[refstart] > rsyn[refend]: # left is after right
                     rsyn = next(riter)[1]
+                    rdropped = rdropped + 1
                 else: # right is after left
                     lsyn = next(liter)[1]
-
+                    ldropped = ldropped + 1
             except StopIteration: # nothing more to match
                 break
 
         del riter
         del liter
+        print("dropped l:", ldropped, "/", len(left), "r:", rdropped, "/", len(right))
         return ret
 
 
@@ -103,3 +108,23 @@ def find_pansyn(fins, ref="a", qry="b"):
     return pansyns
 
 
+# use networkx for the graph algorithm backend
+# how to encode a region? by coordinates & chromosome?
+#  
+def exact_pansyn(fins):
+    """
+
+    :param:
+    :return:
+    """
+    # helper function to extract only large, syntenic regions suitable for analysis from a DF
+    def extract_syn_regions(df):
+        return df.loc[df['type']=='SYN']
+
+    syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
+
+
+# make it possible to use this file as test
+if __name__ == "__main__": # testing
+    import sys
+    print(len(find_pansyn(sys.argv[1:])))
