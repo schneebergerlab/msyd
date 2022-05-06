@@ -70,6 +70,7 @@ def find_pansyn(fins, ref="a"):
 
                 # this uses lexicalic comparisons on strings and is most likely fairly slow
                 # TODO possible improvement: store chromosomes as unsigned byte (cython)
+                # TODO handle incorrectly mapped chromosomes (use mapping from syri output)
                 if rsyn[refchr] > lsyn[refchr]:
                     lsyn = next(liter)[1]
                     ldropped = ldropped + 1
