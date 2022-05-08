@@ -116,6 +116,7 @@ def find_pansyn(fins, ref="a"):
 # how to recognize a region? match over organism, find start position/overlap within tolerances?
 # => n^2 algorithm probably
 # maybe store nodes sorted? networkx uses a dict by default, but can read from lists
+# => do it in a (sorted?) list, then use a similar algorithm to the sequence-based code above to identify syntenic regions?
 def exact_pansyn(fins):
     """
 
@@ -136,3 +137,6 @@ if __name__ == "__main__": # testing
     print(df)
     print("regions:", len(df))
     print("total lengths:", sum(map(lambda x: x[1][2]-x[1][1],df.iterrows())))
+    df = exact_pansyn(sys.argv[1:])
+    print(df)
+    print("regions:", len(df))
