@@ -23,6 +23,12 @@ import networkx as nx
 #       - maybe as chromosome "bands"?
 #       - maybe as % syntenic to each query? => clustering/rooted tree
 #       - use plotsr?
+#TODO handle positions in non-reference
+#TODO output format
+#TODO troubleshoot dropped regions
+#TO/DO be more lenient?
+#TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
+
 
 def find_pansyn(fins, ref="a"):
     """
@@ -66,11 +72,10 @@ def find_pansyn(fins, ref="a"):
         rdropped = 0
         while True:
             try: # python iterators suck, so this loop is entirely try-catch'ed
-                # this may be very slow, TODO benchmark
+                # this may be very slow, TO/DO benchmark
 
                 # this uses lexicalic comparisons on strings and is most likely fairly slow
-                # TODO possible improvement: store chromosomes as unsigned byte (cython)
-                # TODO handle incorrectly mapped chromosomes (use mapping from syri output)
+                # TO/DO possible improvement: store chromosomes as unsigned byte (cython)
                 if rsyn[refchr] > lsyn[refchr]:
                     lsyn = next(liter)[1]
                     ldropped = ldropped + 1
@@ -137,6 +142,6 @@ if __name__ == "__main__": # testing
     print(df)
     print("regions:", len(df))
     print("total lengths:", sum(map(lambda x: x[1][2]-x[1][1],df.iterrows())))
-    df = exact_pansyn(sys.argv[1:])
-    print(df)
-    print("regions:", len(df))
+    #df = exact_pansyn(sys.argv[1:])
+    #print(df)
+    #print("regions:", len(df))
