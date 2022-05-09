@@ -25,6 +25,9 @@ class Position:
         self.haplo = haplo
         self.pos = pos
 
+    def __repr__(self):
+        return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
+
 class Range:
     def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
         self.org = org
@@ -32,6 +35,9 @@ class Range:
         self.haplo = haplo
         self.start = start
         self.end = end
+
+    def __repr__(self):
+        return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
 
 # notes
 #   - start with syri output, add alignment info later if needed
@@ -49,6 +55,40 @@ class Range:
 #TO/DO be more lenient?
 #TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 
+# refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
+def extract_syn_regions(fins, ref="a"):
+
+    # columns to look for as start/end positions
+    reforg = "ref"
+    refchr = ref + "chr"
+    refhaplo = "NaN"
+    refstart = ref + "start"
+    refend = ref + "end"
+
+    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values
+    qrychr = qry + "chr"
+    qryhaplo = "NaN"
+    qrystart = qry + "start"
+    qryend = qry + "end"
+
+    syns = []
+    for fin in fins:
+        qryorg = fin.split('/')[-1]
+        buf = []
+        raw, chr_mapping = ingest.readsyriout(fin)
+        raw = raw.loc[raw['type']=='SYN']
+        # if implementing filtering later, filter here
+
+        for row in raw.iterrows():
+            row = row[1]
+            buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
+                Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+                ])
+
+        syns.append(pd.DataFrame(data=buf, columns=["ref", qryorg]))
+
+    return syns
+
 
 def find_pansyn(fins, ref="a"):
     """
@@ -57,18 +97,9 @@ def find_pansyn(fins, ref="a"):
     :param: a list of filenames of SyRI output to read in, as well as optionally specifying which sequence is the reference (default 'a').
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic regions on the reference chromosome, as determined by an overlapping intersection
     """
-    # columns to look for as start/end positions
-    reforg = "ref"
-    refchr = ref + "chr"
-    refhaplo = "NaN"
-    refstart = ref + "start"
-    refend = ref + "end"
 
-    # helper function to extract only large, syntenic regions suitable for analysis from a DF
-    def extract_syn_regions(df):
-        return df.loc[df['type']=='SYN'][[refchr, refstart, refend]]
 
-    syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
+    syns = extract_syn_regions(fins, ref=ref)
     print(syns)
 
     # take two dataframes of syntenic regions and compute the flexible intersection
