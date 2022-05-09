@@ -13,6 +13,26 @@ import ingest
 import networkx as nx
 
 
+
+# these classes form a part of the general SV format, TODO move them into dedicated file once the format is finalised
+# A position is specified by the organism, chromosome, haplotype and base position
+# A range takes a start and an end position. If the end < start, the range is defined as inverted
+#TODO use proper cython types, e.g. char for haplo
+class Position:
+    def __init__(self, org:str, chr:int, haplo:str, pos: int):
+        self.org = org
+        self.chr = chr
+        self.haplo = haplo
+        self.pos = pos
+
+class Range:
+    def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
+        self.org = org
+        self.chr = chr
+        self.haplo = haplo
+        self.start = start
+        self.end = end
+
 # notes
 #   - start with syri output, add alignment info later if needed
 #   - identify syntenic regions to ref
@@ -38,7 +58,9 @@ def find_pansyn(fins, ref="a"):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic regions on the reference chromosome, as determined by an overlapping intersection
     """
     # columns to look for as start/end positions
+    reforg = "ref"
     refchr = ref + "chr"
+    refhaplo = "NaN"
     refstart = ref + "start"
     refend = ref + "end"
 
@@ -47,6 +69,7 @@ def find_pansyn(fins, ref="a"):
         return df.loc[df['type']=='SYN'][[refchr, refstart, refend]]
 
     syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
+    print(syns)
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
