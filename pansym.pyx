@@ -110,8 +110,8 @@ def find_pansyn(fins, ref="a"):
         #left.sort_values([refchr, refstart, refend])
         #right.sort_values([refchr, refstart, refend])
 
-        ret = pd.DataFrame(columns = left.columns) # or delete from left? might be faster
-        #ret = []
+        #ret = pd.DataFrame(columns = left.columns) # or delete from left? might be faster
+        ret = []
 
         if len(right) == 0:
             raise ValueError("right is empty!")
@@ -128,22 +128,23 @@ def find_pansyn(fins, ref="a"):
 
                 # this uses lexicalic comparisons on strings and is most likely fairly slow
                 # TO/DO possible improvement: store chromosomes as unsigned byte (cython)
-                if rsyn[refchr] > lsyn[refchr]:
+                if rsyn.refchr > lsyn.refchr:
                     lsyn = next(liter)[1]
                     continue
-                if lsyn[refchr] > rsyn[refchr]:
+                if lsyn.refchr > rsyn.refchr:
                     rsyn = next(riter)[1]
                     continue
                 
                 # determine overlap region
-                ovstart = max(rsyn[refstart], lsyn[refstart])
-                ovend = min(rsyn[refend], lsyn[refend])
+                ovstart = max(rsyn.refstart, lsyn.refstart)
+                ovend = min(rsyn.refend, lsyn.refend)
 
                 if ovstart < ovend: # there is valid overlap
-                    ret = pd.concat([ret, pd.DataFrame(data=[[lsyn[refchr], ovstart, ovend]], columns=left.columns)])
+                    ret.append([] + []+[for ])
+                    #= pd.concat([ret, pd.DataFrame(data=[[lsyn[refchr], ovstart, ovend]], columns=left.columns)])
 
                 # ratchet by dropping the segment with a smaller end
-                if lsyn[refend] > rsyn[refend]: # left is after right
+                if lsyn.refend > rsyn.refend: # left is after right
                     rsyn = next(riter)[1]
                 else: # right is after left
                     lsyn = next(liter)[1]
