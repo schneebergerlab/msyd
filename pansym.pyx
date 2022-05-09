@@ -100,7 +100,6 @@ def find_pansyn(fins, ref="a"):
 
 
     syns = extract_syn_regions(fins, ref=ref)
-    print(syns)
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
@@ -119,41 +118,52 @@ def find_pansyn(fins, ref="a"):
             raise ValueError("left is empty!")
 
         riter = right.iterrows()
-        rsyn = next(riter)[1]
+        rrow = next(riter)[1]
         liter = left.iterrows()
-        lsyn = next(liter)[1]
+        lrow = next(liter)[1]
+        cols = ['ref'] + list(lrow.index)[1:] + list(rrow.index)[1:]
         while True:
             try: # python iterators suck, so this loop is entirely try-catch'ed
-                # this may be very slow, TO/DO benchmark
+                # this may be very slow, TO/DO benchmark # seems to be alright?
 
-                # this uses lexicalic comparisons on strings and is most likely fairly slow
-                # TO/DO possible improvement: store chromosomes as unsigned byte (cython)
-                if rsyn.refchr > lsyn.refchr:
-                    lsyn = next(liter)[1]
+                rref = rrow['ref']
+                lref = lrow['ref']
+                if rref.chr > lref.chr:
+                    lrow = next(liter)[1]
                     continue
-                if lsyn.refchr > rsyn.refchr:
-                    rsyn = next(riter)[1]
+                if lref.chr > rref.chr:
+                    rrow = next(riter)[1]
                     continue
                 
                 # determine overlap region
-                ovstart = max(rsyn.refstart, lsyn.refstart)
-                ovend = min(rsyn.refend, lsyn.refend)
+                ovstart = max(rref.start, lref.start)
+                ovend = min(rref.end, lref.end)
 
-                if ovstart < ovend: # there is valid overlap
-                    ret.append([] + []+[for ])
-                    #= pd.concat([ret, pd.DataFrame(data=[[lsyn[refchr], ovstart, ovend]], columns=left.columns)])
+                if ovstart < ovend: # there is valid overlap, i.e. the region is pansyntenic
+                    # compute how much around both sides to drop for each alignment to the reference
+                    rdropstart = ovstart - rref.start # 0 if rref is maximal, else positive
+                    ldropstart = ovstart - lref.start 
+
+                    rdropend = ovend - rref.end # 0 if lref is minimal, else negative
+                    ldropend = ovend - lref.end
+                    
+                    # compute the adjusted position of the pansyntenic regions
+                    # drop the references from both columns, place at start (ref is always at first position)
+                    ret.append([Range('ref', rref.chr, rref.haplo, ovstart, ovend)] +
+                            [Range(syn.org, syn.chr, syn.haplo, syn.start + ldropstart, syn.end + ldropend) for syn in lrow.drop('ref')] +
+                            [Range(syn.org, syn.chr, syn.haplo, syn.start + rdropstart, syn.end + rdropend) for syn in rrow.drop('ref')])
 
                 # ratchet by dropping the segment with a smaller end
-                if lsyn.refend > rsyn.refend: # left is after right
-                    rsyn = next(riter)[1]
+                if lref.end > rref.end: # left is after right
+                    rrow = next(riter)[1]
                 else: # right is after left
-                    lsyn = next(liter)[1]
+                    lrow = next(liter)[1]
             except StopIteration: # nothing more to match
                 break
 
         del riter
         del liter
-        return ret
+        return pd.DataFrame(data=ret, columns=cols)
 
 
     pansyns = functools.reduce(intersect_syns, syns)
@@ -186,7 +196,7 @@ if __name__ == "__main__": # testing
     df = find_pansyn(sys.argv[1:])
     print(df)
     print("regions:", len(df))
-    print("total lengths:", sum(map(lambda x: x[1][2]-x[1][1],df.iterrows())))
+    print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
     #df = exact_pansyn(sys.argv[1:])
     #print(df)
     #print("regions:", len(df))
