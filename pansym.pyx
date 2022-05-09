@@ -91,8 +91,6 @@ def find_pansyn(fins, ref="a"):
         rsyn = next(riter)[1]
         liter = left.iterrows()
         lsyn = next(liter)[1]
-        ldropped = 0
-        rdropped = 0
         while True:
             try: # python iterators suck, so this loop is entirely try-catch'ed
                 # this may be very slow, TO/DO benchmark
@@ -101,11 +99,9 @@ def find_pansyn(fins, ref="a"):
                 # TO/DO possible improvement: store chromosomes as unsigned byte (cython)
                 if rsyn[refchr] > lsyn[refchr]:
                     lsyn = next(liter)[1]
-                    ldropped = ldropped + 1
                     continue
                 if lsyn[refchr] > rsyn[refchr]:
                     rsyn = next(riter)[1]
-                    rdropped = rdropped + 1
                     continue
                 
                 # determine overlap region
@@ -114,23 +110,17 @@ def find_pansyn(fins, ref="a"):
 
                 if ovstart < ovend: # there is valid overlap
                     ret = pd.concat([ret, pd.DataFrame(data=[[lsyn[refchr], ovstart, ovend]], columns=left.columns)])
-                    # if an overlap has been found, the segments will not be dropped
-                    rdropped = rdropped -1
-                    ldropped = ldropped -1
 
-                # ratchet by dropping the segment with a smaller start
-                if lsyn[refstart] > rsyn[refstart]: # left is after right
+                # ratchet by dropping the segment with a smaller end
+                if lsyn[refend] > rsyn[refend]: # left is after right
                     rsyn = next(riter)[1]
-                    rdropped = rdropped + 1
                 else: # right is after left
                     lsyn = next(liter)[1]
-                    ldropped = ldropped + 1
             except StopIteration: # nothing more to match
                 break
 
         del riter
         del liter
-        print("dropped l:", ldropped, "/", len(left), "r:", rdropped, "/", len(right))
         return ret
 
 
