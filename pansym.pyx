@@ -10,7 +10,7 @@ import functools
 import pandas as pd
 import numpy as np
 import ingest
-import networkx as nx
+#import networkx as nx
 
 
 
@@ -18,6 +18,7 @@ import networkx as nx
 # A position is specified by the organism, chromosome, haplotype and base position
 # A range takes a start and an end position. If the end < start, the range is defined as inverted
 #TODO use proper cython types, e.g. char for haplo
+@functools.total_ordering # not sure how performant, TO/DO replace later?
 class Position:
     def __init__(self, org:str, chr:int, haplo:str, pos: int):
         self.org = org
@@ -28,6 +29,22 @@ class Position:
     def __repr__(self):
         return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
 
+    def __eq__(l, r):
+        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
+                l.pos == r.pos
+
+    def __lt__(l, r):
+        if l.org != r.org:
+            raise ValueError("Comparison between different organisms!")
+        if l.chr < r.chr:
+            return True
+        if l.end < r.end:
+            return True
+        if l.start < r.end:
+            return True
+        return False
+
+@functools.total_ordering # not sure how performant, TO/DO replace later?
 class Range:
     def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
         self.org = org
@@ -38,6 +55,23 @@ class Range:
 
     def __repr__(self):
         return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
+    
+    def __eq__(l, r):
+        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
+                l.start == r.start & l.start == r.start
+
+    # this operator sorts according to the END, not start value,
+    # to enable the end ratchet to work properly
+    def __lt__(l, r):
+        if l.org != r.org:
+            raise ValueError("Comparison between different organisms!")
+        if l.chr < r.chr:
+            return True
+        if l.end < r.end:
+            return True
+        if l.start < r.start:
+            return True
+        return False
 
 # notes
 #   - start with syri output, add alignment info later if needed
@@ -88,7 +122,7 @@ def extract_syn_regions(fins, ref="a"):
     return syns
 
 
-def find_pansyn(fins, ref="a"):
+def find_pansyn(fins, ref="a", sort=False):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Seems to be very conservative.
@@ -96,18 +130,14 @@ def find_pansyn(fins, ref="a"):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic regions on the reference chromosome, as determined by an overlapping intersection
     """
 
-
     syns = extract_syn_regions(fins, ref=ref)
+    if sort:
+        syns = [x.sort_values('ref') for x in syns]
+        print(syns)
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
         #return pd.merge(left, right) # equivalent to old strict intersection
-        
-        # they should already be sorted -- required for the rest of the algorithm
-        #left.sort_values([refchr, refstart, refend])
-        #right.sort_values([refchr, refstart, refend])
-
-        #ret = pd.DataFrame(columns = left.columns) # or delete from left? might be faster
         ret = []
 
         if len(right) == 0:
@@ -154,14 +184,21 @@ def find_pansyn(fins, ref="a"):
                 # ratchet by dropping the segment with a smaller end
                 if lref.end > rref.end: # left is after right
                     rrow = next(riter)[1]
-                else: # right is after left
+                elif rref.end > lref.end: # right is after left
                     lrow = next(liter)[1]
+                    # if they stop at the same position, drop the one starting further left
+                elif lref.start > rref.start:
+                    rrow = next(riter)[1]
+                else: # do whatever
+                    lrow = next(liter)[1]
+
             except StopIteration: # nothing more to match
                 break
 
         del riter
         del liter
-        return pd.DataFrame(data=ret, columns=cols)
+        ret = pd.DataFrame(data=ret, columns=cols)
+        return ret.sort_values('ref') if sort else ret
 
 
     pansyns = functools.reduce(intersect_syns, syns)
@@ -169,7 +206,7 @@ def find_pansyn(fins, ref="a"):
     return pansyns
 
 
-# use networkx for the graph algorithm backend
+# use igraph for the graph algorithm backend
 # how to encode a region? by organism, coordinates & chromosome?
 # how to recognize a region? match over organism, find start position/overlap within tolerances?
 # => n^2 algorithm probably
@@ -190,7 +227,18 @@ def exact_pansyn(fins):
 
 # make it possible to use this file as test
 if __name__ == "__main__": # testing
+
+    test = pd.DataFrame([Range('ref', 'Chr2', 'NaN', 10, 20),
+        Range('ref', 'Chr1', 'NaN', 10, 20),
+        Range('ref', 'Chr1', 'NaN', 10, 20),
+        Range('ref', 'Chr1', 'NaN', 10, 30),
+        Range('ref', 'Chr1', 'NaN', 15, 30),
+        ])
+    #print(test)
+    #print(test.sort_values(0))
+
     import sys
+
     df = find_pansyn(sys.argv[1:])
     print(df)
     print("regions:", len(df))
