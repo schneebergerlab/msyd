@@ -17,7 +17,9 @@ This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
 
-print(len(pansym.find_pansyn(sys.argv[1:])))
+df = pansym.find_pansyn(sys.argv[1:])
+print("regions:", len(df))
+print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
 sys.exit(0)
 
 
