@@ -49,9 +49,7 @@ class Range:
 #       - maybe as chromosome "bands"?
 #       - maybe as % syntenic to each query? => clustering/rooted tree
 #       - use plotsr?
-#TODO handle positions in non-reference
 #TODO output format
-#TODO troubleshoot dropped regions
 #TO/DO be more lenient?
 #TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 
