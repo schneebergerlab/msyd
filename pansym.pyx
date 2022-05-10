@@ -38,11 +38,10 @@ class Position:
             raise ValueError("Comparison between different organisms!")
         if l.chr < r.chr:
             return True
-        if l.end < r.end:
-            return True
-        if l.start < r.end:
-            return True
-        return False
+        elif l.chr == r.chr:
+            return l.pos < r.pos
+        else:
+            return False
 
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 class Range:
@@ -62,16 +61,21 @@ class Range:
 
     # this operator sorts according to the END, not start value,
     # to enable the end ratchet to work properly
+    # TO/DO possible refactor: sort by start here, invert in sorting for algorithm
+    # shouldn't really matter as the regions are nonoverlapping, but...
     def __lt__(l, r):
         if l.org != r.org:
             raise ValueError("Comparison between different organisms!")
+
         if l.chr < r.chr:
             return True
-        if l.end < r.end:
-            return True
-        if l.start < r.start:
-            return True
+        elif l.chr == r.chr:
+            if l.end < r.end:
+                return True
+            elif l.end == r.end:
+                return l.start < r.start
         return False
+
 
 # notes
 #   - start with syri output, add alignment info later if needed
@@ -133,7 +137,6 @@ def find_pansyn(fins, ref="a", sort=False):
     syns = extract_syn_regions(fins, ref=ref)
     if sort:
         syns = [x.sort_values('ref') for x in syns]
-        print(syns)
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
@@ -228,18 +231,9 @@ def exact_pansyn(fins):
 # make it possible to use this file as test
 if __name__ == "__main__": # testing
 
-    test = pd.DataFrame([Range('ref', 'Chr2', 'NaN', 10, 20),
-        Range('ref', 'Chr1', 'NaN', 10, 20),
-        Range('ref', 'Chr1', 'NaN', 10, 20),
-        Range('ref', 'Chr1', 'NaN', 10, 30),
-        Range('ref', 'Chr1', 'NaN', 15, 30),
-        ])
-    #print(test)
-    #print(test.sort_values(0))
-
     import sys
 
-    df = find_pansyn(sys.argv[1:])
+    df = find_pansyn(sys.argv[1:], sort=False)
     print(df)
     print("regions:", len(df))
     print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
