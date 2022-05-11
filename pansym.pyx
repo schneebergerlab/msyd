@@ -120,7 +120,7 @@ def extract_syn_regions(fins, ref="a"):
         qryorg = fin.split('/')[-1]
         buf = []
         raw, chr_mapping = ingest.readsyriout(fin)
-        raw = raw.loc[raw['type']=='SYN']
+        raw = raw.loc[raw['type']=='SYNAL']
         # if implementing filtering later, filter here
 
         for row in raw.iterrows():
@@ -242,7 +242,7 @@ if __name__ == "__main__": # testing
     import sys
 
     df = find_pansyn(sys.argv[1:], sort=False)
-    print(df)
+    #print(df)
     print("regions:", len(df))
     print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
     #df = exact_pansyn(sys.argv[1:])

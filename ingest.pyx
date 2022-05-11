@@ -489,7 +489,7 @@ def readCoords(coordsfin, chrmatch, cwdpath, prefix, args, cigar = False):
 
 
 # pasted from plotsr, parsing syri output
-VARS = ['SYN', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
+VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
 def readsyriout(f):
     from pandas import DataFrame
     import numpy as np
@@ -498,7 +498,7 @@ def readsyriout(f):
     # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
     logger = logging.getLogger("readsyriout")
     syri_regs = deque()
-    skipvartype = ['CPG', 'CPL', 'DEL', 'DUPAL', 'HDR', 'INS', 'INVAL', 'INVDPAL', 'INVTRAL', 'NOTAL', 'SNP', 'SYNAL', 'TDM', 'TRANSAL']
+    skipvartype = ['CPG', 'CPL', 'DEL', 'DUPAL', 'HDR', 'INS', 'INVAL', 'INVDPAL', 'INVTRAL', 'NOTAL', 'SNP', 'TDM', 'TRANSAL']
     with open(f, 'r') as fin:
         for line in fin:
             l = line.strip().split()
