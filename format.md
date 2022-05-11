@@ -13,7 +13,7 @@
 - a SNP is stored as a position, that is a range with length one (or without end?)
 - TODO how to define the reference for CIGAR strings?
 
-# Example
+## Example
 
 Annotation|	Ref|	Qry1|	Qry2
 -|	-|	-|	-
