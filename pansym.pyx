@@ -77,19 +77,27 @@ class Range:
         return False
 
 
-# notes
-#   - start with syri output, add alignment info later if needed
-#   - identify syntenic regions to ref
-#       - find regions sharing similar locations on the A genome, matching on aStart?
-#       - sorted join type algorithm?
-#       - lifting pansyntenic regions? if lifting, what topology?
-#   - output in file/plot in some clever way
-#       - maybe as chromosome "bands"?
-#       - maybe as % syntenic to each query? => clustering/rooted tree
-#       - use plotsr?
-#TODO output format
-#TO/DO be more lenient?
-#TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
+"""
+notes
+   - TODO add alignment info from bam, use ingest method
+        - add CIGAR string extraction & incorporate into position calculation
+        - maybe this is the cause of the asymmetry?
+
+   - identify syntenic regions to ref
+       - find regions sharing similar locations on the A genome, matching on aStart?
+       - sorted join type algorithm?
+       - lifting pansyntenic regions? if lifting, what topology?
+
+   - output in file/plot in some clever way
+       - maybe as chromosome "bands"?
+       - maybe as % syntenic to each query? => clustering/rooted tree
+       - use plotsr?
+
+TODO output format
+
+TO/DO be more lenient?
+TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
+"""
 
 # refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
 def extract_syn_regions(fins, ref="a"):
@@ -129,8 +137,8 @@ def extract_syn_regions(fins, ref="a"):
 def find_pansyn(fins, ref="a", sort=False):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
-    Seems to be very conservative.
-    :param: a list of filenames of SyRI output to read in, as well as optionally specifying which sequence is the reference (default 'a').
+    Fairly conservative.
+    :param: a list of filenames of SyRI output to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic regions on the reference chromosome, as determined by an overlapping intersection
     """
 
