@@ -227,9 +227,9 @@ def find_pansyn(fins, ref="a", sort=False):
         - tolerance: their start/end are within a certain tolerance
 - find cliques, if that doesn't work try clusters
 - then extract information from cliques
-
-- for even more exactness, later try to use pairwise syri output? => n^2 runtime
 """
+#TODO use pairwise syri information instead of reference, match on organism
+#TODO try to get sorted algorithm to work properly
 def graph_pansyn(fins, mode="overlap", tolerance=100):
     """
 
@@ -247,7 +247,6 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     g.add_vertices(len(linsyns))
     g.vs["ref"] = linsyns['ref']
     g.vs["qry"] = linsyns['qry']
-    print(g)
 
     # try brute force, the algo below seems to have some problems
     for a in g.vs:
@@ -318,7 +317,11 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 #    del biter
 
     cliques = g.maximal_cliques()
-    clusters = g.community_leiden()
+    #clusters = g.community_leiden()
+    
+    ## extract the syntenic cliques, transform them to output
+    #TODO
+
     return g, cliques
 
 
