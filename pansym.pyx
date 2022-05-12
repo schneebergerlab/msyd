@@ -10,7 +10,6 @@ import functools
 import pandas as pd
 import numpy as np
 import ingest
-#import networkx as nx
 
 
 
@@ -217,23 +216,32 @@ def find_pansyn(fins, ref="a", sort=False):
     return pansyns
 
 
-# use igraph for the graph algorithm backend
-# how to encode a region? by organism, coordinates & chromosome?
-# how to recognize a region? match over organism, find start position/overlap within tolerances?
-# => n^2 algorithm probably
-# maybe store nodes sorted? networkx uses a dict by default, but can read from lists
-# => do it in a (sorted?) list, then use a similar algorithm to the sequence-based code above to identify syntenic regions?
-def exact_pansyn(fins):
+
+"""
+- use igraph for the graph algorithm backend
+- adapt the overlap-algorithm:
+    - insert sorted Ranges into igraph, Range object as decorator
+    - different levels of strictness: do an edge between two nodes if:
+        - one contains the other
+        - or one has an overlap with the other
+        - or their start/end are within a certain tolerance
+- find cliques, if that doesn't work try clusters
+- then extract information from cliques
+"""
+def exact_pansyn(fins, sort=False):
     """
 
     :param:
     :return:
     """
-    # helper function to extract only large, syntenic regions suitable for analysis from a DF
-    def extract_syn_regions(df):
-        return df.loc[df['type']=='SYN']
+    import igraph
 
-    syns = [extract_syn_regions(ingest.readsyriout(fin)[0]) for fin in fins]
+    syns = extract_syn_regions(fins, ref=ref)
+    if sort:
+        syns = [x.sort_values('ref') for x in syns]
+
+
+
 
 
 # make it possible to use this file as test
