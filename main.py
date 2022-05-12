@@ -2,7 +2,7 @@
 # in python, probably not worth cythonizing
 
 import ingest
-import pansym
+import pansyn
 
 import logging
 import logging.config
@@ -17,7 +17,7 @@ This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
 
-df = pansym.find_pansyn(sys.argv[1:])
+df = pansyn.find_pansyn(sys.argv[1:])
 print("regions:", len(df))
 print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
 sys.exit(0)
