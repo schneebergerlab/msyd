@@ -138,7 +138,7 @@ def find_pansyn(fins, ref="a", sort=False):
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
     :param: a list of filenames of SyRI output to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
-    :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic regions on the reference chromosome, as determined by an overlapping intersection
+    :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
     syns = extract_syn_regions(fins, ref=ref)
@@ -241,12 +241,13 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     ## prepare & load the vertices
     linsyns = pd.concat(extract_syn_regions(fins, keep_names=False), ignore_index=True)
     linsyns = linsyns.sort_values('ref')
-    #print(linsyns)
+    print(linsyns)
 
     g = igraph.Graph()
     g.add_vertices(len(linsyns))
     g.vs["ref"] = linsyns['ref']
     g.vs["qry"] = linsyns['qry']
+    print(g)
 
     ## add the appropriate edges, applying the criterion specifyed in mode
     aiter = iter(g.vs)
@@ -257,6 +258,12 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
         try:
             aref = a['ref']
             bref = b['ref']
+            if aref.chr > bref.chr:
+                a = next(aiter)
+                continue
+            elif aref.chr < bref.chr:
+                b = next(biter)
+                continue
 
             if mode == 'overlap':
                 if min(aref.end, bref.end) >= max(aref.start, bref.end):
@@ -290,7 +297,8 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     del biter
 
     cliques = g.maximal_cliques()
-    return cliques
+    clusters = g.community_leiden()
+    return g, cliques, clusters
 
 
 
