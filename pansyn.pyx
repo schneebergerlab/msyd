@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/python3
+# -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
 
@@ -119,7 +119,7 @@ def extract_syn_regions(fins, ref="a", keep_names=True):
         qryorg = fin.split('/')[-1]
         buf = []
         raw, chr_mapping = ingest.readsyriout(fin)
-        raw = raw.loc[raw['type']=='SYNAL']
+        raw = raw.loc[raw['type']=='SYN']
         # if implementing filtering later, filter here
 
         for row in raw.iterrows():
@@ -222,15 +222,15 @@ def find_pansyn(fins, ref="a", sort=False):
 - adapt the overlap-algorithm:
     - insert sorted Ranges into igraph, Range object as decorator
     - different levels of strictness: do an edge between two nodes if:
-        - one contains the other
-        - or one has an overlap with the other
-        - or their start/end are within a certain tolerance
+        - subregion: one contains the other
+        - overlap: one has an overlap with the other
+        - tolerance: their start/end are within a certain tolerance
 - find cliques, if that doesn't work try clusters
 - then extract information from cliques
 
 - for even more exactness, later try to use pairwise syri output? => n^2 runtime
 """
-def graph_pansyn(fins, sort=True, mode="overlap"):
+def graph_pansyn(fins, mode="overlap", tolerance=100):
     """
 
     :param:
@@ -238,39 +238,59 @@ def graph_pansyn(fins, sort=True, mode="overlap"):
     """
     import igraph
 
+    ## prepare & load the vertices
     linsyns = pd.concat(extract_syn_regions(fins, keep_names=False), ignore_index=True)
-    if sort:
-        linsyns = linsyns.sort_values('ref')
-
-    print(linsyns)
+    linsyns = linsyns.sort_values('ref')
+    #print(linsyns)
 
     g = igraph.Graph()
     g.add_vertices(len(linsyns))
     g.vs["ref"] = linsyns['ref']
     g.vs["qry"] = linsyns['qry']
 
+    ## add the appropriate edges, applying the criterion specifyed in mode
     aiter = iter(g.vs)
+    a = next(aiter)
     biter = iter(g.vs)
+    b = next(biter)
     while True:
         try:
+            aref = a['ref']
+            bref = b['ref']
 
+            if mode == 'overlap':
+                if min(aref.end, bref.end) >= max(aref.start, bref.end):
+                    g.add_edge(a.index, b.index)
 
+            elif mode == 'tolerance':
+                if abs(aref.end - bref.end) < tolerance and abs(aref.start - bref.start) < tolerance:
+                    g.add_edge(a.index, b.index)
+                
+            elif mode == 'subregion':
+                if (aref.start < bref.start) == (aref.end > bref.end):
+                    g.add_edge(a.index, b.index)
+                
+            else:
+                raise ValueError(f"Invalid mode {mode}")
+            
             # ratchet by dropping the segment with a smaller end
-            if lref.end > rref.end: # left is after right
-                rrow = next(riter)[1]
-            elif rref.end > lref.end: # right is after left
-                lrow = next(liter)[1]
+            if aref.end > bref.end: # left is after right
+                b = next(biter)
+            elif bref.end > aref.end: # right is after left
+                a = next(aiter)
             # if they stop at the same position, drop the one starting further left
-            elif lref.start > rref.start:
-                rrow = next(riter)[1]
+            elif aref.start > bref.start:
+                b = next(biter)
             else: # do whatever
-                lrow = next(liter)[1]
+                a = next(aiter)
 
         except StopIteration: # nothing to match
             break
+    del aiter
+    del biter
 
-
-
+    cliques = g.maximal_cliques()
+    return cliques
 
 
 
@@ -284,6 +304,6 @@ if __name__ == "__main__": # testing
     #print(df)
     #print("regions:", len(df))
     #print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
-    df = graph_pansyn(sys.argv[1:])
+    df = graph_pansyn(sys.argv[1:], mode='overlap')
     print(df)
     print("regions:", len(df))
