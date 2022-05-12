@@ -249,22 +249,13 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     g.vs["qry"] = linsyns['qry']
     print(g)
 
-    ## add the appropriate edges, applying the criterion specifyed in mode
-    aiter = iter(g.vs)
-    a = next(aiter)
-    biter = iter(g.vs)
-    b = next(biter)
-    while True:
-        try:
+    # try brute force, the algo below seems to have some problems
+    for a in g.vs:
+        for b in g.vs:
             aref = a['ref']
             bref = b['ref']
-            if aref.chr > bref.chr:
-                a = next(aiter)
+            if not aref.chr == bref.chr:
                 continue
-            elif aref.chr < bref.chr:
-                b = next(biter)
-                continue
-
             if mode == 'overlap':
                 if min(aref.end, bref.end) >= max(aref.start, bref.end):
                     g.add_edge(a.index, b.index)
@@ -276,29 +267,59 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
             elif mode == 'subregion':
                 if (aref.start < bref.start) == (aref.end > bref.end):
                     g.add_edge(a.index, b.index)
-                
-            else:
-                raise ValueError(f"Invalid mode {mode}")
             
-            # ratchet by dropping the segment with a smaller end
-            if aref.end > bref.end: # left is after right
-                b = next(biter)
-            elif bref.end > aref.end: # right is after left
-                a = next(aiter)
-            # if they stop at the same position, drop the one starting further left
-            elif aref.start > bref.start:
-                b = next(biter)
-            else: # do whatever
-                a = next(aiter)
 
-        except StopIteration: # nothing to match
-            break
-    del aiter
-    del biter
+
+    ## add the appropriate edges, applying the criterion specifyed in mode
+#    aiter = iter(g.vs)
+#    a = next(aiter)
+#    biter = iter(g.vs)
+#    b = next(biter)
+#    while True:
+#        try:
+#            aref = a['ref']
+#            bref = b['ref']
+#            if aref.chr > bref.chr:
+#                a = next(aiter)
+#                continue
+#            elif aref.chr < bref.chr:
+#                b = next(biter)
+#                continue
+#
+#            if mode == 'overlap':
+#                if min(aref.end, bref.end) >= max(aref.start, bref.end):
+#                    g.add_edge(a.index, b.index)
+#
+#            elif mode == 'tolerance':
+#                if abs(aref.end - bref.end) < tolerance and abs(aref.start - bref.start) < tolerance:
+#                    g.add_edge(a.index, b.index)
+#                
+#            elif mode == 'subregion':
+#                if (aref.start < bref.start) == (aref.end > bref.end):
+#                    g.add_edge(a.index, b.index)
+#                
+#            else:
+#                raise ValueError(f"Invalid mode {mode}")
+#            
+#            # ratchet by dropping the segment with a smaller end
+#            if aref.end > bref.end: # left is after right
+#                b = next(biter)
+#            elif bref.end > aref.end: # right is after left
+#                a = next(aiter)
+#            # if they stop at the same position, drop the one starting further left
+#            elif aref.start > bref.start:
+#                b = next(biter)
+#            else: # do whatever
+#                a = next(aiter)
+#
+#        except StopIteration: # nothing to match
+#            break
+#    del aiter
+#    del biter
 
     cliques = g.maximal_cliques()
     clusters = g.community_leiden()
-    return g, cliques, clusters
+    return g, cliques
 
 
 
