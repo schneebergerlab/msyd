@@ -321,6 +321,7 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     
     ## extract the syntenic cliques, transform them to output
     #TODO
+    # algo: pre-initialise df to be efficient, then loop over clusters, putting the range in df[iterator, range.org]
 
     return g, cliques
 
