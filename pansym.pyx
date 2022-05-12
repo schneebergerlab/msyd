@@ -99,7 +99,7 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
 # refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
-def extract_syn_regions(fins, ref="a"):
+def extract_syn_regions(fins, ref="a", keep_names=True):
 
     # columns to look for as start/end positions
     reforg = "ref"
@@ -128,7 +128,7 @@ def extract_syn_regions(fins, ref="a"):
                 Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
                 ])
 
-        syns.append(pd.DataFrame(data=buf, columns=["ref", qryorg]))
+        syns.append(pd.DataFrame(data=buf, columns=["ref", qryorg if keep_names else "qry"]))
 
     return syns
 
@@ -227,8 +227,10 @@ def find_pansyn(fins, ref="a", sort=False):
         - or their start/end are within a certain tolerance
 - find cliques, if that doesn't work try clusters
 - then extract information from cliques
+
+- for even more exactness, later try to use pairwise syri output? => n^2 runtime
 """
-def exact_pansyn(fins, sort=False):
+def graph_pansyn(fins, sort=True, mode="overlap"):
     """
 
     :param:
@@ -236,9 +238,38 @@ def exact_pansyn(fins, sort=False):
     """
     import igraph
 
-    syns = extract_syn_regions(fins, ref=ref)
+    linsyns = pd.concat(extract_syn_regions(fins, keep_names=False), ignore_index=True)
     if sort:
-        syns = [x.sort_values('ref') for x in syns]
+        linsyns = linsyns.sort_values('ref')
+
+    print(linsyns)
+
+    g = igraph.Graph()
+    g.add_vertices(len(linsyns))
+    g.vs["ref"] = linsyns['ref']
+    g.vs["qry"] = linsyns['qry']
+
+    aiter = iter(g.vs)
+    biter = iter(g.vs)
+    while True:
+        try:
+
+
+            # ratchet by dropping the segment with a smaller end
+            if lref.end > rref.end: # left is after right
+                rrow = next(riter)[1]
+            elif rref.end > lref.end: # right is after left
+                lrow = next(liter)[1]
+            # if they stop at the same position, drop the one starting further left
+            elif lref.start > rref.start:
+                rrow = next(riter)[1]
+            else: # do whatever
+                lrow = next(liter)[1]
+
+        except StopIteration: # nothing to match
+            break
+
+
 
 
 
@@ -249,10 +280,10 @@ if __name__ == "__main__": # testing
 
     import sys
 
-    df = find_pansyn(sys.argv[1:], sort=False)
-    #print(df)
-    print("regions:", len(df))
-    print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
-    #df = exact_pansyn(sys.argv[1:])
+    #df = find_pansyn(sys.argv[1:], sort=False)
     #print(df)
     #print("regions:", len(df))
+    #print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
+    df = graph_pansyn(sys.argv[1:])
+    print(df)
+    print("regions:", len(df))
