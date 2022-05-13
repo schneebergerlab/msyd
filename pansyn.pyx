@@ -258,13 +258,20 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
             if mode == 'overlap':
                 if min(aref.end, bref.end) >= max(aref.start, bref.end):
                     g.add_edge(a.index, b.index)
+                if min(aqry.end, bqry.end) >= max(aqry.start, bqry.end):
+                    g.add_edge(a.index, b.index)
+
 
             elif mode == 'tolerance':
                 if abs(aref.end - bref.end) < tolerance and abs(aref.start - bref.start) < tolerance:
                     g.add_edge(a.index, b.index)
+                if abs(aqry.end - bqry.end) < tolerance and abs(aqry.start - bqry.start) < tolerance:
+                    g.add_edge(a.index, b.index)
                 
             elif mode == 'subregion':
                 if (aref.start < bref.start) == (aref.end > bref.end):
+                    g.add_edge(a.index, b.index)
+                if (aqry.start < bqry.start) == (aqry.end > bqry.end):
                     g.add_edge(a.index, b.index)
             
 
@@ -323,7 +330,13 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     #TODO
     # algo: pre-initialise df to be efficient, then loop over clusters, putting the range in df[iterator, range.org]
 
-    return g, cliques
+    ret = pd.DataFrame(columns = fins)
+    ret = pd.concat([
+        pd.DataFrame([g.vs[node]['qry'] for node in cl], columns=[g.vs[node]['qry'].org for node in cl])
+        for cl in cliques
+        ])
+
+    return ret
 
 
 
