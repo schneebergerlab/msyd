@@ -99,10 +99,9 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
 # refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
-def extract_syn_regions(fins, ref="a", keep_names=True):
+def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
 
     # columns to look for as start/end positions
-    reforg = "ref"
     refchr = ref + "chr"
     refhaplo = "NaN"
     refstart = ref + "start"
@@ -115,25 +114,27 @@ def extract_syn_regions(fins, ref="a", keep_names=True):
     qryend = qry + "end"
 
     syns = []
-    for fin in fins:
-        qryorg = fin.split('/')[-1]
-        buf = []
-        raw, chr_mapping = ingest.readsyriout(fin)
-        raw = raw.loc[raw['type']=='SYN']
-        # if implementing filtering later, filter here
+    buf = []
+    raw, chr_mapping = ingest.readsyriout(fin)
+    raw = raw.loc[raw['type'] == ann]
+    # if implementing filtering later, filter here
 
-        for row in raw.iterrows():
-            row = row[1]
-            buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-                Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
-                ])
+    for row in raw.iterrows():
+        row = row[1]
+        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
+            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+            ])
 
-        syns.append(pd.DataFrame(data=buf, columns=["ref", qryorg if keep_names else "qry"]))
+    return pd.DataFrame(data=buf, columns=[reforg, qryorg])
 
-    return syns
+def extract_regions_to_df(fins, ref='a', ann="SYN"):
+    return pd.concat([extract_regions(fin, ann=ann,\
+            reforg=fin.split('/')[-1].split('_')[0],\
+            qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
+            for fin in fins])
 
 
-def find_pansyn(fins, ref="a", sort=False):
+def find_pansyn(fins, sort=False):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -141,13 +142,13 @@ def find_pansyn(fins, ref="a", sort=False):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
-    syns = extract_syn_regions(fins, ref=ref)
+    syns = extract_regions_to_df(fins)
+    print(syns)
     if sort:
-        syns = [x.sort_values('ref') for x in syns]
+        syns = [x.sort_values(0) for x in syns]
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
-        #return pd.merge(left, right) # equivalent to old strict intersection
         ret = []
 
         if len(right) == 0:
@@ -159,13 +160,13 @@ def find_pansyn(fins, ref="a", sort=False):
         rrow = next(riter)[1]
         liter = left.iterrows()
         lrow = next(liter)[1]
-        cols = ['ref'] + list(lrow.index)[1:] + list(rrow.index)[1:]
+        cols = list(lrow.index) + list(rrow.index)[1:]
         while True:
             try: # python iterators suck, so this loop is entirely try-catch'ed
                 # this may be very slow, TO/DO benchmark # seems to be alright?
 
-                rref = rrow['ref']
-                lref = lrow['ref']
+                rref = rrow[0] # the reference always is stored first
+                lref = lrow[0]
                 if rref.chr > lref.chr:
                     lrow = next(liter)[1]
                     continue
@@ -208,7 +209,7 @@ def find_pansyn(fins, ref="a", sort=False):
         del riter
         del liter
         ret = pd.DataFrame(data=ret, columns=cols)
-        return ret.sort_values('ref') if sort else ret
+        return ret.sort_values(0) if sort else ret
 
 
     pansyns = functools.reduce(intersect_syns, syns)
@@ -369,10 +370,10 @@ if __name__ == "__main__": # testing
 
     import sys
 
-    #df = find_pansyn(sys.argv[1:], sort=False)
-    #print(df)
-    #print("regions:", len(df))
-    #print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
+    df = find_pansyn(sys.argv[1:], sort=False)
+    print(df)
+    print("regions:", len(df))
+    print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
     df = graph_pansyn(sys.argv[1:], mode='overlap')
     print(df)
     print("regions:", len(df))
