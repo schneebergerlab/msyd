@@ -327,13 +327,12 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 #    del biter
 
     cliques = g.maximal_cliques()
+    print(cliques)
     #clusters = g.community_leiden()
     
     ## extract the syntenic cliques, transform them to output
-    #TODO
-    # algo: pre-initialise df to be efficient, then loop over clusters, putting the range in df[iterator, range.org]
 
-    ranges = [pd.DataFrame(columns = fins)]
+    ranges = []
     for cl in cliques:
         byorg = {}
         for node in cl:
