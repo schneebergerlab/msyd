@@ -127,11 +127,18 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
 
     return pd.DataFrame(data=buf, columns=[reforg, qryorg])
 
-def extract_regions_to_df(fins, ref='a', ann="SYN"):
-    return pd.concat([extract_regions(fin, ann=ann,\
+def extract_regions_to_list(fins, ref='a', ann="SYN"):
+    return [extract_regions(fin, ann=ann,\
             reforg=fin.split('/')[-1].split('_')[0],\
             qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
-            for fin in fins])
+            for fin in fins]
+
+def collapse_to_df(fins, ref='a', ann="SYN"):
+    syns = extract_regions_to_list(fins, ref=ref, ann=ann)
+    for syn in syns:
+        syn.columns=['ref', 'qry']
+
+    return pd.concat(syns, ignore_index=True)
 
 
 def find_pansyn(fins, sort=False):
@@ -142,10 +149,10 @@ def find_pansyn(fins, sort=False):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
-    syns = extract_regions_to_df(fins)
+    syns = extract_regions_to_list(fins)
     print(syns)
     if sort:
-        syns = [x.sort_values(0) for x in syns]
+        syns = [x.sort_values(x.columns[0]) for x in syns]
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
@@ -188,9 +195,9 @@ def find_pansyn(fins, sort=False):
                     
                     # compute the adjusted position of the pansyntenic regions
                     # drop the references from both columns, place at start (ref is always at first position)
-                    ret.append([Range('ref', rref.chr, rref.haplo, ovstart, ovend)] +
-                            [Range(syn.org, syn.chr, syn.haplo, syn.start + ldropstart, syn.end + ldropend) for syn in lrow.drop('ref')] +
-                            [Range(syn.org, syn.chr, syn.haplo, syn.start + rdropstart, syn.end + rdropend) for syn in rrow.drop('ref')])
+                    ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
+                            [Range(syn.org, syn.chr, syn.haplo, syn.start + ldropstart, syn.end + ldropend) for syn in lrow.drop(lrow.index[0])] +
+                            [Range(syn.org, syn.chr, syn.haplo, syn.start + rdropstart, syn.end + rdropend) for syn in rrow.drop(rrow.index[0])])
 
                 # ratchet by dropping the segment with a smaller end
                 if lref.end > rref.end: # left is after right
@@ -209,7 +216,7 @@ def find_pansyn(fins, sort=False):
         del riter
         del liter
         ret = pd.DataFrame(data=ret, columns=cols)
-        return ret.sort_values(0) if sort else ret
+        return ret.sort_values(ret.columns[0]) if sort else ret
 
 
     pansyns = functools.reduce(intersect_syns, syns)
@@ -240,14 +247,13 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     import igraph
 
     ## prepare & load the vertices
-    linsyns = pd.concat(extract_syn_regions(fins, keep_names=False), ignore_index=True)
-    linsyns = linsyns.sort_values('ref')
-    print(linsyns)
+    colsyns = collapse_to_df(fins)
+    colsyns = colsyns.sort_values('ref')
 
     g = igraph.Graph()
-    g.add_vertices(len(linsyns))
-    g.vs["ref"] = linsyns['ref']
-    g.vs["qry"] = linsyns['qry']
+    g.add_vertices(len(colsyns))
+    g.vs["ref"] = colsyns['ref']
+    g.vs["qry"] = colsyns['qry']
 
     # try brute force, the algo below seems to have some problems
     for a in g.vs:
@@ -328,7 +334,6 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 #    del biter
 
     cliques = g.maximal_cliques()
-    print(cliques)
     #clusters = g.community_leiden()
     
     ## extract the syntenic cliques, transform them to output
@@ -373,7 +378,7 @@ if __name__ == "__main__": # testing
     df = find_pansyn(sys.argv[1:], sort=False)
     print(df)
     print("regions:", len(df))
-    print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
+    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start,df.iterrows())))
     df = graph_pansyn(sys.argv[1:], mode='overlap')
     print(df)
     print("regions:", len(df))
