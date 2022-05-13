@@ -333,10 +333,6 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
     #TODO
     # algo: pre-initialise df to be efficient, then loop over clusters, putting the range in df[iterator, range.org]
 
-    #ret = pd.concat([
-    #    pd.DataFrame([g.vs[node]['qry'] for node in cl], columns=[g.vs[node]['qry'].org for node in cl])
-    #    for cl in cliques
-    #    ])
     ranges = [pd.DataFrame(columns = fins)]
     for cl in cliques:
         byorg = {}
@@ -346,23 +342,23 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
             # helper function to incorporate node ranges into the dict
             def incorporate(rng):
                 if rng.org in byorg:
-                    rngalt = byorg[rng.org][0]
+                    rngalt = byorg[rng.org]
 
-                    if not rngalt.chr == rng.chr:
-                        raise ValueError(f"Mismatching chromosomes unioning {rng} & {rngalt}")
+                    
+                    if rngalt.chr == rng.chr:
+                        #raise ValueError(f"Mismatching chromosomes unioning {rng} & {rngalt}")
                     # resolve multiple ranges on the same organism as the union of the two
                     # is this appropriate? maybe use intersection
-                    byorg[rng.org]= [Range(rng.org, rng.haplo, rng.chr, min(rng.start, rng_alt.start), max(rng.end, rng_alt.end))]
+                    # and/oder check for intersection
+                        byorg[rng.org]= Range(rng.org, rng.haplo, rng.chr, min(rng.start, rngalt.start), max(rng.end, rngalt.end))
 
                 else:
-                    byorg[rng.org]= [rng]
+                    byorg[rng.org]= rng
             
             incorporate(qry)
             incorporate(ref)
 
-        print(ranges)
-        print(byorg)
-        ranges.append(pd.DataFrame(byorg))
+        ranges.append(pd.DataFrame(byorg, index=[0]))
 
     return pd.concat(ranges)
 
