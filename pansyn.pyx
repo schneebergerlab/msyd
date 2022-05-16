@@ -17,6 +17,8 @@ import ingest
 # A position is specified by the organism, chromosome, haplotype and base position
 # A range takes a start and an end position. If the end < start, the range is defined as inverted
 #TODO use proper cython types, e.g. char for haplo
+
+# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 class Position:
     def __init__(self, org:str, chr:int, haplo:str, pos: int):
@@ -42,6 +44,7 @@ class Position:
         else:
             return False
 
+# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 class Range:
     def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
@@ -141,7 +144,7 @@ def collapse_to_df(fins, ref='a', ann="SYN"):
     return pd.concat(syns, ignore_index=True)
 
 
-def find_pansyn(fins, sort=False):
+def find_pansyn(syris, bams, sort=False):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -149,10 +152,12 @@ def find_pansyn(fins, sort=False):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
-    syns = extract_regions_to_list(fins)
-    print(syns)
+    syns = extract_regions_to_list(syris, ann="SYNAL")
+
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
+
+    bams = [ingest.readSAMBAM(b) for b in bams]
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
@@ -374,8 +379,14 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 if __name__ == "__main__": # testing
 
     import sys
+    args = sys.argv[1:]
+    syris = []
+    bams = []
+    for i in range(0, len(args), 2):
+        syris.append(args[i])
+        bams.append(args[i+1])
 
-    df = find_pansyn(sys.argv[1:], sort=False)
+    df = find_pansyn(syris, bams, sort=False)
     print(df)
     print("regions:", len(df))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start,df.iterrows())))
