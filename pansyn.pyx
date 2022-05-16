@@ -161,12 +161,12 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
     bams = [ingest.readSAMBAM(b) for b in bams]
-    bams = [b[(b.adir==1) & (b.bdir==1)] for b in bams] # only non-inverted alignments can be syntenic
+    bams = [b[(b.adir==1) & (b.bdir==1)] for b in bams] # only count non-inverted alignments as syntenic
     #print(bams)
 
     # possible to move this into file loading, but would have to make assumptions abt input file
     # given a bam file and corresponding SYNAL range df,
-    # appends the CIGAR string to the non-reference in the range df
+    # appends the CIGAR as tuple to the non-reference in the range df
     def match_synal(syn, bam, ref='a'):
         ret = []
         syniter = syn.iterrows()
@@ -232,11 +232,17 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
                     rdropend = ovend - rref.end # 0 if lref is minimal, else negative
                     ldropend = ovend - lref.end
                     
-                    # compute the adjusted position of the pansyntenic regions
-                    # drop the references from both columns, place at start (ref is always at first position)
+                    # function for computing the adjusted position of the pansyntenic regions
+                    def compute_position(row, dropstart, dropend):
+                        syn = row[0]
+                        start, cg = util.cg_rem(syn.start, dropstart, start=True, ref=True)
+                        end, cg  = util.cg_rem(syn.end, dropend, start=False, ref=True)
+                        return [Range(syn.org, syn.chr, syn.haplo, start, end), cg]
+
+                    # drop the references from both rows, place at start (ref is always at first position)
                     ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
-                            [Range(syn.org, syn.chr, syn.haplo, syn.start + ldropstart, syn.end + ldropend) for syn in lrow.drop(lrow.index[0])] +
-                            [Range(syn.org, syn.chr, syn.haplo, syn.start + rdropstart, syn.end + rdropend) for syn in rrow.drop(rrow.index[0])])
+                            [compute_position(row, ldropstart, rdropstart) for row in lrow.drop(lrow.index[0])] +
+                            [compute_position(row, ldropstart, rdropstart) for row in rrow.drop(rrow.index[0])])
 
                 # ratchet by dropping the segment with a smaller end
                 if lref.end > rref.end: # left is after right
