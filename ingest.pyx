@@ -213,6 +213,7 @@ def readSAMBAM(fin, type='B'):
         coords.sort_values([9,0,1,2,3,10], inplace = True, ascending=True)
         coords.index = range(len(coords.index))
         coords[6] = coords[6].astype('float')
+        coords.columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", "cg"]
         return coords
     except Exception as e:
         logger.error("Error in reading BAM/SAM file. " + str(e))
