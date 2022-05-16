@@ -10,6 +10,7 @@ import functools
 import pandas as pd
 import numpy as np
 import ingest
+import util
 
 
 
@@ -101,31 +102,6 @@ TO/DO be more lenient?
 TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
-## copied from myUsefulFunctions.py
-def cgtpl(cg):
-    """
-    Takes a cigar string as input and returns a cigar tuple
-    """
-    for i in "MIDNSHPX=":
-        cg = cg.replace(i, ';'+i+',')
-    return [i.split(';') for i in cg.split(',')[:-1]]
-#end
-
-def cggenlen(cg, gen):
-    """
-    Takes cigar as input, and return the number of bases covered by it the reference
-    or query genome.
-    Cigar strings are first converted to cigar tuples.
-    """
-    if type(cg) == str:
-        cg = cgtpl(cg)
-    if gen not in ['r', 'q']:
-        raise ValueError('gen need to "r" or "q" for reference or query')
-        return
-    s = set(['M', 'D', 'N', '=', 'X']) if gen == 'r' else set(['M', 'I', 'S', '=', 'X'])
-    l = sum([int(i[0]) for i in cg if i[1] in s])
-    return l
-#end
 
 
 # refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
@@ -204,7 +180,7 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
         while True:
             try:
                 if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                    ret.append([synr[0], (synr[1], cgtpl(bamr['cg']))])
+                    ret.append([synr[0], (synr[1], util.cgtpl(bamr['cg']))])
                     synr = next(syniter)[1]
                 bamr = next(bamiter)[1]
             except StopIteration:
