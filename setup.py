@@ -5,7 +5,7 @@ import numpy
 
 setup(ext_modules = cythonize([
             Extension('ingest', ['ingest.pyx']),
-            Extension('pansym', ['pansym.pyx'])
+            Extension('pansyn', ['pansyn.pyx'])
             ]),
         scripts=["main.py"]
         )
