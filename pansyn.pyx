@@ -101,6 +101,33 @@ TO/DO be more lenient?
 TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
+## copied from myUsefulFunctions.py
+def cgtpl(cg):
+    """
+    Takes a cigar string as input and returns a cigar tuple
+    """
+    for i in "MIDNSHPX=":
+        cg = cg.replace(i, ';'+i+',')
+    return [i.split(';') for i in cg.split(',')[:-1]]
+#end
+
+def cggenlen(cg, gen):
+    """
+    Takes cigar as input, and return the number of bases covered by it the reference
+    or query genome.
+    Cigar strings are first converted to cigar tuples.
+    """
+    if type(cg) == str:
+        cg = cgtpl(cg)
+    if gen not in ['r', 'q']:
+        raise ValueError('gen need to "r" or "q" for reference or query')
+        return
+    s = set(['M', 'D', 'N', '=', 'X']) if gen == 'r' else set(['M', 'I', 'S', '=', 'X'])
+    l = sum([int(i[0]) for i in cg if i[1] in s])
+    return l
+#end
+
+
 # refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
 def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
 
@@ -144,7 +171,7 @@ def collapse_to_df(fins, ref='a', ann="SYN"):
     return pd.concat(syns, ignore_index=True)
 
 
-def find_pansyn(syris, bams, sort=False):
+def find_pansyn(syris, bams, sort=False, ref='a'):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -158,6 +185,37 @@ def find_pansyn(syris, bams, sort=False):
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
     bams = [ingest.readSAMBAM(b) for b in bams]
+    bams = [b[(b.adir==1) & (b.bdir==1)] for b in bams] # only non-inverted alignments can be syntenic
+    #print(bams)
+
+    # possible to move this into file loading, but would have to make assumptions abt input file
+    # given a bam file and corresponding SYNAL range df,
+    # appends the CIGAR string to the non-reference in the range df
+    def match_synal(syn, bam, ref='a'):
+        ret = []
+        syniter = syn.iterrows()
+        bamiter = bam.iterrows()
+        refchr = ref + "chr"
+        refstart = ref + "start"
+        refend = ref + "end"
+
+        synr = next(syniter)[1]
+        bamr = next(bamiter)[1]
+        while True:
+            try:
+                if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
+                    ret.append([synr[0], (synr[1], cgtpl(bamr['cg']))])
+                    synr = next(syniter)[1]
+                bamr = next(bamiter)[1]
+            except StopIteration:
+                break
+
+        return pd.DataFrame(ret, columns=syn.columns)
+
+
+    syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, bams)))
+    #print(syns)
+
 
     # take two dataframes of syntenic regions and compute the flexible intersection
     def intersect_syns(left, right):
@@ -379,17 +437,16 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 if __name__ == "__main__": # testing
 
     import sys
-    args = sys.argv[1:]
     syris = []
     bams = []
-    for i in range(0, len(args), 2):
-        syris.append(args[i])
-        bams.append(args[i+1])
+    for fin in sys.argv[1:]:
+        syris.append(fin + "syri.out")
+        bams.append(fin + ".bam")
 
     df = find_pansyn(syris, bams, sort=False)
     print(df)
     print("regions:", len(df))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start,df.iterrows())))
-    df = graph_pansyn(sys.argv[1:], mode='overlap')
-    print(df)
-    print("regions:", len(df))
+    #df = graph_pansyn(sys.argv[1:], mode='overlap')
+    #print(df)
+    #print("regions:", len(df))
