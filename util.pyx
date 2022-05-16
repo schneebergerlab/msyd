@@ -2,15 +2,18 @@
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
+import re
 
 ## copied from myUsefulFunctions.py
+inttr = lambda x: [int(x[0]), x[1]]
 def cgtpl(cg):
     """
     Takes a cigar string as input and returns a cigar tuple
     """
+    
     for i in "MIDNSHPX=":
         cg = cg.replace(i, ';'+i+',')
-    return [i.split(';') for i in cg.split(',')[:-1]]
+    return [inttr(i.split(';')) for i in cg.split(',')[:-1]]
 #end
 
 def cggenlen(cg, gen):
@@ -30,8 +33,8 @@ def cggenlen(cg, gen):
 #end
 
 
-refforw = set(['M', 'D', 'N', '=', 'X'])
-qryforw = set(['M', 'I', 'S', '=', 'X'])
+reffwd = set(['M', 'D', 'N', '=', 'X'])
+qryfwd = set(['M', 'I', 'S', '=', 'X'])
 def cg_rem(cg, n, ref=True, start=True):
     """
     Takes cigar as input, removes from 'ref'erence/query strand until 'n' bases from the OTHER strand have been removed.
@@ -41,14 +44,34 @@ def cg_rem(cg, n, ref=True, start=True):
     if type(cg) == str:
         cg = cgtpl(cg)
 
-    if not start:
-        cg = cg[::-1]
+    ind = 0 if start else -1
+    skip = 0
+    fwd = reffwd if ref else qryfwd
+    altfwd = qryfwd if ref else reffwd
 
     while n > 0:
-        pass
+        if cg[ind][1] in altfwd:
+            skip += cg[ind][0]
+
+        if cg[ind][1] not in fwd:
+            del cg[ind]
+            continue
+
+        # cg[ind] must be in fwd
+        n -= cg[ind][0]
+        if n >= 0:
+            del cg[ind]
+        else:
+            cg[ind][0] = -n # n == n- cg[ind][0] implies -n == cg[ind][0] -n
+            if cg[ind][1] in altfwd: # subtract the overcounting
+                skip += n
+
+    return (skip, cg)
 
 
 if __name__ == "__main__":
     cigar = "10=5D3X7=4I8="
     import sys
     print(cg_rem(cigar, int(sys.argv[1])))
+    print(cg_rem(cigar, int(sys.argv[1]), ref=False))
+    print(cg_rem(cigar, int(sys.argv[1]), start=False))
