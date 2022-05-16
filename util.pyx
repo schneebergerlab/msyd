@@ -32,7 +32,7 @@ def cggenlen(cg, gen):
 
 refforw = set(['M', 'D', 'N', '=', 'X'])
 qryforw = set(['M', 'I', 'S', '=', 'X'])
-def remfromcg(cg, n, ref=True, start=True):
+def cg_rem(cg, n, ref=True, start=True):
     """
     Takes cigar as input, removes from 'ref'erence/query strand until 'n' bases from the OTHER strand have been removed.
     Starts at the 'start'/end.
@@ -47,3 +47,8 @@ def remfromcg(cg, n, ref=True, start=True):
     while n > 0:
         pass
 
+
+if __name__ == "__main__":
+    cigar = "10=5D3X7=4I8="
+    import sys
+    print(cg_rem(cigar, int(sys.argv[1])))
