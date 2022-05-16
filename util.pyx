@@ -41,8 +41,8 @@ def cg_rem(cg, n, ref=True, start=True):
     Starts at the 'start'/end.
     :return: the cigar string with these bases removed
     """
-    if type(cg) == str:
-        cg = cgtpl(cg)
+    #if type(cg) == str:
+    #    cg = cgtpl(cg)
 
     ind = 0 if start else -1
     skip = 0
@@ -50,20 +50,28 @@ def cg_rem(cg, n, ref=True, start=True):
     altfwd = qryfwd if ref else reffwd
 
     while n > 0:
-        if cg[ind][1] in altfwd:
-            skip += cg[ind][0]
+        cgi = cg[ind]
+        print(n, start, cgi)
+        if cgi[1] in altfwd:
+            skip += cgi[0]
 
-        if cg[ind][1] not in fwd:
-            del cg[ind]
+        if cgi[1] not in fwd:
+            if start:
+                cg = cg[1:]
+            else:
+                cg = cg[:-1]
             continue
 
-        # cg[ind] must be in fwd
-        n -= cg[ind][0]
+        # cgi must be in fwd
+        n -= cgi[0]
         if n >= 0:
-            del cg[ind]
+            if start:
+                cg = cg[1:]
+            else:
+                cg = cg[:-1]
         else:
-            cg[ind][0] = -n # n == n- cg[ind][0] implies -n == cg[ind][0] -n
-            if cg[ind][1] in altfwd: # subtract the overcounting
+            cgi[0] = -n # n == n- cg[ind][0] implies -n == cg[ind][0] -n
+            if cgi[1] in altfwd: # subtract the overcounting
                 skip += n
 
     return (skip, cg)

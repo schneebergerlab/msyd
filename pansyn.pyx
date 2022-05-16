@@ -226,23 +226,32 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
 
                 if ovstart < ovend: # there is valid overlap, i.e. the region is pansyntenic
                     # compute how much around both sides to drop for each alignment to the reference
+                    print(lrow[1][0], rrow[1][0])
                     rdropstart = ovstart - rref.start # 0 if rref is maximal, else positive
                     ldropstart = ovstart - lref.start 
 
-                    rdropend = ovend - rref.end # 0 if lref is minimal, else negative
-                    ldropend = ovend - lref.end
+                    rdropend = rref.end - ovend # 0 if rref is minimal, else positive
+                    ldropend = lref.end - ovend
                     
                     # function for computing the adjusted position of the pansyntenic regions
-                    def compute_position(row, dropstart, dropend):
-                        syn = row[0]
-                        start, cg = util.cg_rem(syn.start, dropstart, start=True, ref=True)
-                        end, cg  = util.cg_rem(syn.end, dropend, start=False, ref=True)
-                        return [Range(syn.org, syn.chr, syn.haplo, start, end), cg]
+                    def compute_position(tup, dropstart, dropend):
+                        syn = tup[0]
+                        cg = tup[1]
+                        print(dropstart, dropend)
+                        print(cg)
+                        from collections import defaultdict
+                        stats = defaultdict(lambda: 0)
+                        for x in cg:
+                            stats[x[1]] = stats[x[1]] + x[0]
+                        print(stats)
+                        start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
+                        end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
+                        return [Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg]
 
                     # drop the references from both rows, place at start (ref is always at first position)
                     ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
-                            [compute_position(row, ldropstart, rdropstart) for row in lrow.drop(lrow.index[0])] +
-                            [compute_position(row, ldropstart, rdropstart) for row in rrow.drop(rrow.index[0])])
+                            [compute_position(tup, ldropstart, ldropend) for tup in lrow.drop(lrow.index[0])] +
+                            [compute_position(tup, rdropstart, rdropend) for tup in rrow.drop(rrow.index[0])])
 
                 # ratchet by dropping the segment with a smaller end
                 if lref.end > rref.end: # left is after right
