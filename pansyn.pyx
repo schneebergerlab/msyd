@@ -79,6 +79,14 @@ class Range:
                 return l.start < r.start
         return False
 
+    def drop(self, start, end):
+        """
+        Drops by adding/subtracting the specified amounts from the start/end of this Range.
+        :param: 'start'/'end' specify how much to drop on each end
+        """
+        self.start += start
+        self.end -= end
+
 
 """
 notes
@@ -162,7 +170,7 @@ def match_synal(syn, bam, ref='a'):
     while True:
         try:
             if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                ret.append((synr[0], (synr[1], util.cgtpl(bamr['cg']))))
+                ret.append([synr[0], [synr[1], util.cgtpl(bamr['cg'])]]) #TODO maybe tupelise all CIGARs at the same time?
                 synr = next(syniter)[1]
             bamr = next(bamiter)[1]
         except StopIteration:
@@ -188,8 +196,11 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
     #print(bams)
 
     syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, bams)))
-    #print(sys)
 
+    for syn in syns:
+        remove_overlap(syn)
+
+    print(syns)
 
 
     pansyns = functools.reduce(intersect_syns, syns)
@@ -200,9 +211,31 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
 ## part of the preprocessing of SYNAL regions for find_pansyn
 ## removes overlap from the first region if two overlapping regions are next to each other
 ## assumes syn to be sorted
+## mutates syn
 def remove_overlap(syn):
+    syniter = syn.iterrows()
+    prev = next(syniter)[1]
+    for _, cur in syniter:
+        curref = cur[0]
+        prevref = prev[0]
 
+        # check for overlap on the reference
+        ov = prevref.end - curref.start
+        if ov <= 0 or curref.chr != prevref.chr: # there is no overlap
+            prev = cur
+            continue
 
+        print(ov, prevref, curref)
+        # remove the overlap from the previous row;
+        # this performs essentially the same function as compute_overlap
+        # in intersect_syns
+        curref.drop(0, ov)
+        for c in cur[1:]:
+            drop, cg = util.cg_rem(c[1], ov)
+            c[1] = cg
+            c[0].drop(0, drop)
+
+        prev = cur
 
 # take two dataframes of syntenic regions and compute the flexible intersection
 def intersect_syns(left, right):
@@ -257,10 +290,12 @@ def intersect_syns(left, right):
 
                     start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
                     end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
-                    return (Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg)
+                    syn.drop(start, end)
+                    return [syn, cg]
 
                 # drop the references from both rows, place at start (ref is always at first position)
-                ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
+                rref.drop(rdropstart, rdropend)
+                ret.append([rref] +
                         [compute_position(tup, ldropstart, ldropend) for tup in lrow.drop(lrow.index[0])] +
                         [compute_position(tup, rdropstart, rdropend) for tup in rrow.drop(rrow.index[0])])
 
@@ -280,8 +315,8 @@ def intersect_syns(left, right):
 
     del riter
     del liter
-    ret = pd.DataFrame(data=ret, columns=cols)
-    return ret.sort_values(ret.columns[0]) if sort else ret
+    return pd.DataFrame(data=ret, columns=cols)
+    #return ret.sort_values(ret.columns[0]) if sort else ret
 
 
 
