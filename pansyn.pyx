@@ -81,11 +81,10 @@ class Range:
 
     def drop(self, start, end):
         """
-        Drops by adding/subtracting the specified amounts from the start/end of this Range.
-        :param: 'start'/'end' specify how much to drop on each end
+        :param: 'start'/'end' specify how much to drop on each end.
+        :return: A Range missing the specified area.
         """
-        self.start += start
-        self.end -= end
+        return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
 
 """
@@ -196,11 +195,12 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
     #print(bams)
 
     syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, bams)))
-
+    
+    # remove overlap
     for syn in syns:
         remove_overlap(syn)
 
-    print(syns)
+    #print(syns)
 
 
     pansyns = functools.reduce(intersect_syns, syns)
@@ -225,15 +225,15 @@ def remove_overlap(syn):
             prev = cur
             continue
 
-        print(ov, prevref, curref)
+        #print(ov, prevref, curref)
         # remove the overlap from the previous row;
         # this performs essentially the same function as compute_overlap
         # in intersect_syns
-        curref.drop(0, ov)
+        curref.start += ov
         for c in cur[1:]:
-            drop, cg = util.cg_rem(c[1], ov)
+            drop, cg = util.cg_rem(c[1], ov, start=True)
             c[1] = cg
-            c[0].drop(0, drop)
+            c[0].start += drop
 
         prev = cur
 
@@ -290,12 +290,10 @@ def intersect_syns(left, right):
 
                     start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
                     end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
-                    syn.drop(start, end)
-                    return [syn, cg]
+                    return [syn.drop(start, end), cg]
 
                 # drop the references from both rows, place at start (ref is always at first position)
-                rref.drop(rdropstart, rdropend)
-                ret.append([rref] +
+                ret.append([rref.drop(rdropstart, rdropend)] +
                         [compute_position(tup, ldropstart, ldropend) for tup in lrow.drop(lrow.index[0])] +
                         [compute_position(tup, rdropstart, rdropend) for tup in rrow.drop(rrow.index[0])])
 
