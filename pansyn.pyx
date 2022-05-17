@@ -190,93 +190,101 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
 
 
     syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, bams)))
-    #print(syns)
+    #print(sys)
 
-
-    # take two dataframes of syntenic regions and compute the flexible intersection
-    def intersect_syns(left, right):
-        ret = []
-
-        if len(right) == 0:
-            raise ValueError("right is empty!")
-        if len(left) == 0:
-            raise ValueError("left is empty!")
-
-        riter = right.iterrows()
-        rrow = next(riter)[1]
-        liter = left.iterrows()
-        lrow = next(liter)[1]
-        cols = list(lrow.index) + list(rrow.index)[1:]
-        while True:
-            try: # python iterators suck, so this loop is entirely try-catch'ed
-                # this may be very slow, TO/DO benchmark # seems to be alright?
-
-                rref = rrow[0] # the reference always is stored first
-                lref = lrow[0]
-                if rref.chr > lref.chr:
-                    lrow = next(liter)[1]
-                    continue
-                if lref.chr > rref.chr:
-                    rrow = next(riter)[1]
-                    continue
-                
-                # determine overlap region
-                ovstart = max(rref.start, lref.start)
-                ovend = min(rref.end, lref.end)
-
-                if ovstart < ovend: # there is valid overlap, i.e. the region is pansyntenic
-                    # compute how much around both sides to drop for each alignment to the reference
-                    rdropstart = ovstart - rref.start # 0 if rref is maximal, else positive
-                    ldropstart = ovstart - lref.start 
-
-                    rdropend = rref.end - ovend # 0 if rref is minimal, else positive
-                    ldropend = lref.end - ovend
-                    
-                    # function for computing the adjusted position of the pansyntenic regions
-                    def compute_position(tup, dropstart, dropend):
-                        syn = tup[0]
-                        cg = tup[1]
-
-                        #print(syn, dropstart, dropend)
-                        #from collections import defaultdict
-                        #stats = defaultdict(lambda: 0)
-                        #for x in cg:
-                        #    stats[x[1]] = stats[x[1]] + x[0]
-                        #print(stats)
-
-                        start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
-                        end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
-                        return (Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg)
-
-                    # drop the references from both rows, place at start (ref is always at first position)
-                    ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
-                            [compute_position(tup, ldropstart, ldropend) for tup in lrow.drop(lrow.index[0])] +
-                            [compute_position(tup, rdropstart, rdropend) for tup in rrow.drop(rrow.index[0])])
-
-                # ratchet by dropping the segment with a smaller end
-                if lref.end > rref.end: # left is after right
-                    rrow = next(riter)[1]
-                elif rref.end > lref.end: # right is after left
-                    lrow = next(liter)[1]
-                    # if they stop at the same position, drop the one starting further left
-                elif lref.start > rref.start:
-                    rrow = next(riter)[1]
-                else: # do whatever
-                    lrow = next(liter)[1]
-
-            except StopIteration: # nothing more to match
-                break
-
-        del riter
-        del liter
-        ret = pd.DataFrame(data=ret, columns=cols)
-        return ret.sort_values(ret.columns[0]) if sort else ret
 
 
     pansyns = functools.reduce(intersect_syns, syns)
     #pansyns = util.parallel_reduce(intersect_syns, syns, 4)
 
     return pansyns
+
+## part of the preprocessing of SYNAL regions for find_pansyn
+## removes overlap from the first region if two overlapping regions are next to each other
+## assumes syn to be sorted
+def remove_overlap(syn):
+
+
+
+# take two dataframes of syntenic regions and compute the flexible intersection
+def intersect_syns(left, right):
+    ret = []
+
+    if len(right) == 0:
+        raise ValueError("right is empty!")
+    if len(left) == 0:
+        raise ValueError("left is empty!")
+
+    riter = right.iterrows()
+    rrow = next(riter)[1]
+    liter = left.iterrows()
+    lrow = next(liter)[1]
+    cols = list(lrow.index) + list(rrow.index)[1:]
+    while True:
+        try: # python iterators suck, so this loop is entirely try-catch'ed
+            # this may be very slow, TO/DO benchmark # seems to be alright?
+
+            rref = rrow[0] # the reference always is stored first
+            lref = lrow[0]
+            if rref.chr > lref.chr:
+                lrow = next(liter)[1]
+                continue
+            if lref.chr > rref.chr:
+                rrow = next(riter)[1]
+                continue
+            
+            # determine overlap region
+            ovstart = max(rref.start, lref.start)
+            ovend = min(rref.end, lref.end)
+
+            if ovstart < ovend: # there is valid overlap, i.e. the region is pansyntenic
+                # compute how much around both sides to drop for each alignment to the reference
+                rdropstart = ovstart - rref.start # 0 if rref is maximal, else positive
+                ldropstart = ovstart - lref.start 
+
+                rdropend = rref.end - ovend # 0 if rref is minimal, else positive
+                ldropend = lref.end - ovend
+                
+                # function for computing the adjusted position of the pansyntenic regions
+                def compute_position(tup, dropstart, dropend):
+                    syn = tup[0]
+                    cg = tup[1]
+
+                    #print(syn, dropstart, dropend)
+                    #from collections import defaultdict
+                    #stats = defaultdict(lambda: 0)
+                    #for x in cg:
+                    #    stats[x[1]] = stats[x[1]] + x[0]
+                    #print(stats)
+
+                    start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
+                    end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
+                    return (Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg)
+
+                # drop the references from both rows, place at start (ref is always at first position)
+                ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
+                        [compute_position(tup, ldropstart, ldropend) for tup in lrow.drop(lrow.index[0])] +
+                        [compute_position(tup, rdropstart, rdropend) for tup in rrow.drop(rrow.index[0])])
+
+            # ratchet by dropping the segment with a smaller end
+            if lref.end > rref.end: # left is after right
+                rrow = next(riter)[1]
+            elif rref.end > lref.end: # right is after left
+                lrow = next(liter)[1]
+                # if they stop at the same position, drop the one starting further left
+            elif lref.start > rref.start:
+                rrow = next(riter)[1]
+            else: # do whatever
+                lrow = next(liter)[1]
+
+        except StopIteration: # nothing more to match
+            break
+
+    del riter
+    del liter
+    ret = pd.DataFrame(data=ret, columns=cols)
+    return ret.sort_values(ret.columns[0]) if sort else ret
+
 
 
 
@@ -429,25 +437,33 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 if __name__ == "__main__": # testing
 
     import sys
+
+    # helper function to flatten a list of lists into tuples
+    recflatten = lambda x: tuple([recflatten(y) for y in x]) if type(x)==list or type(x)==tuple else x
+
+    recflatten = lambda x: x[0] if type(x)==list or type(x)==tuple else x
+
     syris = []
     bams = []
     for fin in sys.argv[1:]:
         syris.append(fin + "syri.out")
         bams.append(fin + ".bam")
 
-    df1 = find_pansyn(syris, bams, sort=False)
-    print(df1)
+    df1 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(recflatten))#[['ler', 'an1', 'c24']]
+    print(df1.to_string())
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
+    sys.exit()
     syris = []
     bams = []
     for fin in sys.argv[::-1][:-1]:
         syris.append(fin + "syri.out")
         bams.append(fin + ".bam")
 
-    df2 = find_pansyn(syris, bams, sort=False)
+    df2 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(recflatten))[['ler', 'an1', 'c24']]
     print(df2)
     print("regions:", len(df2))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df2.iterrows())))
 
-    print(pd.concat([df1,df2]).drop_duplicates(keep=False))
+    #print(pd.concat([df1, df2]).drop_duplicates(keep=False))
+    print(df1.compare(df2, align_axis=0))
