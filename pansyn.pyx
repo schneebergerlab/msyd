@@ -146,6 +146,29 @@ def collapse_to_df(fins, ref='a', ann="SYN"):
 
     return pd.concat(syns, ignore_index=True)
 
+# possible to move this into file loading, but would have to make assumptions abt input file
+# given a bam file and corresponding SYNAL range df,
+# appends the CIGAR as tuple to the non-reference in the range df
+def match_synal(syn, bam, ref='a'):
+    ret = []
+    syniter = syn.iterrows()
+    bamiter = bam.iterrows()
+    refchr = ref + "chr"
+    refstart = ref + "start"
+    refend = ref + "end"
+
+    synr = next(syniter)[1]
+    bamr = next(bamiter)[1]
+    while True:
+        try:
+            if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
+                ret.append((synr[0], (synr[1], util.cgtpl(bamr['cg']))))
+                synr = next(syniter)[1]
+            bamr = next(bamiter)[1]
+        except StopIteration:
+            break
+
+    return pd.DataFrame(ret, columns=syn.columns)
 
 def find_pansyn(syris, bams, sort=False, ref='a'):
     """
@@ -163,31 +186,6 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
     bams = [ingest.readSAMBAM(b) for b in bams]
     bams = [b[(b.adir==1) & (b.bdir==1)] for b in bams] # only count non-inverted alignments as syntenic
     #print(bams)
-
-    # possible to move this into file loading, but would have to make assumptions abt input file
-    # given a bam file and corresponding SYNAL range df,
-    # appends the CIGAR as tuple to the non-reference in the range df
-    def match_synal(syn, bam, ref='a'):
-        ret = []
-        syniter = syn.iterrows()
-        bamiter = bam.iterrows()
-        refchr = ref + "chr"
-        refstart = ref + "start"
-        refend = ref + "end"
-
-        synr = next(syniter)[1]
-        bamr = next(bamiter)[1]
-        while True:
-            try:
-                if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                    ret.append((synr[0], (synr[1], util.cgtpl(bamr['cg']))))
-                    synr = next(syniter)[1]
-                bamr = next(bamiter)[1]
-            except StopIteration:
-                break
-
-        return pd.DataFrame(ret, columns=syn.columns)
-
 
     syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, bams)))
     #print(sys)
@@ -450,10 +448,9 @@ if __name__ == "__main__": # testing
         bams.append(fin + ".bam")
 
     df1 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(recflatten))#[['ler', 'an1', 'c24']]
-    print(df1.to_string())
+    print(df1)
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
-    sys.exit()
     syris = []
     bams = []
     for fin in sys.argv[::-1][:-1]:
@@ -466,4 +463,4 @@ if __name__ == "__main__": # testing
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df2.iterrows())))
 
     #print(pd.concat([df1, df2]).drop_duplicates(keep=False))
-    print(df1.compare(df2, align_axis=0))
+    #print(df1.compare(df2, align_axis=0))
