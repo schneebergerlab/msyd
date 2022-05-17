@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import ingest
 import util
+from util import Cigar
 
 
 
@@ -169,7 +170,7 @@ def match_synal(syn, bam, ref='a'):
     while True:
         try:
             if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                ret.append([synr[0], [synr[1], util.cgtpl(bamr['cg'])]]) #TODO maybe tupelise all CIGARs at the same time?
+                ret.append([synr[0], [synr[1], Cigar.from_string(bamr['cg'])]]) #TODO maybe tupelise all CIGARs at the same time?
                 synr = next(syniter)[1]
             bamr = next(bamiter)[1]
         except StopIteration:
@@ -231,7 +232,7 @@ def remove_overlap(syn):
         # in intersect_syns
         curref.start += ov
         for c in cur[1:]:
-            drop, cg = util.cg_rem(c[1], ov, start=True)
+            drop, cg = c[1].get_removed(ov, start=True)
             c[1] = cg
             c[0].start += drop
 
@@ -288,8 +289,8 @@ def intersect_syns(left, right):
                     #    stats[x[1]] = stats[x[1]] + x[0]
                     #print(stats)
 
-                    start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
-                    end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
+                    start, cg = cg.get_removed(dropstart, start=True, ref=True)
+                    end, cg  = cg.get_removed(dropend, start=False, ref=True)
                     return [syn.drop(start, end), cg]
 
                 # drop the references from both rows, place at start (ref is always at first position)
