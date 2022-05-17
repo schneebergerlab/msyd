@@ -226,7 +226,6 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
 
                 if ovstart < ovend: # there is valid overlap, i.e. the region is pansyntenic
                     # compute how much around both sides to drop for each alignment to the reference
-                    print(lrow[1][0], rrow[1][0])
                     rdropstart = ovstart - rref.start # 0 if rref is maximal, else positive
                     ldropstart = ovstart - lref.start 
 
@@ -237,13 +236,14 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
                     def compute_position(tup, dropstart, dropend):
                         syn = tup[0]
                         cg = tup[1]
-                        print(dropstart, dropend)
-                        print(cg)
-                        from collections import defaultdict
-                        stats = defaultdict(lambda: 0)
-                        for x in cg:
-                            stats[x[1]] = stats[x[1]] + x[0]
-                        print(stats)
+
+                        #print(syn, dropstart, dropend)
+                        #from collections import defaultdict
+                        #stats = defaultdict(lambda: 0)
+                        #for x in cg:
+                        #    stats[x[1]] = stats[x[1]] + x[0]
+                        #print(stats)
+
                         start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
                         end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
                         return [Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg]
@@ -273,7 +273,8 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
         return ret.sort_values(ret.columns[0]) if sort else ret
 
 
-    pansyns = functools.reduce(intersect_syns, syns)
+    #pansyns = functools.reduce(intersect_syns, syns)
+    pansyns = util.parallel_reduce(intersect_syns, syns, 4)
 
     return pansyns
 

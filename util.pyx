@@ -3,6 +3,9 @@
 # distutils: language = c++
 # cython: language_level = 3
 import re
+import copy
+import multiprocessing
+import functools
 
 ## copied from myUsefulFunctions.py
 inttr = lambda x: [int(x[0]), x[1]]
@@ -32,7 +35,6 @@ def cggenlen(cg, gen):
     return l
 #end
 
-
 reffwd = set(['M', 'D', 'N', '=', 'X'])
 qryfwd = set(['M', 'I', 'S', '=', 'X'])
 def cg_rem(cg, n, ref=True, start=True):
@@ -43,6 +45,7 @@ def cg_rem(cg, n, ref=True, start=True):
     """
     #if type(cg) == str:
     #    cg = cgtpl(cg)
+    cg = copy.deepcopy(cg) #TODO possibly very slow
 
     ind = 0 if start else -1
     skip = 0
@@ -51,7 +54,7 @@ def cg_rem(cg, n, ref=True, start=True):
 
     while n > 0:
         cgi = cg[ind]
-        print(n, start, cgi)
+        #print(n, start, cgi)
         if cgi[1] in altfwd:
             skip += cgi[0]
 
@@ -75,6 +78,24 @@ def cg_rem(cg, n, ref=True, start=True):
                 skip += n
 
     return (skip, cg)
+
+# copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
+def parallel_reduce(reduceFunc, l, numCPUs):
+    if numCPUs == 1 or len(l) <= 100:
+            returnVal= functools.reduce(reduceFunc, l[1:], l[0])
+            return returnVal
+
+    parent1, child1 = multiprocessing.Pipe()
+    parent2, child2 = multiprocessing.Pipe()
+    p1 = multiprocessing.Process(target=parallel_reduce, args=(reduceFunc, l[:len(l) // 2], numCPUs // 2, child1, ) )
+    p2 = multiprocessing.Process(target=parallel_reduce, args=(reduceFunc, l[len(l) // 2:], numCPUs // 2 + numCPUs%2, child2, ) )
+    p1.start()
+    p2.start()
+    leftReturn, rightReturn = parent1.recv(), parent2.recv()
+    p1.join()
+    p2.join()
+    returnVal = reduceFunc(leftReturn, rightReturn)
+    return returnVal
 
 
 if __name__ == "__main__":
