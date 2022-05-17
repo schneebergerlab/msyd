@@ -17,9 +17,21 @@ This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
 
-df = pansyn.find_pansyn(sys.argv[1:])
-print("regions:", len(df))
-print("total lengths:", sum(map(lambda x: x[1]['ref'].end-x[1]['ref'].start,df.iterrows())))
+if __name__ == "__main__": # testing
+    import sys
+    syris = []
+    bams = []
+    for fin in sys.argv[1:]:
+        syris.append(fin + "syri.out")
+        bams.append(fin + ".bam")
+
+    df = pansyn.find_pansyn(syris, bams, sort=False)
+    print(df)
+    print("regions:", len(df))
+    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start,df.iterrows())))
+    #df = graph_pansyn(sys.argv[1:], mode='overlap')
+    #print(df)
+    #print("regions:", len(df))
 sys.exit(0)
 
 

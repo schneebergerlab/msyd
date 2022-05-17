@@ -58,9 +58,9 @@ class Range:
     def __repr__(self):
         return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
     
-    def __eq__(l, r):
-        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
-                l.start == r.start & l.start == r.start
+    #def __eq__(l, r):
+    #    return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
+    #            l.start == r.start & l.start == r.start
 
     # this operator sorts according to the END, not start value,
     # to enable the end ratchet to work properly
@@ -180,7 +180,7 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
         while True:
             try:
                 if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                    ret.append([synr[0], (synr[1], util.cgtpl(bamr['cg']))])
+                    ret.append((synr[0], (synr[1], util.cgtpl(bamr['cg']))))
                     synr = next(syniter)[1]
                 bamr = next(bamiter)[1]
             except StopIteration:
@@ -246,7 +246,7 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
 
                         start, cg = util.cg_rem(cg, dropstart, start=True, ref=True)
                         end, cg  = util.cg_rem(cg, dropend, start=False, ref=True)
-                        return [Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg]
+                        return (Range(syn.org, syn.chr, syn.haplo, syn.start + start, syn.end - end), cg)
 
                     # drop the references from both rows, place at start (ref is always at first position)
                     ret.append([Range(rref.org, rref.chr, rref.haplo, ovstart, ovend)] +
@@ -273,8 +273,8 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
         return ret.sort_values(ret.columns[0]) if sort else ret
 
 
-    #pansyns = functools.reduce(intersect_syns, syns)
-    pansyns = util.parallel_reduce(intersect_syns, syns, 4)
+    pansyns = functools.reduce(intersect_syns, syns)
+    #pansyns = util.parallel_reduce(intersect_syns, syns, 4)
 
     return pansyns
 
@@ -435,10 +435,19 @@ if __name__ == "__main__": # testing
         syris.append(fin + "syri.out")
         bams.append(fin + ".bam")
 
-    df = find_pansyn(syris, bams, sort=False)
-    print(df)
-    print("regions:", len(df))
-    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start,df.iterrows())))
-    #df = graph_pansyn(sys.argv[1:], mode='overlap')
-    #print(df)
-    #print("regions:", len(df))
+    df1 = find_pansyn(syris, bams, sort=False)
+    print(df1)
+    print("regions:", len(df1))
+    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
+    syris = []
+    bams = []
+    for fin in sys.argv[::-1][:-1]:
+        syris.append(fin + "syri.out")
+        bams.append(fin + ".bam")
+
+    df2 = find_pansyn(syris, bams, sort=False)
+    print(df2)
+    print("regions:", len(df2))
+    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df2.iterrows())))
+
+    print(pd.concat([df1,df2]).drop_duplicates(keep=False))
