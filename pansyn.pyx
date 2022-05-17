@@ -469,10 +469,8 @@ if __name__ == "__main__": # testing
 
     import sys
 
-    # helper function to flatten a list of lists into tuples
-    recflatten = lambda x: tuple([recflatten(y) for y in x]) if type(x)==list or type(x)==tuple else x
-
-    recflatten = lambda x: x[0] if type(x)==list or type(x)==tuple else x
+    # removes cigar strings for more concise printing
+    remcigar = lambda x: x[0] if type(x)==list or type(x)==tuple else x
 
     syris = []
     bams = []
@@ -480,20 +478,7 @@ if __name__ == "__main__": # testing
         syris.append(fin + "syri.out")
         bams.append(fin + ".bam")
 
-    df1 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(recflatten))#[['ler', 'an1', 'c24']]
+    df1 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(remcigar))#[['ler', 'an1', 'c24']]
     print(df1)
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
-    syris = []
-    bams = []
-    for fin in sys.argv[::-1][:-1]:
-        syris.append(fin + "syri.out")
-        bams.append(fin + ".bam")
-
-    df2 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(recflatten))[['ler', 'an1', 'c24']]
-    print(df2)
-    print("regions:", len(df2))
-    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df2.iterrows())))
-
-    #print(pd.concat([df1, df2]).drop_duplicates(keep=False))
-    #print(df1.compare(df2, align_axis=0))
