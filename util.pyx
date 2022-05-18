@@ -6,10 +6,14 @@ import re
 import copy
 import multiprocessing
 import functools
+import itertools
 
 ## constants
 reffwd = set(['M', 'D', 'N', '=', 'X'])
 qryfwd = set(['M', 'I', 'S', '=', 'X'])
+cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
+cig_aln_types = set(['M', 'X', '='])
+cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 inttr = lambda x: [int(x[0]), x[1]]
 
 class Cigar:
@@ -30,12 +34,12 @@ class Cigar:
             cg = cg.replace(i, ';'+i+',')
         return Cigar([inttr(i.split(';')) for i in cg.split(',')[:-1]])
 
-    def cg_genlen(self, ref=True):
+    def get_len(self, ref=True):
         """
         Takes cigar as input, and return the number of bases covered by it the reference or query genome.
         """
         s = reffwd if ref else qryfwd
-        return sum([int(i[0]) for i in cg if i[1] in s])
+        return sum([int(i[0]) for i in self.pairs if i[1] in s])
 
     def get_removed(self, n, ref=True, start=True):
         """
@@ -74,10 +78,126 @@ class Cigar:
     def __repr__(self):
         return f"Cigar({self.pairs})"
 
+    def to_string(self):
+        return ''.join([str(p[0]) + p[1] for p in self.pairs])
+
+    def clean(self):
+        """
+        Misc function to remove empty annotations and combine neighbouring annotations of equal type from a Cigar.
+        Mutates self, but the represented alignment stays the same.
+        """
+        i = 1
+        while i < len(self.pairs):
+            if self.pairs[i-1][0] == 0:
+                del self.pairs[i-1]
+                continue
+            if self.pairs[i-1][1] == self.pairs[i][1]:
+                self.pairs[i-1][0] += self.pairs[i][0]
+                del self.pairs[i]
+            else:
+                i += 1
+
+
+    def impute(l, r):
+        """
+        This function combines two CIGAR strings of two queries on one reference and tries to impute the CIGAR string for a 1:1 alignment of one query to the other.
+        By necessity, this is a crude approximation and can in no way replace a full alignment.
+        The algorithm assumes the alignments to not start shifted from each other.
+        :param: Two Cigars.
+        :return: A Cigar.
+        """
+        imputed_pairs = []
+        if len(l.pairs) == 0 or len(r.pairs) ==0:
+            raise ValueError("Empty Cigar input into impute!")
+
+        # prepare the variables for iteration
+        liter = iter(l.pairs)
+        riter = iter(r.pairs)
+        lpr = next(liter)
+        rpr = next(riter)
+        lprog = 0
+        rprog = 0
+
+        while(True):
+            try:
+                # check if a region has been fully consumed
+                if lpr[0]-lprog <= 0 or lpr[1] in cig_clips:
+                    lprog = 0
+                    lpr = next(liter)
+                if rpr[0]-rprog <= 0 or rpr[1] in cig_clips:
+                    rprog = 0
+                    rpr = next(riter)
+
+                # compute the max possible step
+                step = min(lpr[0]-lprog, rpr[0]-rprog)
+                # compute the type and which strand to step
+                t, stepl, stepr = Cigar.impute_type(lpr[1], rpr[1])
+                if t is not None:
+                    imputed_pairs.append([step, t])
+                # do the step #TO/DO make this branchless with cdefs
+                if stepr:
+                    rprog += step
+                if stepl:
+                    lprog += step
+
+            except StopIteration:
+                break
+
+        # append clippings at end for the sequence that hasn't ran out
+        for p in liter:
+            imputed_pairs.append([p[0], 'S'])
+        for p in riter:
+            imputed_pairs.append([p[0], 'S'])
+
+        # return
+        cg = Cigar(imputed_pairs)
+        cg.clean()
+        return cg
+
+    def impute_type(ltp, rtp):
+        """
+        Helper function for impute().
+        Given two CIGAR types, outputs the one that is imputed
+        :param: two valid CIGAR chars (M=IDSHX)
+        :return: the CIGAR char imputed for the inputs as well as two bools specifying whether to step ahead on the left/right Cigar.
+        """
+        if ltp in cig_aln_types:
+            if rtp == 'D':
+                return 'D', True, True
+
+            if rtp == 'I':
+                return 'I', True, True
+
+            if ltp == 'X' or rtp == 'X':
+                return 'X', True, True
+            else:
+                if ltp == '=' and rtp == '=':
+                    return '=', True, True
+                else: # at least one must be an M, none is an X
+                    return 'M', True, True
+
+        if ltp == 'I':
+            if rtp == 'I': # TO/DO be even more conservative and resolve this to D followed by I?
+                return 'M', True, True
+            else:
+                return 'D', True, False # right has deletion relative to left
+            
+        if ltp == 'D':
+            if rtp == 'D':
+                return None, True, True # None to skip this region
+            elif rtp in cig_aln_types:
+                return 'I', True, True
+            elif rtp == 'I':
+                return 'I', True, True
+
+
+        
+
+
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 def parallel_reduce(reduceFunc, l, numCPUs):
     if numCPUs == 1 or len(l) <= 100:
-            returnVal= functools.reduce(reduceFunc, l[1:], l[0])
+            returnVal = functools.reduce(reduceFunc, l[1:], l[0])
             return returnVal
 
     parent1, child1 = multiprocessing.Pipe()
@@ -95,7 +215,9 @@ def parallel_reduce(reduceFunc, l, numCPUs):
 
 if __name__ == "__main__":
     cg = Cigar.from_string("10=5D3X7=4I8=")
+    cgdirty = Cigar.from_string("10=10=5D5I0=3I4I7I7M0M0I0I-2D2D")
     import sys
-    print(cg.get_removed(int(sys.argv[1])))
-    print(cg.get_removed(int(sys.argv[1]), ref=False))
-    print(cg.get_removed(int(sys.argv[1]), start=False))
+    print(cgdirty)
+    cgdirty.clean()
+    print(cgdirty)
+    print(cgdirty.to_string())
