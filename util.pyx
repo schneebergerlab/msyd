@@ -36,10 +36,16 @@ class Cigar:
 
     def get_len(self, ref=True):
         """
-        Takes cigar as input, and return the number of bases covered by it the reference or query genome.
+        Returns the number of bases covered by this Cigar in the reference or query genome.
         """
         s = reffwd if ref else qryfwd
         return sum([int(i[0]) for i in self.pairs if i[1] in s])
+
+    def get_identity(self):
+        """
+        Returns the fraction of covered bases that are an exact match ('=').
+        """
+        return sum([int(i[0]) for i in self.pairs if i[1] == '='])/self.get_len()
 
     def get_removed(self, n, ref=True, start=True):
         """
@@ -214,10 +220,34 @@ def parallel_reduce(reduceFunc, l, numCPUs):
 
 
 if __name__ == "__main__":
-    cg = Cigar.from_string("10=5D3X7=4I8=")
-    cgdirty = Cigar.from_string("10=10=5D5I0=3I4I7I7M0M0I0I-2D2D")
     import sys
-    print(cgdirty)
-    cgdirty.clean()
-    print(cgdirty)
-    print(cgdirty.to_string())
+    import ingest
+
+    dfr = ingest.readSAMBAM(sys.argv[1])
+    dfq = ingest.readSAMBAM(sys.argv[2])
+    dfc = ingest.readSAMBAM(sys.argv[3])
+    print(dfr)
+    print(dfq)
+    print(dfc)
+
+    rowr = dfr.loc[0]
+    rowq = dfq.loc[1]
+    rowc = dfc.loc[1]
+
+    # find the overlap
+    start = max(rowr['astart'], rowq['astart'], rowc['astart'])
+    end = min(rowr['aend'], rowq['aend'], rowc['aend'])
+
+    cgr = Cigar.from_string(dfr.loc[0, 'cg']).get_removed(start - rowr['astart'])
+    cgq = Cigar.from_string(dfq.loc[1, 'cg']).get_removed(start - rowq['astart'])
+    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(start - rowc['astart'])
+
+    
+    sqr = dfr.loc[0, 'seq'][start - rowr['astart']:end - rowr['aend'] -1]
+    sqq = dfq.loc[1, 'seq'][start - rowq['astart']:end - rowq['aend'] -1]
+    sqc = dfc.loc[1, 'seq'][start - rowc['astart']:end - rowc['aend'] -1]
+    
+    print(len(sqr), len(sqq), len(sqc))
+    assert(len(sqr) == len(sqq) == len(sqc))
+    assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
+

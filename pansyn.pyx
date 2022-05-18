@@ -483,11 +483,10 @@ if __name__ == "__main__": # testing
     print(df1)
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
-    cg1 = df1.loc[0, "c24"][1]
-    cg2 = df1.loc[0, "an1"][1]
-
-    print(cg1.to_string())
-    print(cg2.to_string())
+    cg1 = df1.iloc[0, 1][1]
+    cg2 = df1.iloc[0, 2][1]
+    #print(cg1.to_string())
+    #print(cg1.get_identity())
     cgimp = Cigar.impute(cg1, cg2)
     print(cgimp.to_string())
-    print(cg1.get_len(), cg2.get_len(), cgimp.get_len())
+    print(cg1.get_len(), cg1.get_identity(), cg2.get_len(), cg2.get_identity(), cgimp.get_len(), cgimp.get_identity())

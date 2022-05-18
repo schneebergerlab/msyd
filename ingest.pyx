@@ -197,23 +197,24 @@ def readSAMBAM(fin, type='B'):
             bdir = -1 if is_inv else 1
             achr = aln.reference_name
             bchr = aln.query_name
+            seq = aln.query_sequence
             cg = "".join([str(i[1]) + cgdict[i[0]] for i in aln.cigartuples if i[0] not in [4,5]])
-            coords[index] = [astart, aend, bstart, bend, alen, blen, iden, adir, bdir, achr, bchr, cg]
+            coords[index] = [astart, aend, bstart, bend, alen, blen, iden, adir, bdir, achr, bchr, cg, seq]
 
         ## Give warning for chromosomes which do not have any primary alignment
         for k,v in ref_prim.items():
             if not v:
-                logger.warning('No primary alignment found for reference sequence ' + k +'. This could mean that the entire chromosome '+ k +' is reapeated.')
+                logger.warning('No primary alignment found for reference sequence ' + k +'. This could mean that the entire chromosome '+ k +' is repeated.')
         for k,v in qry_prim.items():
             if not v:
-                logger.warning('No primary alignment found for query sequence ' + k +'. This could mean that the entire chromosome '+ k + ' is reapeated.')
+                logger.warning('No primary alignment found for query sequence ' + k +'. This could mean that the entire chromosome '+ k + ' is repeated.')
 
         ## Return alignments
         coords = pd.DataFrame.from_dict(coords, orient= 'index')
         coords.sort_values([9,0,1,2,3,10], inplace = True, ascending=True)
         coords.index = range(len(coords.index))
         coords[6] = coords[6].astype('float')
-        coords.columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", "cg"]
+        coords.columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", "cg", "seq"]
         return coords
     except Exception as e:
         logger.error("Error in reading BAM/SAM file. " + str(e))
