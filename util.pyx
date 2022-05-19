@@ -39,7 +39,10 @@ class Cigar:
         Returns the number of bases covered by this Cigar in the reference or query genome.
         """
         s = reffwd if ref else qryfwd
-        return sum([int(i[0]) for i in self.pairs if i[1] in s])
+        return sum([i[0] for i in self.pairs if i[1] in s])
+
+    def __len__(self):
+        return sum([i[0] for i in self.pairs])
 
     def get_identity(self):
         """
@@ -86,6 +89,9 @@ class Cigar:
 
     def to_string(self):
         return ''.join([str(p[0]) + p[1] for p in self.pairs])
+
+    def to_full_string(self):
+        return ''.join([p[0]*p[1] for p in self.pairs])
 
     def clean(self):
         """
@@ -226,9 +232,6 @@ if __name__ == "__main__":
     dfr = ingest.readSAMBAM(sys.argv[1])
     dfq = ingest.readSAMBAM(sys.argv[2])
     dfc = ingest.readSAMBAM(sys.argv[3])
-    print(dfr)
-    print(dfq)
-    print(dfc)
 
     rowr = dfr.loc[0]
     rowq = dfq.loc[1]
@@ -237,17 +240,32 @@ if __name__ == "__main__":
     # find the overlap
     start = max(rowr['astart'], rowq['astart'], rowc['astart'])
     end = min(rowr['aend'], rowq['aend'], rowc['aend'])
+    print(start, end)
 
-    cgr = Cigar.from_string(dfr.loc[0, 'cg']).get_removed(start - rowr['astart'])
-    cgq = Cigar.from_string(dfq.loc[1, 'cg']).get_removed(start - rowq['astart'])
-    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(start - rowc['astart'])
+    strskpr, endskpr = start - rowr['astart'], rowr['aend'] - end
+    strskpq, endskpq = start - rowq['astart'], rowq['aend'] - end
+    strskpc, endskpc = start - rowc['astart'], rowc['aend'] - end
 
+    #sqr = dfr.loc[0, 'seq']
+    #sqr = sqr[strskpr:-endskpr-1]
+    #sqq = dfq.loc[1, 'seq'][start - rowq['astart']:end - rowq['aend'] -1]
+    #sqc = dfc.loc[1, 'seq'][start - rowc['astart']:end - rowc['aend'] -1]
+
+    cgr = Cigar.from_string(dfr.loc[0, 'cg']).get_removed(strskpr)[1].get_removed(endskpr, start=False)[1]
+    cgq = Cigar.from_string(dfq.loc[1, 'cg']).get_removed(strskpq)[1].get_removed(endskpq, start=False)[1]
+    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(strskpc+7)[1].get_removed(endskpc, start=False)[1]
     
-    sqr = dfr.loc[0, 'seq'][start - rowr['astart']:end - rowr['aend'] -1]
-    sqq = dfq.loc[1, 'seq'][start - rowq['astart']:end - rowq['aend'] -1]
-    sqc = dfc.loc[1, 'seq'][start - rowc['astart']:end - rowc['aend'] -1]
-    
-    print(len(sqr), len(sqq), len(sqc))
-    assert(len(sqr) == len(sqq) == len(sqc))
-    assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
+    #assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
+
+    cgi = Cigar.impute(cgr, cgq)
+
+    # prettyprint
+    cgcstr = cgc.to_full_string()
+    cgistr = cgi.to_full_string()
+    for n in range(79, len(cgcstr), 79):
+        if all([cgistr[i]==cgcstr[i] and cgcstr[i]=='=' for i in range(n-79,n)]):
+            continue
+        print(">", cgcstr[n-79:n])
+        print("<", cgistr[n-79:n])
+
 
