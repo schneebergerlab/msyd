@@ -93,6 +93,24 @@ class Cigar:
     def to_full_string(self):
         return ''.join([p[0]*p[1] for p in self.pairs])
 
+    def from_full_string(string):
+        pairs = []
+        mode = string[0]
+        count = 0
+        for ch in string:
+            if ch == mode:
+                count += 1
+            else:
+                pairs.append([count, mode])
+                count = 1
+                mode = ch
+
+        pairs.append([count, mode])
+
+        return Cigar(pairs)
+
+
+
     def clean(self):
         """
         Misc function to remove empty annotations and combine neighbouring annotations of equal type from a Cigar.
@@ -228,6 +246,9 @@ def parallel_reduce(reduceFunc, l, numCPUs):
 if __name__ == "__main__":
     import sys
     import ingest
+    
+    print(Cigar.from_full_string(sys.argv[1]).to_string())
+    sys.exit()
 
     dfr = ingest.readSAMBAM(sys.argv[1])
     dfq = ingest.readSAMBAM(sys.argv[2])
@@ -236,6 +257,11 @@ if __name__ == "__main__":
     rowr = dfr.loc[0]
     rowq = dfq.loc[1]
     rowc = dfc.loc[1]
+
+    print(rowr)
+    print(rowq)
+    print(rowc)
+
 
     # find the overlap
     start = max(rowr['astart'], rowq['astart'], rowc['astart'])
@@ -246,26 +272,26 @@ if __name__ == "__main__":
     strskpq, endskpq = start - rowq['astart'], rowq['aend'] - end
     strskpc, endskpc = start - rowc['astart'], rowc['aend'] - end
 
-    #sqr = dfr.loc[0, 'seq']
-    #sqr = sqr[strskpr:-endskpr-1]
-    #sqq = dfq.loc[1, 'seq'][start - rowq['astart']:end - rowq['aend'] -1]
-    #sqc = dfc.loc[1, 'seq'][start - rowc['astart']:end - rowc['aend'] -1]
+    # QUERY sequences
+    sqr = dfr.loc[0, 'seq'][strskpr:-endskpr-1]
+    sqq = dfq.loc[1, 'seq'][strskpq:-endskpq-1]
+    sqc = dfc.loc[1, 'seq'][strskpc:-endskpc-1]
 
     cgr = Cigar.from_string(dfr.loc[0, 'cg']).get_removed(strskpr)[1].get_removed(endskpr, start=False)[1]
     cgq = Cigar.from_string(dfq.loc[1, 'cg']).get_removed(strskpq)[1].get_removed(endskpq, start=False)[1]
-    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(strskpc+7)[1].get_removed(endskpc, start=False)[1]
+    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(strskpc)[1].get_removed(endskpc, start=False)[1]
     
-    #assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
+    assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
 
     cgi = Cigar.impute(cgr, cgq)
 
     # prettyprint
     cgcstr = cgc.to_full_string()
     cgistr = cgi.to_full_string()
-    for n in range(79, len(cgcstr), 79):
-        if all([cgistr[i]==cgcstr[i] and cgcstr[i]=='=' for i in range(n-79,n)]):
-            continue
-        print(">", cgcstr[n-79:n])
-        print("<", cgistr[n-79:n])
+    #for n in range(79, len(cgcstr), 79):
+        #if all([cgistr[i]==cgcstr[i] and cgcstr[i]=='=' for i in range(n-79,n)]):
+        #    continue
+    #    print(">", cgcstr[n-79:n])
+    #    print("<", cgistr[n-79:n])
 
 
