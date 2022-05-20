@@ -174,10 +174,10 @@ class Cigar:
                 break
 
         # append clippings at end for the sequence that hasn't ran out
-        for p in liter:
-            imputed_pairs.append([p[0], 'S'])
-        for p in riter:
-            imputed_pairs.append([p[0], 'S'])
+        #for p in liter:
+        #    imputed_pairs.append([p[0], 'S'])
+        #for p in riter:
+        #    imputed_pairs.append([p[0], 'S'])
 
         # return
         cg = Cigar(imputed_pairs)
