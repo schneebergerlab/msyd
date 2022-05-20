@@ -474,10 +474,10 @@ if __name__ == "__main__": # testing
     remcigar = lambda x: x[0] if type(x)==list or type(x)==tuple else x
 
     syris = []
-    bams = []
+    alns = []
     for fin in sys.argv[1:]:
         syris.append(fin + "syri.out")
-        bams.append(fin + ".bam")
+        alns.append(fin + ".paf")
 
     df1 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(remcigar))
     print(df1.to_string())
