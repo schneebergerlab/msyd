@@ -479,10 +479,11 @@ if __name__ == "__main__": # testing
         syris.append(fin + "syri.out")
         bams.append(fin + ".bam")
 
-    df1 = find_pansyn(syris, bams, sort=False)#.apply(lambda x: x.apply(remcigar))
-    print(df1)
+    df1 = find_pansyn(syris, bams, sort=False).apply(lambda x: x.apply(remcigar))
+    print(df1.to_string())
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
+    sys.exit()
     cg1 = df1.iloc[0, 1][1]
     cg2 = df1.iloc[0, 2][1]
     #print(cg1.to_string())
