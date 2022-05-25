@@ -90,15 +90,6 @@ class Range:
 
 """
 notes
-   - TODO add alignment info from bam, use ingest method
-        - add CIGAR string extraction & incorporate into position calculation
-        - maybe this is the cause of the asymmetry?
-
-   - identify syntenic regions to ref
-       - find regions sharing similar locations on the A genome, matching on aStart?
-       - sorted join type algorithm?
-       - lifting pansyntenic regions? if lifting, what topology?
-
    - output in file/plot in some clever way
        - maybe as chromosome "bands"?
        - maybe as % syntenic to each query? => clustering/rooted tree
@@ -106,14 +97,18 @@ notes
 
 TODO output format
 
-TO/DO be more lenient?
+TO/DO be more lenient? Store "support" for each region as pct or number having/not having this?
+=> pleio/polysynteny
 TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
 
 
-# refactor out the reading in part, TODO move to ingest and interface to a fileformat-agnostic method once file format finalised
 def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
+    """
+    Given a syri output file, extract all regions matching a given annotation.
+    TODO refactor this out to ingest once the file format is finalized.
+    """
 
     # columns to look for as start/end positions
     refchr = ref + "chr"
@@ -121,7 +116,7 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     refstart = ref + "start"
     refend = ref + "end"
 
-    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values
+    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
     qrychr = qry + "chr"
     qryhaplo = "NaN"
     qrystart = qry + "start"
@@ -142,12 +137,16 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     return pd.DataFrame(data=buf, columns=[reforg, qryorg])
 
 def extract_regions_to_list(fins, ref='a', ann="SYN"):
+    # refactored out of find_pansyn
+    # TODO maybe refactor out naming?
     return [extract_regions(fin, ann=ann,\
             reforg=fin.split('/')[-1].split('_')[0],\
             qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
             for fin in fins]
 
 def collapse_to_df(fins, ref='a', ann="SYN"):
+    # Takes a number of input syri files, outputs them all squashed into a single DF
+    # For use in graph_pansyn to initialise the graph
     syns = extract_regions_to_list(fins, ref=ref, ann=ann)
     for syn in syns:
         syn.columns=['ref', 'qry']
@@ -182,7 +181,7 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
-    :param: a list of filenames of SyRI output to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    :param: a list of filenames of SyRI output and alignment files in BAM format to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
@@ -209,11 +208,13 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
 
     return pansyns
 
-## part of the preprocessing of SYNAL regions for find_pansyn
-## removes overlap from the first region if two overlapping regions are next to each other
-## assumes syn to be sorted
-## mutates syn
 def remove_overlap(syn):
+    """
+    part of the preprocessing of SYNAL regions for find_pansyn
+    removes overlap from the first region if two overlapping regions are next to each other
+    assumes syn to be sorted
+    mutates syn
+    """
     syniter = syn.iterrows()
     prev = next(syniter)[1]
     for _, cur in syniter:
@@ -238,8 +239,13 @@ def remove_overlap(syn):
 
         prev = cur
 
-# take two dataframes of syntenic regions and compute the flexible intersection
 def intersect_syns(left, right):
+    """
+    The main business logic of find_pansyn.
+    This function takes two dataframes containing syntenic regions and merges each one of them by determining the overlap.
+    It also updates the CIGAR string of the alignment accordingly.
+    It runs in O(len(left) + len(right)).
+    """
     ret = []
 
     if len(right) == 0:
@@ -333,6 +339,7 @@ def intersect_syns(left, right):
 """
 #TODO use pairwise syri information instead of reference, match on organism
 #TODO try to get sorted algorithm to work properly
+#WIP
 def graph_pansyn(fins, mode="overlap", tolerance=100):
     """
 
@@ -449,7 +456,7 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
                         #raise ValueError(f"Mismatching chromosomes unioning {rng} & {rngalt}")
                     # resolve multiple ranges on the same organism as the union of the two
                     # is this appropriate? maybe use intersection
-                    # and/oder check for intersection
+                    # and/or check for intersection
                         byorg[rng.org]= Range(rng.org, rng.haplo, rng.chr, min(rng.start, rngalt.start), max(rng.end, rngalt.end))
 
                 else:

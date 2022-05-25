@@ -27,7 +27,7 @@ class Cigar:
     ## copied from myUsefulFunctions.py
     def from_string(cg):
         """
-        Takes a cigar string as input and returns a cigar tuple
+        Takes a cigar string as input and returns a Cigar tuple
         """
         
         for i in "MIDNSHPX=":
@@ -46,7 +46,7 @@ class Cigar:
 
     def get_identity(self):
         """
-        Returns the fraction of covered bases that are an exact match ('=').
+        Returns the fraction of covered bases (of the reference) that are an exact match ('=').
         """
         return sum([int(i[0]) for i in self.pairs if i[1] == '='])/self.get_len()
 
@@ -55,7 +55,7 @@ class Cigar:
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
-        cg = copy.deepcopy(self) #TODO possibly very slow
+        cg = copy.deepcopy(self)
 
         ind = 0 if start else -1
         skip = 0
@@ -63,6 +63,8 @@ class Cigar:
         altfwd = qryfwd if ref else reffwd
 
         while n > 0:
+            #TODO speed this up by first determining the index to subset,
+            # then copy the subset and finally adjust the border element
             cgi = cg.pairs[ind]
             #print(n, start, cgi)
             if cgi[1] in altfwd:
@@ -225,6 +227,7 @@ class Cigar:
 
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
+# doesn't seem to be very fast?
 def parallel_reduce(reduceFunc, l, numCPUs):
     if numCPUs == 1 or len(l) <= 100:
             returnVal = functools.reduce(reduceFunc, l[1:], l[0])
