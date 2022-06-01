@@ -484,7 +484,7 @@ if __name__ == "__main__": # testing
     alns = []
     for fin in sys.argv[1:]:
         syris.append(fin + "syri.out")
-        alns.append(fin + ".paf")
+        alns.append(fin + ".bam")
 
     df1 = find_pansyn(syris, alns, sort=False).apply(lambda x: x.apply(remcigar))
     print(df1.to_string())
