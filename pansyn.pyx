@@ -478,7 +478,7 @@ if __name__ == "__main__": # testing
     import sys
 
     # removes cigar strings for more concise printing
-    remcigar = lambda x: x[0] if type(x)==list or type(x)==tuple else x
+    remcigar = lambda x: x# x[0] if type(x)==list or type(x)==tuple else x
 
     syris = []
     alns = []
