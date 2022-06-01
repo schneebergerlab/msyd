@@ -42,6 +42,9 @@ class Cigar:
     def __len__(self):
         return sum([i[0] for i in self.pairs])
 
+    def __eq__(l, r):
+        return l.pairs == r.pairs
+
     def get_identity(self):
         """
         Returns the fraction of covered bases (of the reference) that are an exact match ('=').
@@ -84,6 +87,52 @@ class Cigar:
                     skip += n
 
         return (skip, cg)
+
+
+    def get_removed_faster(self, n, ref=True, start=True):
+        """
+        If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
+        :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
+        """
+        if not self.pairs:
+            raise ValueError("empty Cigar!")
+
+        ind = 0 # position currently being evaluated for skipping
+        skip = 0 # bases skipped in the other sequence
+        # two sets containing the CIGAR codes incrementing one or the other strand
+        fwd = reffwd if ref else qryfwd 
+        altfwd = qryfwd if ref else reffwd
+        
+
+        # loop and remove regions as long as the skip is more than one region
+        while ind < len(self.pairs):
+            cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+            print(ind, cgi, n, skip)
+            if cgi[1] not in fwd:
+                ind += 1
+                if cgi[1] in altfwd:
+                    skip += cgi[0]
+                continue
+            
+            # this region counts towards n, determine if it can be removed or is too large
+            if n >= cgi[0]:
+                n -= cgi[0]
+                ind += 1
+                if cgi[1] in altfwd:
+                    skip += cgi[0]
+            else:
+                break
+
+        # remaining skip must be < 1 in a fwd-region
+        # construct the new return cigar, without altering self
+        cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+        if cgi[1] in altfwd:
+            skip += n
+
+        if start:
+            return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
+        else:
+            return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
 
     def __repr__(self):
         return f"Cigar({self.pairs})"
@@ -227,6 +276,19 @@ class Cigar:
 
 if __name__ == "__main__":
     import sys
+
+    for x in sys.argv[1:]:
+        cg = Cigar.from_string(x)
+        print(cg)
+        print(cg.get_removed_faster(10), cg.get_removed(10), sep='\n')
+        print(cg.get_removed_faster(10, ref=False), cg.get_removed(10, ref=False), sep='\n')
+        print(cg.get_removed_faster(10, start=False), cg.get_removed(10, start=False), sep='\n')
+        print(cg.get_removed_faster(10, start=False, ref=False), cg.get_removed(10, start=False, ref=False), sep='\n')
+
+        
+    
+
+    sys.exit()
     import ingest
     
     print(Cigar.from_full_string(sys.argv[1]).to_string())
