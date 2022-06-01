@@ -63,6 +63,7 @@ class Cigar:
         while n > 0:
             #TODO speed this up by first determining the index to subset,
             # then copy the subset and finally adjust the border element
+            # TODO implement this
             cgi = cg.pairs[ind]
             #print(n, start, cgi)
             if cgi[1] in altfwd:
