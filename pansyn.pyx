@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import ingest
 import util
-from util import Cigar
+from cigar import Cigar
 
 
 
