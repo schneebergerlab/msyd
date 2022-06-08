@@ -51,7 +51,7 @@ class Cigar:
         """
         return sum([int(i[0]) for i in self.pairs if i[1] == '='])/self.get_len()
 
-    def get_removed(self, n, ref=True, start=True):
+    def get_removed_legacy(self, n, ref=True, start=True):
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
@@ -89,7 +89,7 @@ class Cigar:
         return (skip, cg)
 
 
-    def get_removed_faster(self, n, ref=True, start=True):
+    def get_removed(self, n, ref=True, start=True):
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
