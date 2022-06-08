@@ -107,7 +107,7 @@ class Cigar:
         # loop and remove regions as long as the skip is more than one region
         while ind < len(self.pairs):
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-            print(ind, cgi, n, skip)
+            #print(ind, cgi, n, skip)
             if cgi[1] not in fwd:
                 ind += 1
                 if cgi[1] in altfwd:
