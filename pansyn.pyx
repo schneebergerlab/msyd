@@ -487,7 +487,7 @@ if __name__ == "__main__": # testing
         alns.append(fin + ".bam")
 
     df1 = find_pansyn(syris, alns, sort=False).apply(lambda x: x.apply(remcigar))
-    print(df1.to_string())
+    #print(df1.to_string())
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
     sys.exit()
