@@ -24,3 +24,6 @@ INV|	2X100:200,100=|	2X200:100,100=|	2X100:200
 DEL|	4X10:20,10=|	|	4a10:20,10=
 INS|	|	10b30:50,20I|	10X30:50,20I
 DUP|	5X20:30,10=|	5X20:30,10=;5a30:40,10I|	5X20:30,10=
+
+## Probable current solutions
+https://github.com/lh3/gfatools/blob/master/doc/rGFA.md
