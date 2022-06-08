@@ -1,9 +1,9 @@
 #!/bin/sh
 
 ref=$1
-outpath="alns"
+outpath="alns_filtered"
 
-for seq in scaffolds/*.fna.gz
+for seq in scaffolds_filtered/*.fna.bgz
 do
 	bs=$(basename $seq)
 	bsub -q multicore20 -n20 -R"span[hosts=1] rusage[mem=20000]" -M30000 \
