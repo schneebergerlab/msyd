@@ -4,7 +4,7 @@ out="scaffolds_filtered"
 file=$(basename $1 .bgz)
 
 # determine chr list from reference
-chrs=$(zgrep -e ">NC" grch38.v14_genomic.fna.gz | sed "s/>//" | cut -f 1 -d " " | sed -z "s/\n/\ /g")
+chrs=$(zgrep -e ">NC" grch38.v14_genomic.fna.gz | sed "s/>//" | cut -f 1 -d " " | head -n 24 | sed -z "s/\n/\ /g")
 
 zcat scaffolds/$file.bgz | sed "s/_RagTag$//" > $tmp/$file.tmp
 
