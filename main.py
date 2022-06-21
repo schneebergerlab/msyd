@@ -26,9 +26,9 @@ def parse_input_tsv(path):
     """
     syris = []
     alns = []
-    with fin as open(path, 'r'):
+    with open(path, 'r') as fin:
         for line in fin:
-            if line[0]='#':
+            if line[0] == '#':
                 continue
 
             line = line.split('#')[0].split('\t')
