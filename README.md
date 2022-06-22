@@ -14,7 +14,7 @@ Anything after a `#` is treated as a comment.
 See below for an example for identifying core-syntenic regions in the Ampril population.
 `pansr` is then called with
 
-```$ python3 ./main.py <path to .tsv input file```
+```$ python3 ./main.py <path to .tsv input file> [No of threads to spawn, default 1]
 
 ### Example
 
@@ -32,7 +32,7 @@ For this example, the working directory contains all of the required alignment a
 `col_ler.bam`|	`col_lersyri.out`
 `col_sha.bam`| 	`col_shasyri.out`
 
-Running the following command will start identifying core synteny with plotsr:
+Running the following command will start identifying core synteny in a single-threaded way with pansr:
 
 `$ python3 ./main.py pansr.tsv`
 

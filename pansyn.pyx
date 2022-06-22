@@ -177,7 +177,7 @@ def match_synal(syn, bam, ref='a'):
 
     return pd.DataFrame(ret, columns=syn.columns)
 
-def find_pansyn(syris, alns, sort=False, ref='a'):
+def find_pansyn(syris, alns, sort=False, ref='a', cores=1):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -208,9 +208,11 @@ def find_pansyn(syris, alns, sort=False, ref='a'):
 
     #print(syns)
 
-
-    pansyns = functools.reduce(intersect_syns, syns)
-    #pansyns = util.parallel_reduce(intersect_syns, syns, 4)
+    pansyns = None
+    if cores > 1:
+        pansyns = util.parallel_reduce(intersect_syns, syns, cores)
+    else:
+        pansyns = functools.reduce(intersect_syns, syns)
 
     return pansyns
 
