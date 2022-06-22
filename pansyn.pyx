@@ -191,9 +191,9 @@ def find_pansyn(syris, alns, sort=False, ref='a'):
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
     alnfilelookup = {
-            '.sam': ingest.readSAMBAM,
-            '.bam': ingest.readSAMBAM,
-            '.paf': ingest.readPAF
+            'sam': ingest.readSAMBAM,
+            'bam': ingest.readSAMBAM,
+            'paf': ingest.readPAF
             }
 
     alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
