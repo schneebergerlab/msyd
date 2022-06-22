@@ -13,6 +13,7 @@ The files to impute are specified in a tab-separated file with the first column 
 Anything after a `#` is treated as a comment.
 See below for an example for identifying core-syntenic regions in the Ampril population.
 `pansr` is then called with
+
 ```$ python3 ./main.py <path to .tsv input file```
 
 ### Example
@@ -20,14 +21,15 @@ See below for an example for identifying core-syntenic regions in the Ampril pop
 This example shows how to run `pansr` on the Ampril dataset using the Col accession as a reference.
 In this example, all files are in the root folder, but this need not be the case.
 
-```$ cat pansr.tsv```
+For this example, the working directory contains all of the required alignment and `syri` files, as well as this tab-separated table:
 \#alns	| syri
-col_an1.bam|	col_an1syri.out
-col_c24.bam|	col_c24syri.out
-col_eri.bam|	col_erisyri.out
-col_cvi.bam|	col_cvisyri.out
-col_kyo.bam|	col_kyosyri.out
-col_ler.bam|	col_lersyri.out
-col_sha.bam| 	col_shasyri.out
+- | -
+`col_an1.bam`|	`col_an1syri.out`
+`col_c24.bam`|	`col_c24syri.out`
+`col_eri.bam`|	`col_erisyri.out`
+`col_cvi.bam`|	`col_cvisyri.out`
+`col_kyo.bam`|	`col_kyosyri.out`
+`col_ler.bam`|	`col_lersyri.out`
+`col_sha.bam`| 	`col_shasyri.out`
 
 ```$ python ./main.py pansr.tsv```
