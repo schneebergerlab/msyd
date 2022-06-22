@@ -31,14 +31,16 @@ def parse_input_tsv(path):
             if line[0] == '#':
                 continue
 
-            line = line.split('#')[0].split('\t')
-            if len(line) > 2:
+            val = line.strip().split('#')[0].split('\t')
+            print(val)
+            if len(val) > 2:
                 print(f"ERROR: invalid entry in {path}. Skipping line: {line}")
                 continue
 
-            alns += line[0]
-            syris += line[1]
+            alns.append(val[0])
+            syris.append(val[1])
             
+    print(alns, syris)
     return (syris, alns)
 
 

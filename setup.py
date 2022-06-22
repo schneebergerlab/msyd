@@ -4,7 +4,7 @@ from Cython.Build import cythonize
 import numpy
 
 setup(ext_modules = cythonize([
-            Extension('ingest', ['ingest.pyx']),
+            Extension('ingest', ['ingest.pyx'], include_dirs=[numpy.get_include()]),
             Extension('pansyn', ['pansyn.pyx']),
             Extension('util', ['util.pyx']),
             Extension('cigar', ['cigar.pyx'])
