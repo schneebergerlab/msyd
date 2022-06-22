@@ -177,7 +177,7 @@ def match_synal(syn, bam, ref='a'):
 
     return pd.DataFrame(ret, columns=syn.columns)
 
-def find_pansyn(syris, bams, sort=False, ref='a'):
+def find_pansyn(syris, alns, sort=False, ref='a'):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -190,11 +190,17 @@ def find_pansyn(syris, bams, sort=False, ref='a'):
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
-    bams = [ingest.readSAMBAM(b) for b in bams]
-    bams = [b[(b.adir==1) & (b.bdir==1)] for b in bams] # only count non-inverted alignments as syntenic
-    #print(bams)
+    alnfilelookup = {
+            '.sam': ingest.readSAMBAM,
+            '.bam': ingest.readSAMBAM,
+            '.paf': ingest.readPAF
+            }
 
-    syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, bams)))
+    alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
+    alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
+    #print(alns)
+
+    syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, alns)))
     
     # remove overlap
     for syn in syns:
