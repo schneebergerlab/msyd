@@ -22,8 +22,8 @@ This example shows how to run `pansr` on the Ampril dataset using the Col access
 In this example, all files are in the root folder, but this need not be the case.
 
 For this example, the working directory contains all of the required alignment and `syri` files, as well as this tab-separated table:
-|\#alns	| syri|
-- | -
+\#alns	| syri
+--- | ---
 `col_an1.bam`|	`col_an1syri.out`
 `col_c24.bam`|	`col_c24syri.out`
 `col_eri.bam`|	`col_erisyri.out`
