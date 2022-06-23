@@ -51,7 +51,7 @@ def parse_input_tsv(path):
 
 remcigar = lambda x: x# x[0] if type(x)==list or type(x)==tuple else x
 
-df1 = pansyn.find_pansyn(*parse_input_tsv(sys.argv[1]), sort=False).apply(lambda x: x.apply(remcigar))
+df1 = pansyn.find_pansyn(*parse_input_tsv(sys.argv[1]), sort=False).apply(lambda x: x.apply(remcigar), cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
 #print(df1.to_string())
 print("regions:", len(df1))
 print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
