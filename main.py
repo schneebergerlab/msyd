@@ -39,9 +39,9 @@ def parse_input_tsv(path):
                 continue
             # Check that the files are accessible
             if not os.path.isfile(val[0]):
-                raise FileNotFoundError(f"Cannot find file at {val[0]}")
+                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
             if not os.path.isfile(val[1]):
-                raise FileNotFoundError(f"Cannot find file at {val[1]}")
+                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
 
             alns.append(val[0].strip())
             syris.append(val[1].strip())
