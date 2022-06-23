@@ -54,4 +54,4 @@ remcigar = lambda x: x# x[0] if type(x)==list or type(x)==tuple else x
 df1 = pansyn.find_pansyn(*parse_input_tsv(sys.argv[1]), sort=False).apply(lambda x: x.apply(remcigar))
 #print(df1.to_string())
 print("regions:", len(df1))
-print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
+print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start+1, df1.iterrows())))    # I assume the start and end bases are included in the coresyn. This seems to be the case based on length of the CIGAR string
