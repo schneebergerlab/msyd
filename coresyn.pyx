@@ -11,81 +11,8 @@ import pandas as pd
 import numpy as np
 import ingest
 import util
+from util import Range
 from cigar import Cigar
-
-
-
-# these classes form a part of the general SV format, TODO move them into dedicated file once the format is finalised
-# A position is specified by the organism, chromosome, haplotype and base position
-# A range takes a start and an end position. If the end < start, the range is defined as inverted
-#TODO use proper cython types, e.g. char for haplo
-
-# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
-@functools.total_ordering # not sure how performant, TO/DO replace later?
-class Position:
-    def __init__(self, org:str, chr:int, haplo:str, pos: int):
-        self.org = org
-        self.chr = chr
-        self.haplo = haplo
-        self.pos = pos
-
-    def __repr__(self):
-        return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
-
-    def __eq__(l, r):
-        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
-                l.pos == r.pos
-
-    def __lt__(l, r):
-        if l.org != r.org:
-            raise ValueError("Comparison between different organisms!")
-        if l.chr < r.chr:
-            return True
-        elif l.chr == r.chr:
-            return l.pos < r.pos
-        else:
-            return False
-
-# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
-@functools.total_ordering # not sure how performant, TO/DO replace later?
-class Range:
-    def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
-        self.org = org
-        self.chr = chr
-        self.haplo = haplo
-        self.start = start
-        self.end = end
-
-    def __repr__(self):
-        return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
-    
-    #def __eq__(l, r):
-    #    return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
-    #            l.start == r.start & l.start == r.start
-
-    # this operator sorts according to the END, not start value,
-    # to enable the end ratchet to work properly
-    # TO/DO possible refactor: sort by start here, invert in sorting for algorithm
-    # shouldn't really matter as the regions are nonoverlapping, but...
-    def __lt__(l, r):
-        if l.org != r.org:
-            raise ValueError("Comparison between different organisms!")
-
-        if l.chr < r.chr:
-            return True
-        elif l.chr == r.chr:
-            if l.end < r.end:
-                return True
-            elif l.end == r.end:
-                return l.start < r.start
-        return False
-
-    def drop(self, start, end):
-        """
-        :param: 'start'/'end' specify how much to drop on each end.
-        :return: A Range missing the specified area.
-        """
-        return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
 
 """
@@ -103,79 +30,14 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
 
-
-def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
-    """
-    Given a syri output file, extract all regions matching a given annotation.
-    TODO refactor this out to ingest once the file format is finalized.
-    """
-
-    # columns to look for as start/end positions
-    refchr = ref + "chr"
-    refhaplo = "NaN"
-    refstart = ref + "start"
-    refend = ref + "end"
-
-    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
-    qrychr = qry + "chr"
-    qryhaplo = "NaN"
-    qrystart = qry + "start"
-    qryend = qry + "end"
-
-    syns = []
-    buf = []
-    raw, chr_mapping = ingest.readsyriout(fin)
-    raw = raw.loc[raw['type'] == ann]
-    # if implementing filtering later, filter here
-
-    for row in raw.iterrows():
-        row = row[1]
-        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
-            ])
-
-    return pd.DataFrame(data=buf, columns=[reforg, qryorg])
-
-def extract_regions_to_list(fins, ref='a', ann="SYN"):
-    # refactored out of find_coresyn
-    # TODO maybe refactor out naming?
-    return [extract_regions(fin, ann=ann,\
-            reforg=fin.split('/')[-1].split('_')[0],\
-            qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
-            for fin in fins]
-
 def collapse_to_df(fins, ref='a', ann="SYN"):
     # Takes a number of input syri files, outputs them all squashed into a single DF
     # For use in graph_pansyn to initialise the graph
-    syns = extract_regions_to_list(fins, ref=ref, ann=ann)
+    syns = ingest.extract_regions_to_list(fins, ref=ref, ann=ann)
     for syn in syns:
         syn.columns=['ref', 'qry']
 
     return pd.concat(syns, ignore_index=True)
-
-# possible to move this into file loading, but would have to make assumptions abt input file
-# given a bam file and corresponding SYNAL range df,
-# appends the CIGAR as tuple to the non-reference in the range df
-def match_synal(syn, bam, ref='a'):
-    ret = []
-    syniter = syn.iterrows()
-    bamiter = bam.iterrows()
-    refchr = ref + "chr"
-    refstart = ref + "start"
-    refend = ref + "end"
-
-    synr = next(syniter)[1]
-    bamr = next(bamiter)[1]
-    while True:
-        try:
-            if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                ret.append([synr[0], [synr[1], Cigar.from_string(bamr['cg'])]]) #TODO maybe tupelise all CIGARs at the same time?
-                synr = next(syniter)[1]
-            bamr = next(bamiter)[1]
-        except StopIteration:
-            break
-
-    return pd.DataFrame(ret, columns=syn.columns)
 
 def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     """
@@ -185,7 +47,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
-    syns = extract_regions_to_list(syris, ann="SYNAL")
+    syns = ingest.extract_regions_to_list(syris, ann="SYNAL")
 
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
@@ -200,7 +62,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
     #print(alns)
 
-    syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, alns)))
+    syns = list(map(lambda x: util.match_synal(*x, ref=ref), zip(syns, alns)))
     
     # remove overlap
     for syn in syns:
@@ -477,6 +339,39 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 
     return pd.concat(ranges)
 
+def parse_input_tsv(path):
+    """
+    Takes a file containing the input alignments/syri files and processes it for coresyn.pyx.
+    Anything after a # is ignored. Lines starting with # are skipped.
+    :params: path to a file containing the paths of the input alignment and syri files in tsv format
+    :returns: a tuple of two lists containing the paths of the alignment and syri files.
+    """
+    from collections import deque
+    import os
+    syris = deque()     # Lists are too slow appending, using deque instead
+    alns = deque()
+    with open(path, 'r') as fin:
+        for line in fin:
+            if line[0] == '#':
+                continue
+
+            val = line.strip().split('#')[0].split('\t')
+            if len(val) > 2:
+                print(f"ERROR: invalid entry in {path}. Skipping line: {line}")
+                continue
+            # Check that the files are accessible
+            if not os.path.isfile(val[0]):
+                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
+            if not os.path.isfile(val[1]):
+                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
+
+            alns.append(val[0].strip())
+            syris.append(val[1].strip())
+
+    return (syris, alns)
+
+def coresyn_from_tsv(path, **kwargs):
+    return find_coresyn(*parse_input_tsv(path), **kwargs)
 
 
 
