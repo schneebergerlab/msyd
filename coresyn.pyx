@@ -42,10 +42,10 @@ def collapse_to_df(fins, ref='a', ann="SYN"):
 
 def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     """
-    Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
+    Finds core syntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
-    :param: a list of filenames of SyRI output and alignment files in BAM format to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
-    :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
+    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
     syns = syntools.extract_regions_to_list(syris, ann="SYNAL")
