@@ -9,6 +9,6 @@ import numpy as np
 import ingest
 import util
 from cigar import Cigar
-import syn
+import syntools
 from syn import Range
 
