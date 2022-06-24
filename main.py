@@ -2,7 +2,7 @@
 # in python, probably not worth cythonizing
 
 import ingest
-import pansyn
+import coresyn
 
 import logging
 import logging.config
@@ -19,7 +19,7 @@ Experimental and WIP.
 
 def parse_input_tsv(path):
     """
-    Takes a file containing the input alignments/syri files and processes it for pansyn.pyx.
+    Takes a file containing the input alignments/syri files and processes it for coresyn.pyx.
     Anything after a # is ignored. Lines starting with # are skipped.
     :params: path to a file containing the paths of the input alignment and syri files in tsv format
     :returns: a tuple of two lists containing the paths of the alignment and syri files.
@@ -51,7 +51,7 @@ def parse_input_tsv(path):
 
 remcigar = lambda x: x# x[0] if type(x)==list or type(x)==tuple else x
 
-df1 = pansyn.find_pansyn(*parse_input_tsv(sys.argv[1]), sort=False).apply(lambda x: x.apply(remcigar), cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
+df1 = coresyn.find_coresyn(*parse_input_tsv(sys.argv[1]), sort=False).apply(lambda x: x.apply(remcigar), cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
 #print(df1.to_string())
 print("regions:", len(df1))
 print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))

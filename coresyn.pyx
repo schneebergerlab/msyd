@@ -137,7 +137,7 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     return pd.DataFrame(data=buf, columns=[reforg, qryorg])
 
 def extract_regions_to_list(fins, ref='a', ann="SYN"):
-    # refactored out of find_pansyn
+    # refactored out of find_coresyn
     # TODO maybe refactor out naming?
     return [extract_regions(fin, ann=ann,\
             reforg=fin.split('/')[-1].split('_')[0],\
@@ -177,7 +177,7 @@ def match_synal(syn, bam, ref='a'):
 
     return pd.DataFrame(ret, columns=syn.columns)
 
-def find_pansyn(syris, alns, sort=False, ref='a', cores=1):
+def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     """
     Finds pansyntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -218,7 +218,7 @@ def find_pansyn(syris, alns, sort=False, ref='a', cores=1):
 
 def remove_overlap(syn):
     """
-    part of the preprocessing of SYNAL regions for find_pansyn
+    part of the preprocessing of SYNAL regions for find_coresyn
     removes overlap from the first region if two overlapping regions are next to each other
     assumes syn to be sorted
     mutates syn
@@ -249,7 +249,7 @@ def remove_overlap(syn):
 
 def intersect_syns(left, right):
     """
-    The main business logic of find_pansyn.
+    The main business logic of find_coresyn.
     This function takes two dataframes containing syntenic regions and merges each one of them by determining the overlap.
     It also updates the CIGAR string of the alignment accordingly.
     It runs in O(len(left) + len(right)).
@@ -494,7 +494,7 @@ if __name__ == "__main__": # testing
         syris.append(fin + "syri.out")
         alns.append(fin + ".bam")
 
-    df1 = find_pansyn(syris, alns, sort=False).apply(lambda x: x.apply(remcigar))
+    df1 = find_coresyn(syris, alns, sort=False).apply(lambda x: x.apply(remcigar))
     #print(df1.to_string())
     print("regions:", len(df1))
     print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
