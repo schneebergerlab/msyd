@@ -124,7 +124,7 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     qryend = qry + "end"
 
     buf = []
-    raw, chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
+    raw, chr_mapping = ingest.readsyriout(fin) #TODO? handle chr_mapping
     raw = raw.loc[raw['type'] == ann]
     # if implementing filtering later, filter here
 
