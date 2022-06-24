@@ -135,13 +135,13 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
 
     pansyns = None
     if cores > 1:
-        pansyns = util.parallel_reduce(intersect_syns, syns, cores)
+        pansyns = util.parallel_reduce(intersect_coresyns, syns, cores)
     else:
-        pansyns = functools.reduce(intersect_syns, syns)
+        pansyns = functools.reduce(intersect_coresyns, syns)
 
     return pansyns
 
-def intersect_syns(left, right):
+def intersect_coresyns(left, right):
     """
     The main business logic of find_coresyn.
     This function takes two dataframes containing syntenic regions and merges each one of them by determining the overlap.
@@ -162,57 +162,27 @@ def intersect_syns(left, right):
     cols = list(lrow.index) + list(rrow.index)[1:]
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
-            # this may be very slow, TO/DO benchmark # seems to be alright?
 
-            rref = rrow[0] # the reference always is stored first
-            lref = lrow[0]
-            if rref.chr > lref.chr:
+            if rrow.ref.chr > lrow.ref.chr:
                 lrow = next(liter)[1]
                 continue
-            if lref.chr > rref.chr:
+            if lrow.ref.chr > rrow.ref.chr:
                 rrow = next(riter)[1]
                 continue
             
-            # determine overlap region
-            ovstart = max(rref.start, lref.start)
-            ovend = min(rref.end, lref.end)
-
-            if ovstart < ovend: # there is valid overlap, i.e. the region is pansyntenic
-                # compute how much around both sides to drop for each alignment to the reference
-                rdropstart = ovstart - rref.start # 0 if rref is maximal, else positive
-                ldropstart = ovstart - lref.start 
-
-                rdropend = rref.end - ovend # 0 if rref is minimal, else positive
-                ldropend = lref.end - ovend
-                
-                # function for computing the adjusted position of the pansyntenic regions
-                def compute_position(tup, dropstart, dropend):
-                    syn = tup[0]
-                    cg = tup[1]
-
-                    #print(syn, dropstart, dropend)
-                    #from collections import defaultdict
-                    #stats = defaultdict(lambda: 0)
-                    #for x in cg:
-                    #    stats[x[1]] = stats[x[1]] + x[0]
-                    #print(stats)
-
-                    start, cg = cg.get_removed(dropstart, start=True, ref=True)
-                    end, cg  = cg.get_removed(dropend, start=False, ref=True)
-                    return [syn.drop(start, end), cg]
-
-                # drop the references from both rows, place at start (ref is always at first position)
-                ret.append([rref.drop(rdropstart, rdropend)] +
-                        [compute_position(tup, ldropstart, ldropend) for tup in lrow.drop(lrow.index[0])] +
-                        [compute_position(tup, rdropstart, rdropend) for tup in rrow.drop(rrow.index[0])])
+            # determine if there is an overlap
+            ovstart = max(rrow.ref.start, lrow.ref.start)
+            ovend = min(rrow.ref.end, lrow.ref.end)
+            if ovstart < ovend: # there is valid overlap
+                ret.append(Coresyn.combine(lrow, rrow))
 
             # ratchet by dropping the segment with a smaller end
-            if lref.end > rref.end: # left is after right
+            if lrow.ref.end > rrow.ref.end: # left is after right
                 rrow = next(riter)[1]
-            elif rref.end > lref.end: # right is after left
+            elif rrow.ref.end > lrow.ref.end: # right is after left
                 lrow = next(liter)[1]
                 # if they stop at the same position, drop the one starting further left
-            elif lref.start > rref.start:
+            elif lrow.ref.start > rrow.ref.start:
                 rrow = next(riter)[1]
             else: # do whatever
                 lrow = next(liter)[1]
@@ -222,8 +192,7 @@ def intersect_syns(left, right):
 
     del riter
     del liter
-    return pd.DataFrame(data=ret, columns=cols)
-    #return ret.sort_values(ret.columns[0]) if sort else ret
+    return pd.DataFrame(data=ret)
 
 
 
