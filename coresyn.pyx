@@ -25,20 +25,87 @@ notes
 
 TODO output format
 
-TO/DO be more lenient? Store "support" for each region as pct or number having/not having this?
-=> pleio/polysynteny
 TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
+# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
+@functools.total_ordering
+class Coresyn:
+    """
+    TODO docstring
+    """
+    def __init__(self, ref:Range, ranges:list[Range], cigars:list[Cigar]):
+        self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
+        self.ranges = ranges
+        self.cigars = cigars # length equal to ranges; optional if using approximate matching
 
-def collapse_to_df(fins, ref='a', ann="SYN"):
-    # Takes a number of input syri files, outputs them all squashed into a single DF
-    # For use in graph_pansyn to initialise the graph
-    syns = syntools.extract_regions_to_list(fins, ref=ref, ann=ann)
-    for syn in syns:
-        syn.columns=['ref', 'qry']
+    def __repr__(self):
+        return f"Coresyn({self.ref}, {self.ranges})"
 
-    return pd.concat(syns, ignore_index=True)
+    def __eq__(l, r):
+        return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
+        
+    # for now, only sorts on the reference
+    def __lt__(l, r):
+        if not l.ref or not r.ref:
+            raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
+        return l.ref < r.ref
+
+    def combine(l, r):
+        """
+        Takes two Coresyn objects and combines them into one, determining the overlap automagically
+    .
+        At first only implemented to work in a cigar-using, reference-based way.
+        TODO implement a cigar-free approximative algorithm
+        """
+
+        # compute how much around both sides to drop for each alignment to the reference
+        ovstart = max(l.ref.start, r.ref.start)
+        ovend = min(l.ref.end, r.ref.end)
+        assert(ovstart < ovend, f"ERROR: no overlap found between {l} and {r}")
+
+        rdropstart = ovstart - r.ref.start # 0 if r.ref is maximal, else positive
+        ldropstart = ovstart - l.ref.start 
+
+        rdropend = r.ref.end - ovend # 0 if r.ref is minimal, else positive
+        ldropend = l.ref.end - ovend
+
+        ref = l.ref.drop(ldropstart, ldropend)
+        ranges = [] #TODO switch to dequeue/numpy array
+        # calculate the exact position based on the CIGAR strings if both Coresyns have the
+        if l.cigars and r.cigars:
+            cigars = []
+
+            ## compute the new Ranges and CIGAR strings
+            # adjust left Ranges
+            for rng, cg in zip(l.ranges, l.cigars):
+                start, cg = cg.get_removed(ldropstart, start=True, ref=True)
+                end, cg  = cg.get_removed(ldropend, start=False, ref=True)
+                ranges.append(rng.drop(start, end))
+                cigars.append(cg)
+
+            # adjust right Ranges
+            for rng, cg in zip(r.ranges, r.cigars):
+                start, cg = cg.get_removed(rdropstart, start=True, ref=True)
+                end, cg  = cg.get_removed(rdropend, start=False, ref=True)
+                ranges.append(rng.drop(start, end))
+                cigars.append(cg)
+
+            return Coresyn(ref, ranges, cigars)
+        else:
+            # use approximate position calculation
+            if l.cigars or r.cigars:
+                print(f"WARN: one of {l} or {r} does not have CIGAR strings, falling back to approximate position adjustment!")
+                return Coresyn(ref,
+                        [rng.drop(ldropstart, ldropend) for rng in l.ranges] +
+                        [rng.drop(rdropstart, rdropend) for rng in r.ranges],
+                        None)
+
+
+
+
+
+
 
 def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     """
@@ -309,39 +376,18 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
 
     return pd.concat(ranges)
 
-def parse_input_tsv(path):
-    """
-    Takes a file containing the input alignments/syri files and processes it for coresyn.pyx.
-    Anything after a # is ignored. Lines starting with # are skipped.
-    :params: path to a file containing the paths of the input alignment and syri files in tsv format
-    :returns: a tuple of two lists containing the paths of the alignment and syri files.
-    """
-    from collections import deque
-    import os
-    syris = deque()     # Lists are too slow appending, using deque instead
-    alns = deque()
-    with open(path, 'r') as fin:
-        for line in fin:
-            if line[0] == '#':
-                continue
-
-            val = line.strip().split('#')[0].split('\t')
-            if len(val) > 2:
-                print(f"ERROR: invalid entry in {path}. Skipping line: {line}")
-                continue
-            # Check that the files are accessible
-            if not os.path.isfile(val[0]):
-                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
-            if not os.path.isfile(val[1]):
-                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
-
-            alns.append(val[0].strip())
-            syris.append(val[1].strip())
-
-    return (syris, alns)
-
 def coresyn_from_tsv(path, **kwargs):
-    return find_coresyn(*parse_input_tsv(path), **kwargs)
+    return find_coresyn(*syntools.parse_input_tsv(path), **kwargs)
+
+
+def collapse_to_df(fins, ref='a', ann="SYN"):
+    # Takes a number of input syri files, outputs them all squashed into a single DF
+    # For use in graph_pansyn to initialise the graph
+    syns = syntools.extract_regions_to_list(fins, ref=ref, ann=ann)
+    for syn in syns:
+        syn.columns=['ref', 'qry']
+
+    return pd.concat(syns, ignore_index=True)
 
 
 
