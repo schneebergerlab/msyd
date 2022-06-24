@@ -14,11 +14,10 @@ from syn import Range
 
 
 """
-Notes
+Notes/TODOs
 
-First, refactor core synteny to use a class.
-    – maybe use pre-allocated numpy array instead of dataframe?
-    – properly ctype, including range/positions
+– maybe use pre-allocated numpy arrays instead of pandas dataframe?
+– properly ctype, including range/positions
 then write analogous cross synteny class
 
 find_coresyn should have the same business logic, refactor out into common entry function?
