@@ -102,11 +102,6 @@ class Coresyn:
                         None)
 
 
-
-
-
-
-
 def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     """
     Finds core syntenic regions by finding the overlap between all syntenic regions in the input files.

@@ -9,6 +9,7 @@ import ingest
 import util
 from cigar import Cigar
 import functools
+import coresyn
 
 
 # these classes form a part of the general SV format
@@ -84,8 +85,8 @@ class Range:
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
 # given a bam file and corresponding SYNAL range df,
-# appends the CIGAR as tuple to the non-reference in the range df
-def match_synal(syn, bam, ref='a'):
+# Transform them into one list of Coresyn objects using the constructor supplied in obj
+def match_synal(syn, bam, ref='a', obj=coresyn.Coresyn):
     ret = []
     syniter = syn.iterrows()
     bamiter = bam.iterrows()
@@ -98,13 +99,13 @@ def match_synal(syn, bam, ref='a'):
     while True:
         try:
             if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                ret.append([synr[0], [synr[1], Cigar.from_string(bamr['cg'])]])
+                ret.append(obj(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(bamr['cg'])]))
                 synr = next(syniter)[1]
             bamr = next(bamiter)[1]
         except StopIteration:
             break
 
-    return pd.DataFrame(ret, columns=syn.columns)
+    return pd.DataFrame(ret)
 
 def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     """
@@ -156,12 +157,9 @@ def remove_overlap(syn):
     syniter = syn.iterrows()
     prev = next(syniter)[1]
     for _, cur in syniter:
-        curref = cur[0]
-        prevref = prev[0]
-
         # check for overlap on the reference
-        ov = prevref.end - curref.start
-        if ov <= 0 or curref.chr != prevref.chr: # there is no overlap
+        ov = prev.ref.end - cur.ref.start
+        if ov <= 0 or cur.ref.chr != prev.ref.chr: # there is no overlap
             prev = cur
             continue
 
@@ -169,11 +167,11 @@ def remove_overlap(syn):
         # remove the overlap from the previous row;
         # this performs essentially the same function as compute_overlap
         # in intersect_syns
-        curref.start += ov
-        for c in cur[1:]:
-            drop, cg = c[1].get_removed(ov, start=True)
-            c[1] = cg
-            c[0].start += drop
+        cur.ref.start += ov
+        for ind, rng in enumerate(cur.ranges):
+            drop, cgnew = rng.get_removed(ov, start=True)
+            cur.cigars[ind] = cgnew
+            rng.start += drop
 
         prev = cur
 
