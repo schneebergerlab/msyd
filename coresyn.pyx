@@ -34,7 +34,7 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 def collapse_to_df(fins, ref='a', ann="SYN"):
     # Takes a number of input syri files, outputs them all squashed into a single DF
     # For use in graph_pansyn to initialise the graph
-    syns = synools.extract_regions_to_list(fins, ref=ref, ann=ann)
+    syns = syntools.extract_regions_to_list(fins, ref=ref, ann=ann)
     for syn in syns:
         syn.columns=['ref', 'qry']
 
@@ -48,7 +48,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
-    syns = synools.extract_regions_to_list(syris, ann="SYNAL")
+    syns = syntools.extract_regions_to_list(syris, ann="SYNAL")
 
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
@@ -67,7 +67,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     
     # remove overlap
     for syn in syns:
-        synools.remove_overlap(syn)
+        syntools.remove_overlap(syn)
 
     #print(syns)
 
