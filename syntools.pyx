@@ -10,6 +10,7 @@ import util
 from cigar import Cigar
 import functools
 import coresyn
+from coresyn import Coresyn
 
 
 # these classes form a part of the general SV format
@@ -86,7 +87,7 @@ class Range:
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Coresyn objects using the constructor supplied in obj
-def match_synal(syn, bam, ref='a', obj=coresyn.Coresyn):
+def match_synal(syn, bam, ref='a', obj=Coresyn):
     ret = []
     syniter = syn.iterrows()
     bamiter = bam.iterrows()
