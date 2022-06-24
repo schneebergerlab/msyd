@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import ingest
 import util
-import synools
+import syntools
 from syn import Range
 from cigar import Cigar
 
