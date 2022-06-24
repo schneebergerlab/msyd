@@ -85,8 +85,8 @@ class Range:
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
 # given a bam file and corresponding SYNAL range df,
-# Transform them into one list of CoreRanges objects using the constructor supplied in obj
-def match_synal(syn, bam, ref='a', obj=coresyn.CoreRanges):
+# Transform them into one list of Coresyn objects using the constructor supplied in obj
+def match_synal(syn, bam, ref='a', obj=coresyn.Coresyn):
     ret = []
     syniter = syn.iterrows()
     bamiter = bam.iterrows()

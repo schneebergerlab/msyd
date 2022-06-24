@@ -30,7 +30,7 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering
-class CoreRegions:
+class Coresyn:
     """
     TODO docstring
     """
@@ -40,7 +40,7 @@ class CoreRegions:
         self.cigars = cigars # length equal to ranges; optional if using approximate matching
 
     def __repr__(self):
-        return f"CoreRegions({self.ref}, {self.ranges})"
+        return f"Coresyn({self.ref}, {self.ranges})"
 
     def __eq__(l, r):
         return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
@@ -53,7 +53,7 @@ class CoreRegions:
 
     def combine(l, r):
         """
-        Takes two CoreRegions objects and combines them into one, determining the overlap automagically
+        Takes two Coresyn objects and combines them into one, determining the overlap automagically
     .
         At first only implemented to work in a cigar-using, reference-based way.
         TODO implement a cigar-free approximative algorithm
@@ -72,7 +72,7 @@ class CoreRegions:
 
         ref = l.ref.drop(ldropstart, ldropend)
         ranges = [] #TODO switch to dequeue/numpy array
-        # calculate the exact position based on the CIGAR strings if both CoreRegionss have the
+        # calculate the exact position based on the CIGAR strings if both Coresyns have the
         if l.cigars and r.cigars:
             cigars = []
 
@@ -91,12 +91,12 @@ class CoreRegions:
                 ranges.append(rng.drop(start, end))
                 cigars.append(cg)
 
-            return CoreRegions(ref, ranges, cigars)
+            return Coresyn(ref, ranges, cigars)
         else:
             # use approximate position calculation
             if l.cigars or r.cigars:
                 print(f"WARN: one of {l} or {r} does not have CIGAR strings, falling back to approximate position adjustment!")
-                return CoreRegions(ref,
+                return Coresyn(ref,
                         [rng.drop(ldropstart, ldropend) for rng in l.ranges] +
                         [rng.drop(rdropstart, rdropend) for rng in r.ranges],
                         None)
@@ -174,7 +174,7 @@ def intersect_coresyns(left, right):
             ovstart = max(rrow.ref.start, lrow.ref.start)
             ovend = min(rrow.ref.end, lrow.ref.end)
             if ovstart < ovend: # there is valid overlap
-                ret.append(CoreRegions.combine(lrow, rrow))
+                ret.append(Coresyn.combine(lrow, rrow))
 
             # ratchet by dropping the segment with a smaller end
             if lrow.ref.end > rrow.ref.end: # left is after right
