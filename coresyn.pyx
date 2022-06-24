@@ -34,7 +34,7 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 def collapse_to_df(fins, ref='a', ann="SYN"):
     # Takes a number of input syri files, outputs them all squashed into a single DF
     # For use in graph_pansyn to initialise the graph
-    syns = ingest.extract_regions_to_list(fins, ref=ref, ann=ann)
+    syns = syn.extract_regions_to_list(fins, ref=ref, ann=ann)
     for syn in syns:
         syn.columns=['ref', 'qry']
 
@@ -48,7 +48,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     :return: a pandas dataframe containing the chromosome, start and end positions of the pansyntenic region for each organism.
     """
 
-    syns = ingest.extract_regions_to_list(syris, ann="SYNAL")
+    syns = syn.extract_regions_to_list(syris, ann="SYNAL")
 
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
@@ -67,7 +67,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     
     # remove overlap
     for syn in syns:
-        remove_overlap(syn)
+        syn.remove_overlap(syn)
 
     #print(syns)
 
@@ -78,37 +78,6 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
         pansyns = functools.reduce(intersect_syns, syns)
 
     return pansyns
-
-def remove_overlap(syn):
-    """
-    part of the preprocessing of SYNAL regions for find_coresyn
-    removes overlap from the first region if two overlapping regions are next to each other
-    assumes syn to be sorted
-    mutates syn
-    """
-    syniter = syn.iterrows()
-    prev = next(syniter)[1]
-    for _, cur in syniter:
-        curref = cur[0]
-        prevref = prev[0]
-
-        # check for overlap on the reference
-        ov = prevref.end - curref.start
-        if ov <= 0 or curref.chr != prevref.chr: # there is no overlap
-            prev = cur
-            continue
-
-        #print(ov, prevref, curref)
-        # remove the overlap from the previous row;
-        # this performs essentially the same function as compute_overlap
-        # in intersect_syns
-        curref.start += ov
-        for c in cur[1:]:
-            drop, cg = c[1].get_removed(ov, start=True)
-            c[1] = cg
-            c[0].start += drop
-
-        prev = cur
 
 def intersect_syns(left, right):
     """

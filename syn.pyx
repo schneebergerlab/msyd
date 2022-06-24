@@ -146,4 +146,33 @@ def extract_regions_to_list(fins, ref='a', ann="SYN"):
             for fin in fins]
 
 
+def remove_overlap(syn):
+    """
+    part of the preprocessing of SYNAL regions for find_coresyn
+    removes overlap from the first region if two overlapping regions are next to each other
+    assumes syn to be sorted
+    mutates syn
+    """
+    syniter = syn.iterrows()
+    prev = next(syniter)[1]
+    for _, cur in syniter:
+        curref = cur[0]
+        prevref = prev[0]
 
+        # check for overlap on the reference
+        ov = prevref.end - curref.start
+        if ov <= 0 or curref.chr != prevref.chr: # there is no overlap
+            prev = cur
+            continue
+
+        #print(ov, prevref, curref)
+        # remove the overlap from the previous row;
+        # this performs essentially the same function as compute_overlap
+        # in intersect_syns
+        curref.start += ov
+        for c in cur[1:]:
+            drop, cg = c[1].get_removed(ov, start=True)
+            c[1] = cg
+            c[0].start += drop
+
+        prev = cur
