@@ -176,3 +176,37 @@ def remove_overlap(syn):
             c[0].start += drop
 
         prev = cur
+
+
+def parse_input_tsv(path):
+    """
+    Takes a file containing the input alignments/syri files and processes it for coresyn.pyx.
+    Anything after a # is ignored. Lines starting with # are skipped.
+    :params: path to a file containing the paths of the input alignment and syri files in tsv format
+    :returns: a tuple of two lists containing the paths of the alignment and syri files.
+    """
+    from collections import deque
+    import os
+    syris = deque()     # Lists are too slow appending, using deque instead
+    alns = deque()
+    with open(path, 'r') as fin:
+        for line in fin:
+            if line[0] == '#':
+                continue
+
+            val = line.strip().split('#')[0].split('\t')
+            if len(val) > 2:
+                print(f"ERROR: invalid entry in {path}. Skipping line: {line}")
+                continue
+            # Check that the files are accessible
+            if not os.path.isfile(val[0]):
+                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
+            if not os.path.isfile(val[1]):
+                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
+
+            alns.append(val[0].strip())
+            syris.append(val[1].strip())
+
+    return (syris, alns)
+
+
