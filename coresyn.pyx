@@ -116,18 +116,17 @@ def intersect_coresyns(left, right):
         raise ValueError("left is empty!")
 
     riter = right.iterrows()
-    rrow = next(riter)[1]
+    rrow = next(riter)[1][0]
     liter = left.iterrows()
-    lrow = next(liter)[1]
-    cols = list(lrow.index) + list(rrow.index)[1:]
+    lrow = next(liter)[1][0]
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
 
             if rrow.ref.chr > lrow.ref.chr:
-                lrow = next(liter)[1]
+                lrow = next(liter)[1][0]
                 continue
             if lrow.ref.chr > rrow.ref.chr:
-                rrow = next(riter)[1]
+                rrow = next(riter)[1][0]
                 continue
             
             # determine if there is an overlap
@@ -138,14 +137,14 @@ def intersect_coresyns(left, right):
 
             # ratchet by dropping the segment with a smaller end
             if lrow.ref.end > rrow.ref.end: # left is after right
-                rrow = next(riter)[1]
+                rrow = next(riter)[1][0]
             elif rrow.ref.end > lrow.ref.end: # right is after left
-                lrow = next(liter)[1]
+                lrow = next(liter)[1][0]
                 # if they stop at the same position, drop the one starting further left
             elif lrow.ref.start > rrow.ref.start:
-                rrow = next(riter)[1]
+                rrow = next(riter)[1][0]
             else: # do whatever
-                lrow = next(liter)[1]
+                lrow = next(liter)[1][0]
 
         except StopIteration: # nothing more to match
             break
