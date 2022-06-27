@@ -161,8 +161,9 @@ def remove_overlap(syn):
     mutates syn
     """
     syniter = syn.iterrows()
-    prev = next(syniter)[1]
+    prev = next(syniter)[1][0]
     for _, cur in syniter:
+        cur = cur[0]
         # check for overlap on the reference
         ov = prev.ref.end - cur.ref.start
         if ov <= 0 or cur.ref.chr != prev.ref.chr: # there is no overlap
@@ -238,7 +239,6 @@ def find_multisyn(syris, alns, intersect, cons, sort=False, ref='a', cores=1):
     #print(alns)
 
     syns = list(map(lambda x: match_synal(*x, cons=cons, ref=ref), zip(syns, alns)))
-    print(syns)
     
     # remove overlap
     for syn in syns:
