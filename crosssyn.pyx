@@ -53,6 +53,10 @@ class Crosssyn:
         #TODO implement
         # return list or iterator instead of new object
         # use mostly the same overlap calculation
+        # but replacing old objects should not be necessary? => discuss
+        # => only output new ones, append to old ones, sort?
+        # probably not, sorting slower than copying/softlinking with correct orientation
         # degree calculation should be handled in constructor
+
 
 def intersect_crosssyns(left, right):
