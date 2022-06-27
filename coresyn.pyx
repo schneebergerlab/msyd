@@ -153,7 +153,7 @@ def intersect_coresyns(left, right):
 
     del riter
     del liter
-    return pd.DataFrame(data=ret, dtype=Coresyn)
+    return pd.DataFrame(data=list(ret))
 
 
 
