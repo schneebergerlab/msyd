@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import ingest
-import coresyn
+import syntools
 
 import logging
 import logging.config
