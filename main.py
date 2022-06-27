@@ -18,7 +18,7 @@ Experimental and WIP.
 """
 
 def coresyn_from_tsv(path, **kwargs):
-    return syntools.find_multisyn(*parse_input_tsv(path), intersect=coresyn.intersect_coresyns, cons=coresyn.Coresyn, **kwargs)
+    return syntools.find_multisyn(*syntools.parse_input_tsv(path), intersect=coresyn.intersect_coresyns, cons=coresyn.Coresyn, **kwargs)
 
 
 df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
