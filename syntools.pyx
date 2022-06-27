@@ -85,8 +85,10 @@ class Range:
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
 # given a bam file and corresponding SYNAL range df,
-# Transform them into one list of Coresyn objects using the constructor supplied in obj
-def match_synal(syn, bam, ref='a', obj=coresyn.Coresyn):
+# Transform them into one list of Coresyn objects using the constructor supplied in cons
+def match_synal(syn, bam, cons, ref='a'):
+    if not cons: # for some reason python cannot handle specifying constructors as default arguments when importing from another file
+        cons = coresyn.Coresyn
     ret = []
     syniter = syn.iterrows()
     bamiter = bam.iterrows()
@@ -99,7 +101,7 @@ def match_synal(syn, bam, ref='a', obj=coresyn.Coresyn):
     while True:
         try:
             if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                ret.append(obj(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(bamr['cg'])]))
+                ret.append(cons(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(bamr['cg'])]))
                 synr = next(syniter)[1]
             bamr = next(bamiter)[1]
         except StopIteration:
