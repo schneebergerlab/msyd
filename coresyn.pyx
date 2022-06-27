@@ -32,7 +32,21 @@ TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 @functools.total_ordering
 class Coresyn:
     """
-    TODO docstring
+    A class representing a core syntenic region among a set of genomes.
+    The parameter `ranges` is a list of genomic `synctools.Range`es storing the locations this syntenic regions has on each organism.
+    This list cannot be None and should contain an entry for every genome being compared.
+    Other attributes are `ref`, which stores the position on the reference -- this attribute can be `None` if using a reference-free algorithm, but none have been implemented so far.
+    `cigars` contains a list of `cigar.Cigar` objects corresponding to the alignment of each position to the reference.
+    The attribute can be `None` if using approximate position calculation (usually for performance/memory reasons).\n
+    Indices in `cigars` correspond with indices in `ranges`.
+    In the future, `cigars` may also be used for storing pairwise alignments of the core syntenic regions to each other.
+    Also, a separate field for an MSA may be added.
+
+    Coresyn implements comparison operators to enable sorting according to the end on the reference.
+    For sorting, the `ref` field needs to be set.
+
+    The associated `combine` function is used for adding a region to this set of core syntenic regions.
+    It returns a new `Coresyn` object containing the overlap between both input `Coresyn` objects
     """
     # ranges, cigars have type List[Range]/List[Cigar], respectively, but cython cannot deal with generic type hints
     def __init__(self, ref:Range, ranges, cigars):
