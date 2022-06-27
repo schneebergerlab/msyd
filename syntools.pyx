@@ -9,6 +9,7 @@ import ingest
 import util
 from cigar import Cigar
 import functools
+from collections import deque
 
 
 # these classes form a part of the general SV format
@@ -93,7 +94,7 @@ def match_synal(syn, aln, cons=None, ref='a'):
     :params: syn: SYNAL dataframe, aln: alignment dataframe, cons: constructor of the class in the returned dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings in a class specified by `cons`.
     """
-    ret = []
+    ret = deque()
     syniter = syn.iterrows()
     alniter = aln.iterrows()
     refchr = ref + "chr"
@@ -130,7 +131,7 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     qrystart = qry + "start"
     qryend = qry + "end"
 
-    buf = []
+    buf = deque()
     raw, chr_mapping = ingest.readsyriout(fin) #TODO? handle chr_mapping
     raw = raw.loc[raw['type'] == ann]
     # if implementing filtering later, filter here
@@ -190,7 +191,6 @@ def parse_input_tsv(path):
     :params: path to a file containing the paths of the input alignment and syri files in tsv format
     :returns: a tuple of two lists containing the paths of the alignment and syri files.
     """
-    from collections import deque
     import os
     syris = deque()     # Lists are too slow appending, using deque instead
     alns = deque()
@@ -217,9 +217,9 @@ def parse_input_tsv(path):
 
 def find_multisyn(syris, alns, intersect, cons, sort=False, ref='a', cores=1):
     """
-    Finds core syntenic regions by finding the overlap between all syntenic regions in the input files.
+    Finds core or cross-syntenic regions in the input files, depending on the intersection operation and constructor supplied in `intersect` and `cons`
     Fairly conservative.
-    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, the intersection operation and class to use (from either `coresyn` or `crossyn`) as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 

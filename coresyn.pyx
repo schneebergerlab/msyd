@@ -13,6 +13,7 @@ import ingest
 import syntools
 from syntools import Range
 from cigar import Cigar
+from collections import deque
 
 
 """
@@ -71,10 +72,10 @@ class Coresyn:
         ldropend = l.ref.end - ovend
 
         ref = l.ref.drop(ldropstart, ldropend)
-        ranges = [] #TODO switch to dequeue/numpy array
         # calculate the exact position based on the CIGAR strings if both Coresyns have the
         if l.cigars and r.cigars:
-            cigars = []
+            ranges = deque()
+            cigars = deque()
 
             ## compute the new Ranges and CIGAR strings
             # adjust left Ranges
@@ -97,8 +98,9 @@ class Coresyn:
             if l.cigars or r.cigars:
                 print(f"WARN: one of {l} or {r} does not have CIGAR strings, falling back to approximate position adjustment!")
                 return Coresyn(ref,
+                        deque(
                         [rng.drop(ldropstart, ldropend) for rng in l.ranges] +
-                        [rng.drop(rdropstart, rdropend) for rng in r.ranges],
+                        [rng.drop(rdropstart, rdropend) for rng in r.ranges]),
                         None)
 
 
@@ -108,7 +110,7 @@ def intersect_coresyns(left, right):
     It also updates the CIGAR string of the alignment accordingly.
     It runs in O(len(left) + len(right)).
     """
-    ret = []
+    ret = deque()
 
     if len(right) == 0:
         raise ValueError("right is empty!")
