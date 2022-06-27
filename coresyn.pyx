@@ -10,7 +10,6 @@ import functools
 import pandas as pd
 import numpy as np
 import ingest
-import util
 import syntools
 from syntools import Range
 from cigar import Cigar
@@ -103,48 +102,8 @@ class Coresyn:
                         None)
 
 
-def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
-    """
-    Finds core syntenic regions by finding the overlap between all syntenic regions in the input files.
-    Fairly conservative.
-    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
-    :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
-    """
-
-    syns = syntools.extract_regions_to_list(syris, ann="SYNAL")
-
-    if sort:
-        syns = [x.sort_values(x.columns[0]) for x in syns]
-
-    alnfilelookup = {
-            'sam': ingest.readSAMBAM,
-            'bam': ingest.readSAMBAM,
-            'paf': ingest.readPAF
-            }
-
-    alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
-    alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
-    #print(alns)
-
-    syns = list(map(lambda x: syntools.match_synal(*x, cons=Coresyn, ref=ref), zip(syns, alns)))
-    
-    # remove overlap
-    for syn in syns:
-        syntools.remove_overlap(syn)
-
-    #print(syns)
-
-    pansyns = None
-    if cores > 1:
-        pansyns = util.parallel_reduce(intersect_coresyns, syns, cores)
-    else:
-        pansyns = functools.reduce(intersect_coresyns, syns)
-
-    return pansyns
-
 def intersect_coresyns(left, right):
     """
-    The main business logic of find_coresyn.
     This function takes two dataframes containing syntenic regions and merges each one of them by determining the overlap.
     It also updates the CIGAR string of the alignment accordingly.
     It runs in O(len(left) + len(right)).
@@ -340,9 +299,6 @@ def graph_pansyn(fins, mode="overlap", tolerance=100):
         ranges.append(pd.DataFrame(byorg, index=[0]))
 
     return pd.concat(ranges)
-
-def coresyn_from_tsv(path, **kwargs):
-    return find_coresyn(*syntools.parse_input_tsv(path), **kwargs)
 
 
 def collapse_to_df(fins, ref='a', ann="SYN"):

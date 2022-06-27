@@ -215,3 +215,46 @@ def parse_input_tsv(path):
     return (syris, alns)
 
 
+def find_multisyn(syris, alns, syntype = 'core', sort=False, ref='a', cores=1):
+    """
+    Finds core syntenic regions by finding the overlap between all syntenic regions in the input files.
+    Fairly conservative.
+    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
+    """
+
+    syns = extract_regions_to_list(syris, ann="SYNAL")
+
+    if sort:
+        syns = [x.sort_values(x.columns[0]) for x in syns]
+
+    alnfilelookup = {
+            'sam': ingest.readSAMBAM,
+            'bam': ingest.readSAMBAM,
+            'paf': ingest.readPAF
+            }
+
+    alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
+    alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
+    #print(alns)
+
+    syns = list(map(lambda x: match_synal(*x, cons=coresyn.Coresyn, ref=ref), zip(syns, alns)))
+    
+    # remove overlap
+    for syn in syns:
+        remove_overlap(syn)
+
+    #print(syns)
+
+    pansyns = None
+    #TODO switch to crosssyn
+    if cores > 1:
+        pansyns = util.parallel_reduce(coresyn.intersect_coresyns, syns, cores)
+    else:
+        pansyns = functools.reduce(coresyn.intersect_coresyns, syns)
+
+    return pansyns
+
+def coresyn_from_tsv(path, **kwargs):
+    return find_multisyn(*parse_input_tsv(path), syntype='core', **kwargs)
+

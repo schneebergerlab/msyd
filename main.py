@@ -19,7 +19,7 @@ Experimental and WIP.
 
 
 
-df1 = coresyn.coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
+df1 = syntools.coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
 #print(df1.to_string())
 print("regions:", len(df1))
 print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
