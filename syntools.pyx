@@ -112,7 +112,7 @@ def match_synal(syn, aln, cons=None, ref='a'):
         except StopIteration:
             break
 
-    return pd.DataFrame(ret)
+    return pd.DataFrame(ret, dtype=cons)
 
 def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     """
@@ -142,7 +142,7 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
             Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
             ])
 
-    return pd.DataFrame(data=buf, columns=[reforg, qryorg])
+    return pd.DataFrame(data=buf, columns=[reforg, qryorg], dtype=Range)
 
 def extract_regions_to_list(fins, **kwargs):
     """
