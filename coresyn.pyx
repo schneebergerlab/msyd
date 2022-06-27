@@ -126,7 +126,7 @@ def find_coresyn(syris, alns, sort=False, ref='a', cores=1):
     alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
     #print(alns)
 
-    syns = list(map(lambda x: syntools.match_synal(*x, ref=ref), zip(syns, alns)))
+    syns = list(map(lambda x: syntools.match_synal(*x, cons=Coresyn, ref=ref), zip(syns, alns)))
     
     # remove overlap
     for syn in syns:

@@ -86,9 +86,8 @@ class Range:
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Coresyn objects using the constructor supplied in cons
-def match_synal(syn, bam, cons, ref='a'):
-    if not cons: # for some reason python cannot handle specifying constructors as default arguments when importing from another file
-        cons = coresyn.Coresyn
+# for some reason python cannot handle specifying constructors as default arguments when importing from another file
+def match_synal(syn, bam, cons=None, ref='a'):
     ret = []
     syniter = syn.iterrows()
     bamiter = bam.iterrows()
