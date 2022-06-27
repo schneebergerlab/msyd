@@ -9,7 +9,6 @@ import ingest
 import util
 from cigar import Cigar
 import functools
-import coresyn
 
 
 # these classes form a part of the general SV format
@@ -156,7 +155,7 @@ def extract_regions_to_list(fins, ref='a', ann="SYN"):
 
 def remove_overlap(syn):
     """
-    part of the preprocessing of SYNAL regions for find_coresyn
+    part of the preprocessing of SYNAL regions for find_multisyn
     removes overlap from the first region if two overlapping regions are next to each other
     assumes syn to be sorted
     mutates syn
@@ -185,7 +184,7 @@ def remove_overlap(syn):
 
 def parse_input_tsv(path):
     """
-    Takes a file containing the input alignments/syri files and processes it for coresyn.pyx.
+    Takes a file containing the input alignments/syri files and processes it for find_multisyn.
     Anything after a # is ignored. Lines starting with # are skipped.
     :params: path to a file containing the paths of the input alignment and syri files in tsv format
     :returns: a tuple of two lists containing the paths of the alignment and syri files.
@@ -215,7 +214,7 @@ def parse_input_tsv(path):
     return (syris, alns)
 
 
-def find_multisyn(syris, alns, syntype = 'core', sort=False, ref='a', cores=1):
+def find_multisyn(syris, alns, intersect, cons, sort=False, ref='a', cores=1):
     """
     Finds core syntenic regions by finding the overlap between all syntenic regions in the input files.
     Fairly conservative.
@@ -238,7 +237,7 @@ def find_multisyn(syris, alns, syntype = 'core', sort=False, ref='a', cores=1):
     alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
     #print(alns)
 
-    syns = list(map(lambda x: match_synal(*x, cons=coresyn.Coresyn, ref=ref), zip(syns, alns)))
+    syns = list(map(lambda x: match_synal(*x, cons=cons, ref=ref), zip(syns, alns)))
     
     # remove overlap
     for syn in syns:
@@ -249,12 +248,9 @@ def find_multisyn(syris, alns, syntype = 'core', sort=False, ref='a', cores=1):
     pansyns = None
     #TODO switch to crosssyn
     if cores > 1:
-        pansyns = util.parallel_reduce(coresyn.intersect_coresyns, syns, cores)
+        pansyns = util.parallel_reduce(intersect, syns, cores)
     else:
-        pansyns = functools.reduce(coresyn.intersect_coresyns, syns)
+        pansyns = functools.reduce(intersect, syns)
 
     return pansyns
-
-def coresyn_from_tsv(path, **kwargs):
-    return find_multisyn(*parse_input_tsv(path), syntype='core', **kwargs)
 
