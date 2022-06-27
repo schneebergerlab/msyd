@@ -43,7 +43,7 @@ class Crosssyn:
     def __eq__(l, r):
         return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
         
-    # for now, only sorts on the reference
+    # for now, only sorts on the reference (falling back to the Range comparison operator)
     def __lt__(l, r):
         if not l.ref or not r.ref:
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")

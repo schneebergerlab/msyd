@@ -60,7 +60,7 @@ class Coresyn:
     def __eq__(l, r):
         return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
         
-    # for now, only sorts on the reference
+    # for now, only sorts on the reference (falling back to the Range comparison operator)
     def __lt__(l, r):
         if not l.ref or not r.ref:
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
@@ -71,7 +71,6 @@ class Coresyn:
         Takes two Coresyn objects and combines them into one, determining the overlap automagically
     .
         At first only implemented to work in a cigar-using, reference-based way.
-        TODO implement a cigar-free approximative algorithm
         """
 
         # compute how much around both sides to drop for each alignment to the reference
