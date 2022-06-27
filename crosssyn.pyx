@@ -16,15 +16,13 @@ from syn import Range
 """
 Notes/TODOs
 
-– maybe use pre-allocated numpy arrays instead of pandas dataframe?
 – properly ctype, including range/positions
 then write analogous cross synteny class
 
-find_coresyn should have the same business logic, refactor out into common entry function?
+use find_multisynteny as entry method, should work as-is
 
 intersect will be broadly similar, but keep & increase count instead of dropping.
 Do intersect-add and drop in one step, faster and less messy
-
-
+=> Benchmark, may be very slow
 """
 
