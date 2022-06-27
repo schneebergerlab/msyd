@@ -175,10 +175,10 @@ def remove_overlap(syn):
         # this performs essentially the same function as compute_overlap
         # in intersect_syns
         cur.ref.start += ov
-        for ind, rng in enumerate(cur.ranges):
-            drop, cgnew = rng.get_removed(ov, start=True)
+        for ind, cg in enumerate(cur.cigars):
+            drop, cgnew = cg.get_removed(ov, start=True)
             cur.cigars[ind] = cgnew
-            rng.start += drop
+            cur.ranges[ind].start += drop
 
         prev = cur
 
