@@ -113,7 +113,7 @@ def match_synal(syn, aln, cons=None, ref='a'):
             alnr = next(alniter)[1]
         except StopIteration:
             if ind < len(ret) -1:
-                ret.resize(ind + 1, refcheck=False) # free any unnecessarily allocated memory, if necessary
+                ret.resize(ind, refcheck=False) # free any unnecessarily allocated memory, if necessary
             break
 
     return ret
@@ -166,7 +166,6 @@ def remove_overlap(syn):
     mutates syn
     """
     prev = syn[0]
-    print(syn)
     for cur in syn[1:]:
         # check for overlap on the reference
         ov = prev.ref.end - cur.ref.start
