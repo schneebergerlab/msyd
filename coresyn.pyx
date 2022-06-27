@@ -12,7 +12,7 @@ import numpy as np
 import ingest
 import util
 import syntools
-from syn import Range
+from syntools import Range
 from cigar import Cigar
 
 
@@ -34,7 +34,8 @@ class Coresyn:
     """
     TODO docstring
     """
-    def __init__(self, ref:Range, ranges:list[Range], cigars:list[Cigar]):
+    # ranges, cigars have type List[Range]/List[Cigar], respectively, but cython cannot deal with generic type hints
+    def __init__(self, ref:Range, ranges, cigars):
         self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
         self.ranges = ranges
         self.cigars = cigars # length equal to ranges; optional if using approximate matching
