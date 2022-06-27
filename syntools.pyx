@@ -238,6 +238,7 @@ def find_multisyn(syris, alns, intersect, cons, sort=False, ref='a', cores=1):
     #print(alns)
 
     syns = list(map(lambda x: match_synal(*x, cons=cons, ref=ref), zip(syns, alns)))
+    print(syns)
     
     # remove overlap
     for syn in syns:
