@@ -143,11 +143,11 @@ def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
 
     return pd.DataFrame(data=buf, columns=[reforg, qryorg])
 
-def extract_regions_to_list(fins, ref='a', ann="SYN"):
+def extract_regions_to_list(fins, **kwargs):
     """
     `extract_regions`, but for processing a list of inputs
     """
-    return [extract_regions(fin, ann=ann,\
+    return [extract_regions(fin, **kwargs,\
             reforg=fin.split('/')[-1].split('_')[0],\
             qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
             for fin in fins]
