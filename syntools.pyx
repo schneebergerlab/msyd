@@ -87,22 +87,28 @@ class Range:
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Coresyn objects using the constructor supplied in cons
 # for some reason python cannot handle specifying constructors as default arguments when importing from another file
-def match_synal(syn, bam, cons=None, ref='a'):
+def match_synal(syn, aln, cons=None, ref='a'):
+    """
+    This function takes an aligment and SYNAL dataframe and matches corresponding regions.
+    It returns a dataframe containing the regions with the corresponding CIGAR string in a format specified by the supplied constructor `cons`, compatible with Coresyn and Crosssyn classes.
+    :params: syn: SYNAL dataframe, aln: alignment dataframe, cons: constructor of the class in the returned dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
+    :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings in a class specified by `cons`.
+    """
     ret = []
     syniter = syn.iterrows()
-    bamiter = bam.iterrows()
+    alniter = aln.iterrows()
     refchr = ref + "chr"
     refstart = ref + "start"
     refend = ref + "end"
 
     synr = next(syniter)[1]
-    bamr = next(bamiter)[1]
+    alnr = next(alniter)[1]
     while True:
         try:
-            if synr[0].chr == bamr[refchr] and synr[0].start == bamr[refstart] and synr[0].end == bamr[refend]:
-                ret.append(cons(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(bamr['cg'])]))
+            if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
+                ret.append(cons(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(alnr['cg'])]))
                 synr = next(syniter)[1]
-            bamr = next(bamiter)[1]
+            alnr = next(alniter)[1]
         except StopIteration:
             break
 
