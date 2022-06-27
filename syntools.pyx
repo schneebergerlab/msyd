@@ -166,6 +166,7 @@ def remove_overlap(syn):
     mutates syn
     """
     prev = syn[0]
+    print(syn)
     for cur in syn[1:]:
         # check for overlap on the reference
         ov = prev.ref.end - cur.ref.start
