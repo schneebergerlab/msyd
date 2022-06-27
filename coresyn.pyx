@@ -310,31 +310,3 @@ def collapse_to_df(fins, ref='a', ann="SYN"):
 
     return pd.concat(syns, ignore_index=True)
 
-
-
-# make it possible to use this file as test
-if __name__ == "__main__": # testing
-
-    import sys
-
-    # removes cigar strings for more concise printing
-    remcigar = lambda x: x# x[0] if type(x)==list or type(x)==tuple else x
-
-    syris = []
-    alns = []
-    for fin in sys.argv[1:]:
-        syris.append(fin + "syri.out")
-        alns.append(fin + ".bam")
-
-    df1 = find_coresyn(syris, alns, sort=False).apply(lambda x: x.apply(remcigar))
-    #print(df1.to_string())
-    print("regions:", len(df1))
-    print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start, df1.iterrows())))
-    sys.exit()
-    cg1 = df1.iloc[0, 1][1]
-    cg2 = df1.iloc[0, 2][1]
-    #print(cg1.to_string())
-    #print(cg1.get_identity())
-    cgimp = Cigar.impute(cg1, cg2)
-    print(cgimp.to_string())
-    print(cg1.get_len(), cg1.get_identity(), cg2.get_len(), cg2.get_identity(), cgimp.get_len(), cgimp.get_identity())
