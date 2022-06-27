@@ -94,7 +94,8 @@ def match_synal(syn, aln, cons=None, ref='a'):
     :params: syn: SYNAL dataframe, aln: alignment dataframe, cons: constructor of the class in the returned dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings in a class specified by `cons`.
     """
-    ret = deque()
+    ret = np.empty(shape=syn.size, dtype=cons)
+    ind = 0
     syniter = syn.iterrows()
     alniter = aln.iterrows()
     refchr = ref + "chr"
@@ -106,13 +107,16 @@ def match_synal(syn, aln, cons=None, ref='a'):
     while True:
         try:
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                ret.append(cons(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(alnr['cg'])]))
+                ret[ind] = cons(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(alnr['cg'])])
+                ind += 1
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
+            if ind < len(ret) -1:
+                ret.resize(ind + 1, refcheck=False) # free any unnecessarily allocated memory, if necessary
             break
 
-    return pd.DataFrame(list(ret))
+    return ret
 
 def extract_regions(fin, ref='a', ann='SYN', reforg='ref', qryorg='qry'):
     """
@@ -161,10 +165,8 @@ def remove_overlap(syn):
     assumes syn to be sorted
     mutates syn
     """
-    syniter = syn.iterrows()
-    prev = next(syniter)[1][0]
-    for _, cur in syniter:
-        cur = cur[0]
+    prev = syn[0]
+    for cur in syn[1:]:
         # check for overlap on the reference
         ov = prev.ref.end - cur.ref.start
         if ov <= 0 or cur.ref.chr != prev.ref.chr: # there is no overlap
