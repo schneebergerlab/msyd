@@ -77,6 +77,9 @@ class Range:
                 return l.start < r.start
         return False
 
+    def __len__(self):
+        return self.start - self.end
+
     def drop(self, start, end):
         """
         :param: 'start'/'end' specify how much to drop on each end.
