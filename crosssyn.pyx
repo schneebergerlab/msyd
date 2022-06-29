@@ -56,10 +56,8 @@ class Crosssyn:
 
     def combine(l: Crosssyn, r: Crosssyn, keep_overlap=False):
         #TODO implement
-        # return list or iterator instead of new object
         # use mostly the same overlap calculation
         # but replacing old objects should not be necessary? => discuss
-        # degree calculation should be handled in constructor
 
         # compute overlap
         ovstart = max(l.ref.start, r.ref.start)
@@ -72,16 +70,23 @@ class Crosssyn:
         rdropend = r.ref.end - ovend # 0 if r.ref is minimal, else positive
         ldropend = l.ref.end - ovend
 
-        start, overlap, end = None
+        ret = []
+
+        # problems: order according to start/end
+        # detect when no region should be added
 
         if l.cigars and r.cigars:
 
         else:
-            return sorted([
-                    Crosssyn(l.ref.drop(0, l.ref.end
+            # preliminary, assuming l ist leftest
+            ldrop = len(l.ref) - ldropstart
+            ret.append(Crosssyn(l.ref.drop(0, ldrop), [rng.drop(0, ldrop) for rng in l.ranges], None))
 
-                    ])
 
+        return sorted(ret)
+
+
+    # 
 
 
 
