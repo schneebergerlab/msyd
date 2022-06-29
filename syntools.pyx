@@ -87,13 +87,58 @@ class Range:
         """
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
+
+# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
+@functools.total_ordering
+class Pansyn:
+    """
+    A class representing a region syntenic among a set of genomes.
+    The parameter `ranges` is a list of genomic `synctools.Range`es storing the locations this syntenic regions has on each organism.
+    This list cannot be None and should contain an entry for every genome being compared.
+    Other attributes are `ref`, which stores the position on the reference -- this attribute can be `None` if using a reference-free algorithm, but none have been implemented so far.
+    `cigars` contains a list of `cigar.Cigar` objects corresponding to the alignment of each position to the reference.
+    The attribute can be `None` if using approximate position calculation (usually for performance/memory reasons).\n
+    Indices in `cigars` correspond with indices in `ranges`.
+    In the future, `cigars` may also be used for storing pairwise alignments of the core syntenic regions to each other.
+    Also, a separate field for an MSA may be added.
+
+    Pansyn implements comparison operators to enable sorting according to the end on the reference.
+    For sorting, the `ref` field needs to be set.
+
+    """
+    # ranges, cigars have type List[Range]/List[Cigar], respectively, but cython cannot deal with generic type hints
+    def __init__(self, ref:Range, ranges, cigars):
+        self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
+        self.ranges = ranges
+        self.cigars = cigars # length equal to ranges; optional if using approximate matching
+
+    def __repr__(self):
+        return f"Pansyn({self.ref}, {self.ranges})"
+
+    def __eq__(l, r):
+        return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
+        
+    # for now, only sorts on the reference (falling back to the Range comparison operator)
+    def __lt__(l, r):
+        if not l.ref or not r.ref:
+            raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
+        return l.ref < r.ref
+
+    def add(self, rng:Range, cg: Cigar):
+        self.ranges.append(rng)
+        self.cigars.append(cg)
+
+    def degree(self):
+        return len(self.ranges)
+
+
 # given a bam file and corresponding SYNAL range df,
-# Transform them into one list of Coresyn objects using the constructor supplied in cons
+# Transform them into one list of Pansyn objects using the constructor supplied in cons
 # for some reason python cannot handle specifying constructors as default arguments when importing from another file
 def match_synal(syn, aln, cons=None, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
-    It returns a dataframe containing the regions with the corresponding CIGAR string in a format specified by the supplied constructor `cons`, compatible with Coresyn and Crosssyn classes.
+    It returns a dataframe containing the regions with the corresponding CIGAR string in a format specified by the supplied constructor `cons`, compatible with Pansyn and Crosssyn classes.
     :params: syn: SYNAL dataframe, aln: alignment dataframe, cons: constructor of the class in the returned dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings in a class specified by `cons`.
     """

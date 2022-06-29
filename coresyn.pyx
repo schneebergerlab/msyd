@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import ingest
 import syntools
-from syntools import Range
+from syntools import Range, Pansyn
 from cigar import Cigar
 from collections import deque
 
@@ -28,93 +28,55 @@ TODO output format
 TO/DO handle incorrectly mapped chromosomes (use mapping from syri output)
 """
 
-# decorator to auto-implement __gt__ etc. from __lt__ and __eq__
-@functools.total_ordering
-class Coresyn:
+def combine(l: Pansyn, r: Pansyn):
     """
-    A class representing a core syntenic region among a set of genomes.
-    The parameter `ranges` is a list of genomic `synctools.Range`es storing the locations this syntenic regions has on each organism.
-    This list cannot be None and should contain an entry for every genome being compared.
-    Other attributes are `ref`, which stores the position on the reference -- this attribute can be `None` if using a reference-free algorithm, but none have been implemented so far.
-    `cigars` contains a list of `cigar.Cigar` objects corresponding to the alignment of each position to the reference.
-    The attribute can be `None` if using approximate position calculation (usually for performance/memory reasons).\n
-    Indices in `cigars` correspond with indices in `ranges`.
-    In the future, `cigars` may also be used for storing pairwise alignments of the core syntenic regions to each other.
-    Also, a separate field for an MSA may be added.
-
-    Coresyn implements comparison operators to enable sorting according to the end on the reference.
-    For sorting, the `ref` field needs to be set.
-
-    The associated `combine` function is used for adding a region to this set of core syntenic regions.
-    It returns a new `Coresyn` object containing the overlap between both input `Coresyn` objects
+    Takes two Pansyn objects and combines them into one, determining the overlap automagically
+.
+    At first only implemented to work in a cigar-using, reference-based way.
     """
-    # ranges, cigars have type List[Range]/List[Cigar], respectively, but cython cannot deal with generic type hints
-    def __init__(self, ref:Range, ranges, cigars):
-        self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
-        self.ranges = ranges
-        self.cigars = cigars # length equal to ranges; optional if using approximate matching
 
-    def __repr__(self):
-        return f"Coresyn({self.ref}, {self.ranges})"
+    # compute how much around both sides to drop for each alignment to the reference
+    ovstart = max(l.ref.start, r.ref.start)
+    ovend = min(l.ref.end, r.ref.end)
+    assert(ovstart < ovend, f"ERROR: no overlap found between {l} and {r}")
 
-    def __eq__(l, r):
-        return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
-        
-    # for now, only sorts on the reference (falling back to the Range comparison operator)
-    def __lt__(l, r):
-        if not l.ref or not r.ref:
-            raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
-        return l.ref < r.ref
+    rdropstart = ovstart - r.ref.start # 0 if r.ref is maximal, else positive
+    ldropstart = ovstart - l.ref.start 
 
-    def combine(l: Coresyn, r: Coresyn):
-        """
-        Takes two Coresyn objects and combines them into one, determining the overlap automagically
-    .
-        At first only implemented to work in a cigar-using, reference-based way.
-        """
+    rdropend = r.ref.end - ovend # 0 if r.ref is minimal, else positive
+    ldropend = l.ref.end - ovend
 
-        # compute how much around both sides to drop for each alignment to the reference
-        ovstart = max(l.ref.start, r.ref.start)
-        ovend = min(l.ref.end, r.ref.end)
-        assert(ovstart < ovend, f"ERROR: no overlap found between {l} and {r}")
+    ref = l.ref.drop(ldropstart, ldropend)
+    # calculate the exact position based on the CIGAR strings if both Pansyns have the
+    if l.cigars and r.cigars:
+        ranges = deque()
+        cigars = deque()
 
-        rdropstart = ovstart - r.ref.start # 0 if r.ref is maximal, else positive
-        ldropstart = ovstart - l.ref.start 
+        ## compute the new Ranges and CIGAR strings
+        # adjust left Ranges
+        for rng, cg in zip(l.ranges, l.cigars):
+            start, cg = cg.get_removed(ldropstart, start=True, ref=True)
+            end, cg  = cg.get_removed(ldropend, start=False, ref=True)
+            ranges.append(rng.drop(start, end))
+            cigars.append(cg)
 
-        rdropend = r.ref.end - ovend # 0 if r.ref is minimal, else positive
-        ldropend = l.ref.end - ovend
+        # adjust right Ranges
+        for rng, cg in zip(r.ranges, r.cigars):
+            start, cg = cg.get_removed(rdropstart, start=True, ref=True)
+            end, cg  = cg.get_removed(rdropend, start=False, ref=True)
+            ranges.append(rng.drop(start, end))
+            cigars.append(cg)
 
-        ref = l.ref.drop(ldropstart, ldropend)
-        # calculate the exact position based on the CIGAR strings if both Coresyns have the
-        if l.cigars and r.cigars:
-            ranges = deque()
-            cigars = deque()
-
-            ## compute the new Ranges and CIGAR strings
-            # adjust left Ranges
-            for rng, cg in zip(l.ranges, l.cigars):
-                start, cg = cg.get_removed(ldropstart, start=True, ref=True)
-                end, cg  = cg.get_removed(ldropend, start=False, ref=True)
-                ranges.append(rng.drop(start, end))
-                cigars.append(cg)
-
-            # adjust right Ranges
-            for rng, cg in zip(r.ranges, r.cigars):
-                start, cg = cg.get_removed(rdropstart, start=True, ref=True)
-                end, cg  = cg.get_removed(rdropend, start=False, ref=True)
-                ranges.append(rng.drop(start, end))
-                cigars.append(cg)
-
-            return Coresyn(ref, ranges, cigars)
-        else:
-            # use approximate position calculation
-            if l.cigars or r.cigars:
-                print(f"WARN: one of {l} or {r} does not have CIGAR strings, falling back to approximate position adjustment!")
-                return Coresyn(ref,
-                        deque(
-                        [rng.drop(ldropstart, ldropend) for rng in l.ranges] +
-                        [rng.drop(rdropstart, rdropend) for rng in r.ranges]),
-                        None)
+        return Pansyn(ref, ranges, cigars)
+    else:
+        # use approximate position calculation
+        if l.cigars or r.cigars:
+            print(f"WARN: one of {l} or {r} does not have CIGAR strings, falling back to approximate position adjustment!")
+            return Pansyn(ref,
+                    deque(
+                    [rng.drop(ldropstart, ldropend) for rng in l.ranges] +
+                    [rng.drop(rdropstart, rdropend) for rng in r.ranges]),
+                    None)
 
 
 def intersect_coresyns(left, right):
@@ -148,7 +110,7 @@ def intersect_coresyns(left, right):
             ovstart = max(rrow.ref.start, lrow.ref.start)
             ovend = min(rrow.ref.end, lrow.ref.end)
             if ovstart < ovend: # there is valid overlap
-                ret.append(Coresyn.combine(lrow, rrow))
+                ret.append(combine(lrow, rrow))
 
             # ratchet by dropping the segment with a smaller end
             if lrow.ref.end > rrow.ref.end: # left is after right
