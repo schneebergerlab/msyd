@@ -49,7 +49,7 @@ class Crosssyn:
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
         return l.ref < r.ref
 
-    def combine(l, r):
+    def combine(l: Crosssyn, r: Crosssyn, keep=False):
         #TODO implement
         # return list or iterator instead of new object
         # use mostly the same overlap calculation

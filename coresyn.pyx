@@ -66,7 +66,7 @@ class Coresyn:
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
         return l.ref < r.ref
 
-    def combine(l, r):
+    def combine(l: Coresyn, r: Coresyn):
         """
         Takes two Coresyn objects and combines them into one, determining the overlap automagically
     .
