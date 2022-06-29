@@ -49,14 +49,40 @@ class Crosssyn:
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
         return l.ref < r.ref
 
-    def combine(l: Crosssyn, r: Crosssyn, keep=False):
+    def add(self, rng:Range, cg: Cigar):
+        self.ranges.append(rng)
+        self.cigars.append(cg)
+        self.degree += 1
+
+    def combine(l: Crosssyn, r: Crosssyn, keep_overlap=False):
         #TODO implement
         # return list or iterator instead of new object
         # use mostly the same overlap calculation
         # but replacing old objects should not be necessary? => discuss
-        # => only output new ones, append to old ones, sort?
-        # probably not, sorting slower than copying/softlinking with correct orientation
         # degree calculation should be handled in constructor
+
+        # compute overlap
+        ovstart = max(l.ref.start, r.ref.start)
+        ovend = min(l.ref.end, r.ref.end)
+        assert(ovstart < ovend, f"ERROR: no overlap found between {l} and {r}")
+
+        rdropstart = ovstart - r.ref.start # 0 if r.ref is maximal, else positive
+        ldropstart = ovstart - l.ref.start 
+
+        rdropend = r.ref.end - ovend # 0 if r.ref is minimal, else positive
+        ldropend = l.ref.end - ovend
+
+        start, overlap, end = None
+
+        if l.cigars and r.cigars:
+
+        else:
+            return sorted([
+                    Crosssyn(l.ref.drop(0, l.ref.end
+
+                    ])
+
+
 
 
 def intersect_crosssyns(left, right):
