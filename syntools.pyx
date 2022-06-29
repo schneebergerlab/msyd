@@ -135,7 +135,7 @@ class Pansyn:
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Pansyn objects using the constructor supplied in cons
 # for some reason python cannot handle specifying constructors as default arguments when importing from another file
-def match_synal(syn, aln, cons=None, ref='a'):
+def match_synal(syn, aln, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
     It returns a dataframe containing the regions with the corresponding CIGAR string in a format specified by the supplied constructor `cons`, compatible with Pansyn and Crosssyn classes.
@@ -154,7 +154,7 @@ def match_synal(syn, aln, cons=None, ref='a'):
     while True:
         try:
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                ret.append(cons(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(alnr['cg'])]))
+                ret.append(Pansyn(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(alnr['cg'])]))
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
@@ -286,7 +286,7 @@ def find_multisyn(syris, alns, intersect, cons, sort=False, ref='a', cores=1):
     alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
     #print(alns)
 
-    syns = list(map(lambda x: match_synal(*x, cons=cons, ref=ref), zip(syns, alns)))
+    syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, alns)))
     
     # remove overlap
     for syn in syns:
