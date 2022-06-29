@@ -133,14 +133,13 @@ class Pansyn:
 
 
 # given a bam file and corresponding SYNAL range df,
-# Transform them into one list of Pansyn objects using the constructor supplied in cons
-# for some reason python cannot handle specifying constructors as default arguments when importing from another file
+# Transform them into one list of Pansyn objects
 def match_synal(syn, aln, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
-    It returns a dataframe containing the regions with the corresponding CIGAR string in a format specified by the supplied constructor `cons`, compatible with Pansyn and Crosssyn classes.
-    :params: syn: SYNAL dataframe, aln: alignment dataframe, cons: constructor of the class in the returned dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
-    :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings in a class specified by `cons`.
+    It returns a dataframe containing the regions with the corresponding CIGAR string as a `Pansyn` object.
+    :params: syn: SYNAL dataframe, aln: alignment dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
+    :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Pansyn` objects.
     """
     ret = deque()
     syniter = syn.iterrows()
@@ -263,9 +262,9 @@ def parse_input_tsv(path):
     return (syris, alns)
 
 
-def find_multisyn(syris, alns, intersect, cons, sort=False, ref='a', cores=1):
+def find_multisyn(syris, alns, intersect, sort=False, ref='a', cores=1):
     """
-    Finds core or cross-syntenic regions in the input files, depending on the intersection operation and constructor supplied in `intersect` and `cons`
+    Finds core or cross-syntenic regions in the input files, depending on the intersection operation specified in `intersect`.
     Fairly conservative.
     :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, the intersection operation and class to use (from either `coresyn` or `crossyn`) as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
