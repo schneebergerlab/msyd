@@ -43,6 +43,9 @@ class Position:
         else:
             return False
 
+    def __hash__(self):
+        return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.pos)
+
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 class Range:
@@ -79,6 +82,9 @@ class Range:
 
     def __len__(self):
         return self.start - self.end
+
+    def __hash__(self):
+        return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.start) + hash(self.end)
 
     def drop(self, start, end):
         """
@@ -123,6 +129,9 @@ class Pansyn:
         if not l.ref or not r.ref:
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
         return l.ref < r.ref
+
+    def __hash__(self):
+        return hash(self.ref) + hash(self.ranges) + hash(self.cigars)
 
     def add(self, rng:Range, cg: Cigar):
         self.ranges.append(rng)
