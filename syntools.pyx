@@ -328,7 +328,58 @@ def parse_input_tsv(path):
     return (syris, alns)
 
 
-def find_multisyn(syris, alns, intersect, sort=False, ref='a', cores=1):
+def find_overlaps(left, right, **kwargs):
+    """
+    This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
+    It runs in O(len(left) + len(right)).
+    """
+    ret = deque()
+
+    if len(right) == 0:
+        raise ValueError("right is empty!")
+    if len(left) == 0:
+        raise ValueError("left is empty!")
+
+    riter = right.iterrows()
+    rrow = next(riter)[1][0]
+    liter = left.iterrows()
+    lrow = next(liter)[1][0]
+    while True:
+        try: # python iterators suck, so this loop is entirely try-catch'ed
+
+            if rrow.ref.chr > lrow.ref.chr:
+                lrow = next(liter)[1][0]
+                continue
+            if lrow.ref.chr > rrow.ref.chr:
+                rrow = next(riter)[1][0]
+                continue
+            
+            # determine if there is an overlap
+            ovstart = max(rrow.ref.start, lrow.ref.start)
+            ovend = min(rrow.ref.end, lrow.ref.end)
+            if ovstart < ovend: # there is valid overlap
+                ret.extend(calc_overlap(lrow, rrow, **kwargs))
+
+            # ratchet by dropping the segment with a smaller end
+            if lrow.ref.end > rrow.ref.end: # left is after right
+                rrow = next(riter)[1][0]
+            elif rrow.ref.end > lrow.ref.end: # right is after left
+                lrow = next(liter)[1][0]
+                # if they stop at the same position, drop the one starting further left
+            elif lrow.ref.start > rrow.ref.start:
+                rrow = next(riter)[1][0]
+            else: # do whatever
+                lrow = next(liter)[1][0]
+
+        except StopIteration: # nothing more to match
+            break
+
+    del riter
+    del liter
+    return pd.DataFrame(data=list(ret))
+
+
+def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     """
     Finds core or cross-syntenic regions in the input files, depending on the intersection operation specified in `intersect`.
     Fairly conservative.
@@ -360,11 +411,11 @@ def find_multisyn(syris, alns, intersect, sort=False, ref='a', cores=1):
     #print(syns)
 
     pansyns = None
-    #TODO switch to crosssyn
+    ovlap = functools.partial(find_overlaps, keywords=kwargs)
     if cores > 1:
-        pansyns = util.parallel_reduce(intersect, syns, cores)
+        pansyns = util.parallel_reduce(ovlap, syns, cores)
     else:
-        pansyns = functools.reduce(intersect, syns)
+        pansyns = functools.reduce(ovlap, syns)
 
     return pansyns
 
