@@ -411,7 +411,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     #print(syns)
 
     pansyns = None
-    ovlap = functools.partial(find_overlaps, keywords=kwargs)
+    ovlap = functools.partial(find_overlaps, **kwargs)
     if cores > 1:
         pansyns = util.parallel_reduce(ovlap, syns, cores)
     else:
