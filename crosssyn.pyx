@@ -11,6 +11,7 @@ import util
 from cigar import Cigar
 import syntools
 from syntools import Range, Pansyn
+from collections import deque
 
 
 """
@@ -36,11 +37,8 @@ def combine(l: Pansyn, r: Pansyn, keep_overlap=False):
     ovend = min(l.ref.end, r.ref.end)
     assert(ovstart < ovend, f"ERROR: no overlap found between {l} and {r}")
 
-    rdropstart = ovstart - r.ref.start # 0 if r.ref is maximal, else positive
-    ldropstart = ovstart - l.ref.start 
-
-    rdropend = r.ref.end - ovend # 0 if r.ref is minimal, else positive
-    ldropend = l.ref.end - ovend
+    leftest = l if l.ref.start < r.ref.start else r
+    rightest = l if l.ref.end > r.ref.end else r
 
     ret = []
 
@@ -56,6 +54,17 @@ def combine(l: Pansyn, r: Pansyn, keep_overlap=False):
 
 
     return sorted(ret)
+
+def drop_cigar(rngs, cgs, start, end):
+    ret_rngs = deque()
+    ret_cgs = deque()
+    for rng, cg in zip(rngs, cgs):
+        start, cg = cg.get_removed(start, start=True, ref=True)
+        end, cg = cg.get_removed(end, start=False, ref=True)
+        ret_rngs.append(rng.drop(start, end))
+        ret_cgs.append(cg)
+
+    return (ret_rngs, ret_cgs)
 
 
 # 
