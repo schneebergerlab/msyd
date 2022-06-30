@@ -131,6 +131,30 @@ class Pansyn:
     def degree(self):
         return len(self.ranges)
 
+    def __add__(self, other):
+        """
+        Convenience function to concatenate two `Pansyn` objects
+        """
+        return Pansyn(self.ref, self.ranges + other.ranges, self.cigars + other.cigars)
+
+    def drop(self, start, end):
+        """
+        Rremoves `start`/`end` positions from the start/end of this pansyntenic region, respecting cigar alignments if not `None`.
+        """
+        ret_rngs = deque()
+        ret_cgs = deque()
+        if not self.cigars:
+            self.ref = self.ref.drop(start, end)
+            self.ranges = [rng.drop(start, end) for rng in self.ranges]
+            return
+        for i in range(len(self.ranges)):
+            start, cg = self.cigars[i].get_removed(start, start=True, ref=True)
+            end, cg = cg.get_removed(end, start=False, ref=True)
+            self.ranges[i] = self.ranges[i].drop(start, end)
+            self.cigars[i] = cg
+
+        return (ret_rngs, ret_cgs)
+
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Pansyn objects

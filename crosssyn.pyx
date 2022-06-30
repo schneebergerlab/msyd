@@ -45,26 +45,14 @@ def combine(l: Pansyn, r: Pansyn, keep_overlap=False):
     # problems: order according to start/end
     # detect when no region should be added
 
-    if l.cigars and r.cigars:
-        pass
-    else:
-        # preliminary, assuming l ist leftest
-        ldrop = len(l.ref) - ldropstart
-        ret.append(Pansyn(l.ref.drop(0, ldrop), [rng.drop(0, ldrop) for rng in l.ranges], None))
+    # preliminary, assuming l ist leftest
+
+    ldrop = len(l.ref) - ldropstart
+    ret.append(Pansyn(l.ref.drop(0, ldrop), [rng.drop(0, ldrop) for rng in l.ranges], None))
 
 
     return sorted(ret)
 
-def drop_cigar(rngs, cgs, start, end):
-    ret_rngs = deque()
-    ret_cgs = deque()
-    for rng, cg in zip(rngs, cgs):
-        start, cg = cg.get_removed(start, start=True, ref=True)
-        end, cg = cg.get_removed(end, start=False, ref=True)
-        ret_rngs.append(rng.drop(start, end))
-        ret_cgs.append(cg)
-
-    return (ret_rngs, ret_cgs)
 
 
 # 
