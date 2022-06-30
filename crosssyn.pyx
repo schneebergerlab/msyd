@@ -4,6 +4,7 @@
 # cython: language_level = 3
 
 import functools
+import copy
 import pandas as pd
 import numpy as np
 import ingest
@@ -40,16 +41,20 @@ def combine(l: Pansyn, r: Pansyn, keep_overlap=False):
     leftest = l if l.ref.start < r.ref.start else r
     rightest = l if l.ref.end > r.ref.end else r
 
-    ret = []
+    ret = set() # use a set to automatically remove duplicates
 
-    # problems: order according to start/end
-    # detect when no region should be added
+    if keep_overlap:
+        ret.add(leftest)
+    else:
+        ret.add(leftest.drop(0, leftest.ref.end - ovstart))
+    
+    # core synteny
+    ret.add(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
 
-    # preliminary, assuming l ist leftest
-
-    ldrop = len(l.ref) - ldropstart
-    ret.append(Pansyn(l.ref.drop(0, ldrop), [rng.drop(0, ldrop) for rng in l.ranges], None))
-
+    if keep_overlap:
+        ret.add(rightest)
+    else:
+        ret.add(rightest.drop(0, rightest.ref.end - ovstart))
 
     return sorted(ret)
 
