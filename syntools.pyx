@@ -139,22 +139,22 @@ class Pansyn:
 
     def drop(self, start, end):
         """
-        Rremoves `start`/`end` positions from the start/end of this pansyntenic region, respecting cigar alignments if not `None`.
+        Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed, respecting cigar alignments if not `None`.
         """
-        ret_rngs = deque()
-        ret_cgs = deque()
+        ref = self.ref.drop(start, end)
+        ranges = None
+        cigars = None
         if not self.cigars:
-            self.ref = self.ref.drop(start, end)
-            self.ranges = [rng.drop(start, end) for rng in self.ranges]
-            return
-        for i in range(len(self.ranges)):
-            start, cg = self.cigars[i].get_removed(start, start=True, ref=True)
-            end, cg = cg.get_removed(end, start=False, ref=True)
-            self.ranges[i] = self.ranges[i].drop(start, end)
-            self.cigars[i] = cg
-
-        return (ret_rngs, ret_cgs)
-
+            ranges = [rng.drop(start, end) for rng in self.ranges]
+        else:
+            ranges = deque()
+            cigars = deque()
+            for rng, cg in zip(self.ranges, self.cigars):
+                start, cg = cg.get_removed(start, start=True, ref=True)
+                end, cg = cg.get_removed(end, start=False, ref=True)
+                ranges.append(rng.drop(start, end))
+                cigars.append(cg)
+        return Pansyn(ref, ranges, cigars)
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Pansyn objects
