@@ -131,7 +131,7 @@ class Pansyn:
         return l.ref < r.ref
 
     def __hash__(self):
-        return hash(self.ref) + hash(self.ranges) + hash(self.cigars)
+        return hash(self.ref)# + hash(self.ranges) + hash(self.cigars) # caused problems with deque
 
     def add(self, rng:Range, cg: Cigar):
         self.ranges.append(rng)
