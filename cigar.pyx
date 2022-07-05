@@ -90,6 +90,7 @@ class Cigar:
 
 
     def get_removed(self, n, ref=True, start=True):
+        print(self)
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
@@ -106,6 +107,7 @@ class Cigar:
 
         # loop and remove regions as long as the skip is more than one region
         while ind < len(self.pairs):
+            print(ind, self.pairs)
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             #print(ind, cgi, n, skip)
             if cgi[1] not in fwd:
