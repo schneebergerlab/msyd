@@ -11,6 +11,8 @@ from cigar import Cigar
 import functools
 from collections import deque
 
+MIN_SYN_THRESH = 50
+
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
@@ -366,7 +368,7 @@ def find_overlaps(left, right, **kwargs):
             # determine if there is an overlap
             ovstart = max(rrow.ref.start, lrow.ref.start)
             ovend = min(rrow.ref.end, lrow.ref.end)
-            if ovstart < ovend: # there is valid overlap
+            if ovend - ovstart > MIN_SYN_THRESH: # there is valid overlap
                 ret.extend(calc_overlap(lrow, rrow, **kwargs))
 
             # ratchet by dropping the segment with a smaller end
