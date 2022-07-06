@@ -196,9 +196,6 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=True, allow_overlap=False
             ret.add(leftest.drop(0, leftest.ref.end - ovstart))
     
     # core synteny
-    # why does this give a list out of bounds in Cigar.get_removed?
-    print(l, r)
-    print(ovstart, ovend)
     ret.add(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
 
     if detect_crosssyn:
