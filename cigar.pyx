@@ -90,7 +90,7 @@ class Cigar:
 
 
     def get_removed(self, n, ref=True, start=True):
-        print(self)
+        # TODO proper error handling when removing more than possible or if input null or sth 
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
@@ -106,24 +106,28 @@ class Cigar:
         
 
         # loop and remove regions as long as the skip is more than one region
-        while ind < len(self.pairs):
-            print(ind, self.pairs)
-            cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-            #print(ind, cgi, n, skip)
-            if cgi[1] not in fwd:
-                ind += 1
-                if cgi[1] in altfwd:
-                    skip += cgi[0]
-                continue
-            
-            # this region counts towards n, determine if it can be removed or is too large
-            if n >= cgi[0]:
-                n -= cgi[0]
-                ind += 1
-                if cgi[1] in altfwd:
-                    skip += cgi[0]
-            else:
-                break
+        try:
+            while ind < len(self.pairs):
+                cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+                #print(ind, cgi, n, skip)
+                if cgi[1] not in fwd:
+                    ind += 1
+                    if cgi[1] in altfwd:
+                        skip += cgi[0]
+                    continue
+                
+                # this region counts towards n, determine if it can be removed or is too large
+                if n >= cgi[0]:
+                    n -= cgi[0]
+                    ind += 1
+                    if cgi[1] in altfwd:
+                        skip += cgi[0]
+                else:
+                    break
+        except :
+            print("ERROR: not removing more than sequence length, returning None")
+            raise ValueError
+            return None
 
         # remaining skip must be < 1 in a fwd-region
         # construct the new return cigar, without altering self
