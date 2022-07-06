@@ -124,21 +124,22 @@ class Cigar:
                         skip += cgi[0]
                 else:
                     break
+
+            # remaining skip must be < 1 in a fwd-region
+            # construct the new return cigar, without altering self
+            cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+            if cgi[1] in altfwd:
+                skip += n
+
+            if start:
+                return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
+            else:
+                return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
+
         except IndexError:
             print("ERROR: not removing more than sequence length, returning None")
             raise ValueError
             return None
-
-        # remaining skip must be < 1 in a fwd-region
-        # construct the new return cigar, without altering self
-        cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-        if cgi[1] in altfwd:
-            skip += n
-
-        if start:
-            return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
-        else:
-            return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
 
     def __repr__(self):
         return f"Cigar({self.pairs})"
