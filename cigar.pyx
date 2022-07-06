@@ -124,7 +124,7 @@ class Cigar:
                         skip += cgi[0]
                 else:
                     break
-        except :
+        except IndexError:
             print("ERROR: not removing more than sequence length, returning None")
             raise ValueError
             return None
