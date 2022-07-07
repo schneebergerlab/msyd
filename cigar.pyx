@@ -138,7 +138,7 @@ class Cigar:
 
         except IndexError:
             print("ERROR: not removing more than sequence length, returning None")
-            raise ValueError
+            print(f"ERROR: occurred in get_removed of {n} on Cigar {self}")
             return None
 
     def __repr__(self):
