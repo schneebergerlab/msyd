@@ -348,6 +348,7 @@ def find_overlaps(left, right, **kwargs):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
+    Calls `calc_overlap` to determine the actual overlaps to merge as output.
     """
     ret = deque()
 
@@ -398,9 +399,10 @@ def find_overlaps(left, right, **kwargs):
 
 def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     """
-    Finds core or cross-syntenic regions in the input files, depending on the intersection operation specified in `intersect`.
+    Finds core and cross-syntenic regions in the input files, depending on if the parameter `detect_crossyn` that is ultimately passed on to `calc_overlap` is set to `True`.
     Fairly conservative.
-    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, the intersection operation and class to use (from either `coresyn` or `crossyn`) as well as optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, parameters optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    Crosssynteny is detected if the `detect_crosssyn` parameter is set to `True`.
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
