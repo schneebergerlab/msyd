@@ -144,7 +144,7 @@ class Cigar:
             raise ValueError("invalid skip")
 
     def __repr__(self):
-        return f"Cigar({self.pairs})"
+        return f"Cigar({self.tostring()})"
 
     def to_string(self):
         return ''.join([str(p[0]) + p[1] for p in self.pairs])
