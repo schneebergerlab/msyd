@@ -289,10 +289,10 @@ if __name__ == "__main__":
     for x in sys.argv[1:]:
         cg = Cigar.from_string(x)
         print(cg)
-        print(cg.get_removed_faster(10), cg.get_removed(10), sep='\n')
-        print(cg.get_removed_faster(10, ref=False), cg.get_removed(10, ref=False), sep='\n')
-        print(cg.get_removed_faster(10, start=False), cg.get_removed(10, start=False), sep='\n')
-        print(cg.get_removed_faster(10, start=False, ref=False), cg.get_removed(10, start=False, ref=False), sep='\n')
+        print(cg.get_removed(10), cg.get_removed_legacy(10), sep='\n')
+        print(cg.get_removed(10, ref=False), cg.get_removed_legacy(10, ref=False), sep='\n')
+        print(cg.get_removed(10, start=False), cg.get_removed_legacy(10, start=False), sep='\n')
+        print(cg.get_removed(10, start=False, ref=False), cg.get_removed_legacy(10, start=False, ref=False), sep='\n')
 
         
     
