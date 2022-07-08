@@ -130,6 +130,9 @@ class Cigar:
             # construct the new return cigar, without altering self
             if ind == len(self.pairs):
                 print("FOUND IT!!!")
+                # for some reason, ind is reaching the length limit when it really shouldn't.
+                # doesn't seem to affect function in any way (same output as on main branch)
+                # but annoying, and maybe was missing pansyn before?
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             if cgi[1] in altfwd:
                 skip += n
