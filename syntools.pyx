@@ -196,20 +196,20 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
 
     ret = set() # use a set to automatically remove duplicates
 
-    if detect_crosssyn:
-        if allow_overlap:
-            ret.add(leftest)
-        else:
-            ret.add(leftest.drop(0, leftest.ref.end - ovstart))
+#    if detect_crosssyn:
+#        if allow_overlap:
+#            ret.add(leftest)
+#        else:
+#            ret.add(leftest.drop(0, leftest.ref.end - ovstart))
     
     # core synteny
     ret.add(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
 
-    if detect_crosssyn:
-        if allow_overlap:
-            ret.add(rightest)
-        else:
-            ret.add(rightest.drop(0, rightest.ref.end - ovstart))
+#    if detect_crosssyn:
+#        if allow_overlap:
+#            ret.add(rightest)
+#        else:
+#            ret.add(rightest.drop(0, rightest.ref.end - ovstart))
 
     return sorted(ret)
 
