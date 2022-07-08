@@ -5,6 +5,7 @@
 import re
 import copy
 import itertools
+import sys
 
 ## constants
 reffwd = set(['M', 'D', 'N', '=', 'X'])
@@ -136,8 +137,8 @@ class Cigar:
             else:
                 return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
 
-        except IndexError as e:
-            print(e)
+        except IndexError:
+            print(sys.exc_info())
             print("ERROR: not removing more than sequence length, returning None")
             print(f"ERROR: occurred in get_removed of {n} on Cigar {self}")
             return None
