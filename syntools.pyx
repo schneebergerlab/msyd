@@ -162,10 +162,10 @@ class Pansyn:
             cigars = deque()
             for rng, cg in zip(self.ranges, self.cigars):
                 try:
-                    start, cg = cg.get_removed_legacy(start, start=True, ref=True)
-                    end, cg = cg.get_removed_legacy(end, start=False, ref=True)
+                    start, cg = cg.get_removed(start, start=True, ref=True)
+                    end, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
-                    print("ERROR: invalid input to cg.get_removed_legacy. Check if start, end are correct!")
+                    print("ERROR: invalid input to cg.get_removed. Check if start, end are correct!")
                     continue
 
                 ranges.append(rng.drop(start, end))
@@ -306,7 +306,7 @@ def remove_overlap(syn):
         # in intersect_syns
         cur.ref.start += ov
         for ind, cg in enumerate(cur.cigars):
-            drop, cgnew = cg.get_removed_legacy(ov, start=True)
+            drop, cgnew = cg.get_removed(ov, start=True)
             cur.cigars[ind] = cgnew
             cur.ranges[ind].start += drop
 
