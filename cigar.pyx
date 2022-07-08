@@ -128,6 +128,8 @@ class Cigar:
 
             # remaining skip must be < 1 in a fwd-region
             # construct the new return cigar, without altering self
+            if ind == len(self.pairs):
+                print("FOUND IT!!!")
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             if cgi[1] in altfwd:
                 skip += n
