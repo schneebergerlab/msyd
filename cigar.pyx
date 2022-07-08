@@ -107,41 +107,40 @@ class Cigar:
         
 
         # loop and remove regions as long as the skip is more than one region
-        try:
-            while ind < len(self.pairs):
-                cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-                #print(ind, cgi, n, skip)
-                if cgi[1] not in fwd:
-                    ind += 1
-                    if cgi[1] in altfwd:
-                        skip += cgi[0]
-                    continue
-                
-                # this region counts towards n, determine if it can be removed or is too large
-                if n >= cgi[0]:
-                    n -= cgi[0]
-                    ind += 1
-                    if cgi[1] in altfwd:
-                        skip += cgi[0]
-                else:
-                    break
-
-            # remaining skip must be < 1 in a fwd-region
-            # construct the new return cigar, without altering self
+        #try:
+        while ind < len(self.pairs):
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-            if cgi[1] in altfwd:
-                skip += n
-
-            if start:
-                return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
+            #print(ind, cgi, n, skip)
+            if cgi[1] not in fwd:
+                ind += 1
+                if cgi[1] in altfwd:
+                    skip += cgi[0]
+                continue
+            
+            # this region counts towards n, determine if it can be removed or is too large
+            if n >= cgi[0]:
+                n -= cgi[0]
+                ind += 1
+                if cgi[1] in altfwd:
+                    skip += cgi[0]
             else:
-                return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
+                break
 
-        except IndexError:
-            print(sys.exc_info()[2])
-            print("ERROR: not removing more than sequence length, returning None")
-            print(f"ERROR: occurred in get_removed of {n} on Cigar {self}")
-            return None
+        # remaining skip must be < 1 in a fwd-region
+        # construct the new return cigar, without altering self
+        cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+        if cgi[1] in altfwd:
+            skip += n
+
+        if start:
+            return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
+        else:
+            return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
+
+        #except IndexError:
+        #    print("ERROR: not removing more than sequence length, returning None")
+        #    print(f"ERROR: occurred in get_removed of {n} on Cigar {self}")
+        #    return None
 
     def __repr__(self):
         return f"Cigar({self.pairs})"
