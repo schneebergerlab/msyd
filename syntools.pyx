@@ -190,6 +190,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=True, allow_overlap=False
     rightest = l if l.ref.end > r.ref.end else r
 
     ret = set() # use a set to automatically remove duplicates
+    ret = []
 
     if detect_crosssyn:
         if allow_overlap:
@@ -198,7 +199,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=True, allow_overlap=False
             ret.add(leftest.drop(0, leftest.ref.end - ovstart))
     
     # core synteny
-    ret.add(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
+    ret.append(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
 
     if detect_crosssyn:
         if allow_overlap:
