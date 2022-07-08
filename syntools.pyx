@@ -161,8 +161,13 @@ class Pansyn:
             ranges = deque()
             cigars = deque()
             for rng, cg in zip(self.ranges, self.cigars):
-                start, cg = cg.get_removed(start, start=True, ref=True)
-                end, cg = cg.get_removed(end, start=False, ref=True)
+                try:
+                    start, cg = cg.get_removed(start, start=True, ref=True)
+                    end, cg = cg.get_removed(end, start=False, ref=True)
+                except ValueError:
+                    print("ERROR: invalid input to cg.get_removed. Check if start, end are correct!")
+                    continue
+
                 ranges.append(rng.drop(start, end))
                 cigars.append(cg)
         return Pansyn(ref, ranges, cigars)

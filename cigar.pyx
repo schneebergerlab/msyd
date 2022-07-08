@@ -141,7 +141,7 @@ class Cigar:
             traceback.print_exc()
             print("ERROR: not removing more than sequence length, returning None")
             print(f"ERROR: occurred in get_removed of {n} on Cigar {self}")
-            return None
+            raise ValueError("invalid skip")
 
     def __repr__(self):
         return f"Cigar({self.pairs})"
