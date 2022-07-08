@@ -11,7 +11,7 @@ from cigar import Cigar
 import functools
 from collections import deque
 
-MIN_SYN_THRESH = 50
+MIN_SYN_THRESH = 0
 
 
 # these classes form a part of the general SV format
