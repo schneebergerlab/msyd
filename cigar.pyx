@@ -142,7 +142,7 @@ class Cigar:
         except IndexError:
             traceback.print_exc()
             print("ERROR: not removing more than sequence length, returning None")
-            print(f"ERROR: occurred in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)}")
+            print(f"ERROR: occurred in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
             raise ValueError("invalid skip")
 
     def __repr__(self):
