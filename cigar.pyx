@@ -138,7 +138,7 @@ class Cigar:
                 return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
 
         except IndexError:
-            print(sys.exc_info())
+            print(sys.exc_info()[2])
             print("ERROR: not removing more than sequence length, returning None")
             print(f"ERROR: occurred in get_removed of {n} on Cigar {self}")
             return None
