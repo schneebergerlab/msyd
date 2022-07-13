@@ -2,7 +2,7 @@
 # in python, probably not worth cythonizing
 
 import pansyn
-import Cigar from cigar
+#import Cigar from cigar
 
 import logging
 import logging.config
