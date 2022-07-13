@@ -142,6 +142,13 @@ class Pansyn:
     def degree(self):
         return len(self.ranges)
 
+    def iter_ranges(self):
+        return iter(self.ranges)
+
+    def iter_organisms(self):
+        for rng in self.iter_ranges():
+            yield rng.organism
+
     def __add__(self, other):
         """
         Convenience function to concatenate two `Pansyn` objects
