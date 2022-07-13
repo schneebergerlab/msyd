@@ -104,24 +104,20 @@ class Cigar:
         # two sets containing the CIGAR codes incrementing one or the other strand
         fwd = reffwd if ref else qryfwd 
         altfwd = qryfwd if ref else reffwd
-        log = ""
+        rem = n # tally how much still left to remove
         
 
         # loop and remove regions as long as the skip is more than one region
         try:
             while ind < len(self.pairs):
                 cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-                log += f"{ind}\n"
-                #print(ind, cgi, n, skip)
                 if cgi[1] not in fwd:
-                    log += "triggered fwd clause"
                     ind += 1
                     if cgi[1] in altfwd:
                         skip += cgi[0]
                 # this region counts towards n, determine if it can be removed or is too large
-                elif n >= cgi[0]:
-                    log += "triggered other clause"
-                    n -= cgi[0]
+                elif rem >= cgi[0]:
+                    rem -= cgi[0]
                     ind += 1
                     if cgi[1] in altfwd:
                         skip += cgi[0]
@@ -130,12 +126,12 @@ class Cigar:
 
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             if cgi[1] in altfwd:
-                skip += n
+                skip += rem
 
             if start:
-                return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
+                return (skip, Cigar([[cgi[0]-rem, cgi[1]]] + self.pairs[ind+1:]))
             else:
-                return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
+                return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
 
         except IndexError:
             traceback.print_exc()
