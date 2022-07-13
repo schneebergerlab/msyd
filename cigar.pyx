@@ -118,8 +118,6 @@ class Cigar:
                     ind += 1
                     if cgi[1] in altfwd:
                         skip += cgi[0]
-                    continue
-                # try elif?
                 # this region counts towards n, determine if it can be removed or is too large
                 elif n >= cgi[0]:
                     log += "triggered other clause"
@@ -130,13 +128,6 @@ class Cigar:
                 else:
                     break
 
-            # remaining skip must be < 1 in a fwd-region
-            # construct the new return cigar, without altering self
-            if ind == len(self.pairs):
-                print("FOUND IT!!!")
-                # for some reason, ind is reaching the length limit when it really shouldn't.
-                # doesn't seem to affect function in any way (same output as on main branch)
-                # but annoying, and maybe was missing pansyn before?
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             if cgi[1] in altfwd:
                 skip += n
@@ -148,7 +139,6 @@ class Cigar:
 
         except IndexError:
             traceback.print_exc()
-            print(log)
             print("ERROR: not removing more than sequence length, returning None")
             print(f"ERROR: occurred in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
             raise ValueError("invalid skip")
