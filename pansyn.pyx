@@ -436,9 +436,9 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != pansyn.cgs[0].get_len(ref=True):
+            if len(pansyn.ref) != pansyn.cigars[0].get_len(ref=True):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(pansyn.ranges[0]) != pansyn.cgs[0].get_len(ref=False):
+            if len(pansyn.ranges[0]) != pansyn.cigars[0].get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
 
 
@@ -452,9 +452,9 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != pansyn.cgs[0].get_len(ref=True):
+            if len(pansyn.ref) != pansyn.cigars[0].get_len(ref=True):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(pansyn.ranges[0]) != pansyn.cgs[0].get_len(ref=False):
+            if len(pansyn.ranges[0]) != pansyn.cigars[0].get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
 
     #print(syns)
