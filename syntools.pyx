@@ -165,7 +165,7 @@ class Pansyn:
                     start, cg = cg.get_removed(start, start=True, ref=True)
                     end, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
-                    print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on a Range with start {self.start} and end {self.end}. Check if start, end are correct!")
+                    print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on a Range with start {rng.start} and end {rng.end}. Check if start, end are correct!")
                     continue
 
                 ranges.append(rng.drop(start, end))
