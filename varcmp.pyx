@@ -20,7 +20,7 @@ def get_snps(syri, rngs):
     pass
 
 # idea from manish: check equality between SVs by neighbourhood pansyntenic regions
-def get_pansyn_neighbours(rng: Range, pansyns, ref=True):
+def get_pansyn_neighbours(rng: Range, pansyns, ref=True, overlapping=True):
     """
     Given a `Range` and a list of pansyntenic regions (as `Pansyn`), returns the regions neighbouring or overlapping with that region on the organism specified in the `Range`.
     :returns: a list of `Pansyn` objects
