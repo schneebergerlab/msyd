@@ -434,7 +434,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
 
     print(syns)
     for syn in syns:
-        for pansyn in syn.iterrows:
+        for pansyn in syn.iterrows():
             pansyn = pansyn[1]
             # at this point, each pansyn should only have a reference and one query region
             if len(pansyn.ref) != pansyn.cgs[0].get_len(ref=True):
