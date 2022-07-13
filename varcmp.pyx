@@ -17,5 +17,6 @@ def get_snps(syri, pansyns):
     :returns:
         A dictionary mapping a `Pansyn` to a dictionary containing the corresponding SNPs identified on it for each organism that `Pansyn` has a position in.
     """
+    # idea from manish: check equality between SVs by neighbourhood pansyntenic regions
     pass
 

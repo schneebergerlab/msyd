@@ -212,6 +212,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
     # core synteny
     ret.add(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
     # this sometimes tries to drop more than a range has – maybe handle this properly somehow?
+    # idea from manish: check if cigar string length also corresponds to length in query, to check for errors in code/data
 
     if detect_crosssyn:
         if allow_overlap:
