@@ -204,6 +204,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
     
     # core synteny
     ret.add(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
+    # this sometimes tries to drop more than a range has – maybe handle this properly somehow?
 
     if detect_crosssyn:
         if allow_overlap:
