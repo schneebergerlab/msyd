@@ -5,8 +5,7 @@ import numpy
 
 setup(ext_modules = cythonize([
             Extension('ingest', ['ingest.pyx'], include_dirs=[numpy.get_include()]),
-            Extension('coresyn', ['coresyn.pyx']),
-            Extension('syntools', ['syntools.pyx']),
+            Extension('pansyn', ['pansyn.pyx']),
             Extension('util', ['util.pyx']),
             Extension('cigar', ['cigar.pyx'])
             ]),

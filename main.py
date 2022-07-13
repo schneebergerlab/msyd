@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import syntools
+import pansyn
 import coresyn
 
 import logging
@@ -18,9 +18,9 @@ Experimental and WIP.
 """
 
 def coresyn_from_tsv(path, **kwargs):
-    return syntools.find_multisyn(*syntools.parse_input_tsv(path), detect_crosssyn=False, **kwargs)
+    return pansyn.find_multisyn(*pansyn.parse_input_tsv(path), detect_crosssyn=False, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    return syntools.find_multisyn(*syntools.parse_input_tsv(path), detect_crosssyn=True, **kwargs)
+    return pansyn.find_multisyn(*pansyn.parse_input_tsv(path), detect_crosssyn=True, **kwargs)
 
 
 df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
