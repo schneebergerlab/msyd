@@ -431,13 +431,36 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     #print(alns)
 
     syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, alns)))
-    
+
+    print(syns)
+    for syn in syns:
+        for pansyn in syns.iterrows:
+            pansyn = pansyn[1]
+            # at this point, each pansyn should only have a reference and one query region
+            if len(pansyn.ref) != pansyn.cgs[0].get_len(ref=True):
+                print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
+            if len(pansyn.ranges[0]) != pansyn.cgs[0].get_len(ref=False):
+                print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
+
+
+
     # remove overlap
     for syn in syns:
         remove_overlap(syn)
+    print("INFO: overlap removed")
+
+    for syn in syns:
+        for pansyn in syns.iterrows:
+            pansyn = pansyn[1]
+            # at this point, each pansyn should only have a reference and one query region
+            if len(pansyn.ref) != pansyn.cgs[0].get_len(ref=True):
+                print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
+            if len(pansyn.ranges[0]) != pansyn.cgs[0].get_len(ref=False):
+                print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
 
     #print(syns)
 
+    i = 1/0 # force termination
     pansyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)
     if cores > 1:
