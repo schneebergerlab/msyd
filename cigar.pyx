@@ -110,10 +110,11 @@ class Cigar:
         try:
             while ind < len(self.pairs):
                 cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-                print(ind)
+                log = ""
+                log += f"{ind}\n"
                 #print(ind, cgi, n, skip)
                 if cgi[1] not in fwd:
-                    print("triggered fwd clause")
+                    log += "triggered fwd clause"
                     ind += 1
                     if cgi[1] in altfwd:
                         skip += cgi[0]
@@ -121,7 +122,7 @@ class Cigar:
                 # try elif?
                 # this region counts towards n, determine if it can be removed or is too large
                 elif n >= cgi[0]:
-                    print("triggered other clause")
+                    log += "triggered other clause"
                     n -= cgi[0]
                     ind += 1
                     if cgi[1] in altfwd:
@@ -147,6 +148,7 @@ class Cigar:
 
         except IndexError:
             traceback.print_exc()
+            print(log)
             print("ERROR: not removing more than sequence length, returning None")
             print(f"ERROR: occurred in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
             raise ValueError("invalid skip")
