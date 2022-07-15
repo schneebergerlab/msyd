@@ -456,6 +456,10 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
             if len(pansyn.ranges[0]) != pansyn.cigars[0].get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
+            
+            #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
+            #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
+            #TODO weird bug: try with PAF files, they are guaranteed to be exact alignments, maybe that is the reason??
 
     #print(syns)
 
