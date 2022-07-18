@@ -284,63 +284,7 @@ if __name__ == "__main__":
 
     for x in sys.argv[1:]:
         cg = Cigar.from_string(x)
+
         print(cg)
-        print(cg.get_removed(10), cg.get_removed_legacy(10), sep='\n')
-        print(cg.get_removed(10, ref=False), cg.get_removed_legacy(10, ref=False), sep='\n')
-        print(cg.get_removed(10, start=False), cg.get_removed_legacy(10, start=False), sep='\n')
-        print(cg.get_removed(10, start=False, ref=False), cg.get_removed_legacy(10, start=False, ref=False), sep='\n')
-
-        
-    
-
-    sys.exit()
-    import ingest
-    
-    print(Cigar.from_full_string(sys.argv[1]).to_string())
-    sys.exit()
-
-    dfr = ingest.readSAMBAM(sys.argv[1])
-    dfq = ingest.readSAMBAM(sys.argv[2])
-    dfc = ingest.readSAMBAM(sys.argv[3])
-
-    rowr = dfr.loc[0]
-    rowq = dfq.loc[1]
-    rowc = dfc.loc[1]
-
-    print(rowr)
-    print(rowq)
-    print(rowc)
-
-
-    # find the overlap
-    start = max(rowr['astart'], rowq['astart'], rowc['astart'])
-    end = min(rowr['aend'], rowq['aend'], rowc['aend'])
-    print(start, end)
-
-    strskpr, endskpr = start - rowr['astart'], rowr['aend'] - end
-    strskpq, endskpq = start - rowq['astart'], rowq['aend'] - end
-    strskpc, endskpc = start - rowc['astart'], rowc['aend'] - end
-
-    # QUERY sequences
-    sqr = dfr.loc[0, 'seq'][strskpr:-endskpr-1]
-    sqq = dfq.loc[1, 'seq'][strskpq:-endskpq-1]
-    sqc = dfc.loc[1, 'seq'][strskpc:-endskpc-1]
-
-    cgr = Cigar.from_string(dfr.loc[0, 'cg']).get_removed(strskpr)[1].get_removed(endskpr, start=False)[1]
-    cgq = Cigar.from_string(dfq.loc[1, 'cg']).get_removed(strskpq)[1].get_removed(endskpq, start=False)[1]
-    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(strskpc)[1].get_removed(endskpc, start=False)[1]
-    
-    assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
-
-    cgi = Cigar.impute(cgr, cgq)
-
-    # prettyprint
-    cgcstr = cgc.to_full_string()
-    cgistr = cgi.to_full_string()
-    #for n in range(79, len(cgcstr), 79):
-        #if all([cgistr[i]==cgcstr[i] and cgcstr[i]=='=' for i in range(n-79,n)]):
-        #    continue
-    #    print(">", cgcstr[n-79:n])
-    #    print("<", cgistr[n-79:n])
-
-
+        print("len on ref:", cg.get_len())
+        print("len on qry:", cg.get_len(ref=False))
