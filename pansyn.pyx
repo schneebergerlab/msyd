@@ -449,10 +449,12 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     for syn in syns:
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
+            cg = list(pansyn.cigars_dict.values())[0]
+            rng = list(pansyn.ranges_dict.values())[0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != pansyn.cigars_dict[0].get_len(ref=True):
+            if len(pansyn.ref) != cg.get_len(ref=True):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(pansyn.ranges_dict.values()[0]) != pansyn.cigars_dict[0].get_len(ref=False):
+            if len(rng) != cg.get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
 
 
@@ -465,10 +467,12 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     for syn in syns:
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
+            cg = list(pansyn.cigars_dict.values())[0]
+            rng = list(pansyn.ranges_dict.values())[0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != pansyn.cigars_dict[0].get_len(ref=True):
+            if len(pansyn.ref) != cg.get_len(ref=True):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(pansyn.ranges_dict.values()[0]) != pansyn.cigars_dict[0].get_len(ref=False):
+            if len(rng) != cg.get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
             
             #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
