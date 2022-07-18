@@ -33,20 +33,22 @@ def get_pansyn_neighbours(rng: Range, pansyns, ref=True, overlapping=True):
         print("WARN: get_pansyn_neighbours called with just one pansyn, returning as neighbours!")
         return pansyns
 
-    org = rng.org # for now uses only reference, TODO properly use organism, maybe with refactor to dictionary in Pansyn?
+    org = rng.org
     ret = []
     prev = None
     paniter = iter(pansyns.ranges)
     prev = next(paniter)
     cur = next(paniter)
     try:
-        while cur.ref.end < rng.start:
+        while cur.ref.end < rng.start if ref else cur.ranges_dict[org].end < rng.start: # maybe TODO refactor to use more elegant polymorphism than ternaries?
             prev = cur
             cur = next(paniter)
 
         ret.append(prev) # left neighbour
         del prev # no longer need to save previous values
-        while cur.ref.start < rng.end:
+        
+        # get overlapping 'neighbours'
+        while cur.ref.start < rng.end if ref else cur.ranges_dict[org].start < rng.end:
             if overlapping:
                 ret.append(cur)
             cur = next(paniter)
