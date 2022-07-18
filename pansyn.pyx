@@ -10,6 +10,7 @@ import util
 from cigar import Cigar
 import functools
 from collections import deque
+import copy
 
 MIN_SYN_THRESH = 0
 
@@ -101,30 +102,32 @@ class Range:
 class Pansyn:
     """
     A class representing a region syntenic among a set of genomes.
-    The parameter `ranges` is a list of genomic `synctools.Range`es storing the locations this syntenic regions has on each organism.
-    This list cannot be None and should contain an entry for every genome being compared.
+    The parameter `ranges_dict` is a dictionary of genomic `synctools.Range`es storing the location this syntenic region has on each organism.
+    This dictionary cannot be None.
     Other attributes are `ref`, which stores the position on the reference -- this attribute can be `None` if using a reference-free algorithm, but none have been implemented so far.
-    `cigars` contains a list of `cigar.Cigar` objects corresponding to the alignment of each position to the reference.
+    `cigars_dict` contains a dictionary of `cigar.Cigar` objects corresponding to the alignment of each `Range` to the reference.
     The attribute can be `None` if using approximate position calculation (usually for performance/memory reasons).\n
-    Indices in `cigars` correspond with indices in `ranges`.
-    In the future, `cigars` may also be used for storing pairwise alignments of the core syntenic regions to each other.
+    Keys in `cigars_dict` correspond with indices in `ranges_dict`.\n
+    In the future, `cigars_dict` may also be used for storing pairwise alignments of the core syntenic regions to each other.
     Also, a separate field for an MSA may be added.
 
     Pansyn implements comparison operators to enable sorting according to the end on the reference.
     For sorting, the `ref` field needs to be set.
 
     """
-    # ranges, cigars have type List[Range]/List[Cigar], respectively, but cython cannot deal with generic type hints
-    def __init__(self, ref:Range, ranges, cigars):
+    # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
+    def __init__(self, ref:Range, ranges_dict, cigars_dict):
+        if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
+            raise ValueError("ERROR: Trying to initialise Pansyn with ranges_dict not matching cigars_dict!")
         self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
-        self.ranges = ranges
-        self.cigars = cigars # length equal to ranges; optional if using approximate matching
+        self.ranges_dict = ranges_dict
+        self.cigars_dict = cigars_dict # optional if using approximate matching
 
     def __repr__(self):
-        return f"Pansyn({self.ref}, {self.ranges})"
+        return f"Pansyn({self.ref}, {self.ranges_dict})"
 
     def __eq__(l, r):
-        return l.ref == r.ref and l.ranges == r.ranges and l.cigars == r.cigars
+        return l.ref == r.ref and l.ranges_dict == r.ranges_dict and l.cigars_dict == r.cigars_dict
         
     # for now, only sorts on the reference (falling back to the Range comparison operator)
     def __lt__(l, r):
@@ -133,51 +136,57 @@ class Pansyn:
         return l.ref < r.ref
 
     def __hash__(self):
-        return hash(self.ref)# + hash(self.ranges) + hash(self.cigars) # caused problems with deque
+        return hash(self.ref)# + hash(self.ranges_dict) + hash(self.cigars_dict) # caused problems with deque
 
     def add(self, rng:Range, cg: Cigar):
-        self.ranges.append(rng)
-        self.cigars.append(cg)
+        self.ranges_dict[rng.org] = rng
+        if cg:
+            if self.cigars_dict:
+                self.cigars_dict[rng.org] = cg
+            else:
+                print("WARNING: attempted to add cigar to Pansyn without cigars_dict, ignoring")
 
     def degree(self):
-        return len(self.ranges)
+        return len(self.ranges_dict)
 
-    def iter_ranges(self):
-        return iter(self.ranges)
+    def get_organisms(self):
+        return self.ranges_dict.keys()
 
-    def iter_organisms(self):
-        for rng in self.iter_ranges():
-            yield rng.organism
+    def get_ranges(self):
+        return self.ranges_dict.values()
 
     def __add__(self, other):
         """
-        Convenience function to concatenate two `Pansyn` objects
+        Convenience function to concatenate two `Pansyn` objects.
+        Uses a shallow copy of the cigar/range to stay without side effects.
         """
-        return Pansyn(self.ref, self.ranges + other.ranges, self.cigars + other.cigars)
+        rngs = copy.copy(self.ranges_dict).update(other.ranges_dict)
+        cgs = copy.copy(self.cigars_dict).update(other.cigars_dict)
+        return Pansyn(self.ref, rngs, cgs)
 
     def drop(self, start, end):
         """
         Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed, respecting cigar alignments if not `None`.
         """
         ref = self.ref.drop(start, end)
-        ranges = None
-        cigars = None
-        if not self.cigars:
-            ranges = [rng.drop(start, end) for rng in self.ranges]
+        ranges_dict = dict()
+        cigars_dict = None
+        if not self.cigars_dict:
+            ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items()}
         else:
-            ranges = deque()
-            cigars = deque()
-            for rng, cg in zip(self.ranges, self.cigars):
+            for org, rng in self.ranges_dict.items():
+                cigars_dict = dict()
+                cg = self.cigars_dict[org]
                 try:
                     start, cg = cg.get_removed(start, start=True, ref=True)
                     end, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
                     print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on a Range with start {rng.start} and end {rng.end}. Check if start, end are correct!")
                     continue
+                ranges_dict[org] = rng.drop(start, end)
+                cigars_dict[org] = cg
 
-                ranges.append(rng.drop(start, end))
-                cigars.append(cg)
-        return Pansyn(ref, ranges, cigars)
+        return Pansyn(ref, ranges_dict, cigars_dict)
 
 
 
@@ -191,6 +200,10 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
     `allow_overlap` specifies whether pansyntenic regions are allowed to overlap, in essence outputting the input regions as-is.
     Output may be non-associative and non-commutative if set to `True`.
     """
+
+    if not l.ref and not r.ref:
+        raise ValueError("ERROR: calc_overlap can only be called on two Pansyns with references!")
+
     # compute overlap
     ovstart = max(l.ref.start, r.ref.start)
     ovend = min(l.ref.end, r.ref.end)
@@ -243,8 +256,9 @@ def match_synal(syn, aln, ref='a'):
     alnr = next(alniter)[1]
     while True:
         try:
+            org = synr[1].org
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                ret.append(Pansyn(ref=synr[0], ranges=[synr[1]], cigars=[Cigar.from_string(alnr['cg'])]))
+                ret.append(Pansyn(ref=synr[0], ranges_dict={org:synr[1]}, cigars_dict={org:Cigar.from_string(alnr['cg'])}))
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
@@ -314,10 +328,10 @@ def remove_overlap(syn):
         # this performs essentially the same function as compute_overlap
         # in intersect_syns
         cur.ref.start += ov
-        for ind, cg in enumerate(cur.cigars):
+        for org, cg in cur.cigars_dict.items():
             drop, cgnew = cg.get_removed(ov, start=True)
-            cur.cigars[ind] = cgnew
-            cur.ranges[ind].start += drop
+            cur.cigars_dict[org] = cgnew
+            cur.ranges_dict[org].start += drop
 
         prev = cur
 
@@ -436,9 +450,9 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != pansyn.cigars[0].get_len(ref=True):
+            if len(pansyn.ref) != pansyn.cigars_dict[0].get_len(ref=True):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(pansyn.ranges[0]) != pansyn.cigars[0].get_len(ref=False):
+            if len(pansyn.ranges_dict.values()[0]) != pansyn.cigars_dict[0].get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
 
 
@@ -452,9 +466,9 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != pansyn.cigars[0].get_len(ref=True):
+            if len(pansyn.ref) != pansyn.cigars_dict[0].get_len(ref=True):
                 print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(pansyn.ranges[0]) != pansyn.cigars[0].get_len(ref=False):
+            if len(pansyn.ranges_dict.values()[0]) != pansyn.cigars_dict[0].get_len(ref=False):
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
             
             #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
