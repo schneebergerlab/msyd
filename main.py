@@ -54,9 +54,52 @@ def parse_input_tsv(path):
     return (syris, alns)
 
 
+#import math
+
+def syn_score(syri):
+    """
+    Defines a distance metric from syri output.
+    Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
+    """
+    syns = pansyn.extract_regions(syri, ann='SYN')
+    return sum(map(lambda x: len(x[1][0]), df1.iterrows()))
+
+def order_plotsr_greedy(orgs, score=syn_score, filename_mapper=lambda x, y: x+y+"syri.out"):
+    """
+    A simple, greedy algorithm ordering a list of organisms while trying to maximize the similarity score between each organism and the next one.
+    :params:
+        orgs is a sequence of organism/filenames
+        score sets the similarity score to use, by default `syn_score`. The scoring function needs to accept the filename of a syri.out file as output.
+        filename_mapper turns the names of two organisms into the filename of the corresponding syri output.
+    :returns: a list containing the elements of orgs ordered according to the algorithm.
+    """
+    orgs = set(orgs)
+
+    cur = list(orgs)[0] # arbitrarily choose start point
+    order = [cur]
+    orgs.remove(cur)
+
+    while orgs:
+        # find the next organism with maximal similarity score to this one
+        max_score = 0# math.inf
+        for org in orgs:
+            score = dist(filename_mapper(start, org))
+            if score > max_score:
+                max_score = distval
+                cur = org
+
+        orgs.remove(cur)
+        order.append(cur)
+
+    return order
+
+
+
+
 df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
 #print(df1.to_string())
 print("regions:", len(df1))
 print("total lengths:", sum(map(lambda x: x[1][0].ref.end-x[1][0].ref.start, df1.iterrows())))
+
 
 
