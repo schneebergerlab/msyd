@@ -84,7 +84,7 @@ class Range:
         return False
 
     def __len__(self):
-        return self.end - self.start
+        return self.end - self.start + 1 # start is inclusive
 
     def __hash__(self):
         return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.start) + hash(self.end)
