@@ -415,32 +415,20 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
 
     syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, alns)))
 
-    counter = 0
-
     for syn in syns:
-        if counter > 50:
-            print("reached 50 ERRORERRORs, skipping")
-            break
         for pansyn in syn.iterrows():
-            if counter > 50: # ensure that we do not breach the limit
-                break
             pansyn = pansyn[1][0]
             cg = list(pansyn.cigars_dict.values())[0]
             rng = list(pansyn.ranges_dict.values())[0]
             # at this point, each pansyn should only have a reference and one query region
             if len(pansyn.ref) != cg.get_len(ref=True):
-                counter += 1
                 print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)} does not match reference length in {pansyn}")
                 #print(cg)
             if len(rng) != cg.get_len(ref=False):
-                counter += 1
                 print(f"ERRORERRROR: cigar string length {cg.get_len(ref=False)} does not match query length in {pansyn}")
                 print(cg)
     #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
     #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
-
-    i = 1/0 # force termination
-
 
     # remove overlap
     for syn in syns:
