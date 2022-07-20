@@ -85,7 +85,7 @@ def order_plotsr_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x
         for org in orgs:
             score = score_fn(filename_mapper(cur, org))
             if score > max_score:
-                max_score = distval
+                max_score = score
                 cur = org
 
         orgs.remove(cur)
