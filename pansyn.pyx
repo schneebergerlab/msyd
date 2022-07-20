@@ -465,7 +465,11 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
             if len(rng) != cg.get_len(ref=False):
                 counter += 1
                 print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
+    #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
+    #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
+    # its not the overlap, it also occurs in PAF
 
+    i = 1/0 # force termination
 
 
     # remove overlap
@@ -473,31 +477,6 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
         remove_overlap(syn)
     print("INFO: overlap removed")
 
-    for syn in syns:
-        if counter > 100:
-            print("reached 100 ERRORERRORs, skipping")
-            break
-        for pansyn in syn.iterrows():
-            if counter > 100: # ensure that we do not breach the limit
-                break
-            pansyn = pansyn[1][0]
-            cg = list(pansyn.cigars_dict.values())[0]
-            rng = list(pansyn.ranges_dict.values())[0]
-            # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != cg.get_len(ref=True):
-                counter += 1
-                print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
-            if len(rng) != cg.get_len(ref=False):
-                counter += 1
-                print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
-            
-            #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
-            #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
-            #TODO weird bug: try with PAF files, they are guaranteed to be exact alignments, maybe that is the reason??
-
-    #print(syns)
-
-    i = 1/0 # force termination
     pansyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)
     if cores > 1:
