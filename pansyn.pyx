@@ -461,13 +461,12 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
             # at this point, each pansyn should only have a reference and one query region
             if len(pansyn.ref) != cg.get_len(ref=True):
                 counter += 1
-                print(f"ERRORERRROR: cigar string does not match reference length in {pansyn}")
+                print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)} does not match reference length in {pansyn}")
             if len(rng) != cg.get_len(ref=False):
                 counter += 1
-                print(f"ERRORERRROR: cigar string does not match query length in {pansyn}")
+                print(f"ERRORERRROR: cigar string length {cg.get_len(ref=False)} does not match query length in {pansyn}")
     #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
     #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
-    # its not the overlap, it also occurs in PAF
 
     i = 1/0 # force termination
 
