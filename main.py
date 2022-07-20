@@ -94,7 +94,9 @@ def order_plotsr_greedy(orgs, score=syn_score, filename_mapper=lambda x, y: x+y+
     return order
 
 
-
+orgs = sys.argv[1:]
+print(order_plotsr_greedy(orgs))
+sys.exit()
 
 df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
 #print(df1.to_string())
