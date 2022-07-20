@@ -64,7 +64,7 @@ def syn_score(syri):
     syns = pansyn.extract_regions(syri, ann='SYN')
     return sum(map(lambda x: len(x[1][0]), df1.iterrows()))
 
-def order_plotsr_greedy(orgs, score=syn_score, filename_mapper=lambda x, y: x+'_'+y+"syri.out"):
+def order_plotsr_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x+'_'+y+"syri.out"):
     """
     A simple, greedy algorithm ordering a list of organisms while trying to maximize the similarity score between each organism and the next one.
     :params:
@@ -83,7 +83,7 @@ def order_plotsr_greedy(orgs, score=syn_score, filename_mapper=lambda x, y: x+'_
         # find the next organism with maximal similarity score to this one
         max_score = 0# math.inf
         for org in orgs:
-            score = dist(filename_mapper(start, org))
+            score = score_fn(filename_mapper(start, org))
             if score > max_score:
                 max_score = distval
                 cur = org
