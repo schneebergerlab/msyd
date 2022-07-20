@@ -27,7 +27,8 @@ class Neighbourhood:
     All of `left`, `right` and `overlapping` can be `None`; this means that the neighbourhood is at the leftmost/rightmost edge of a chromosome or that no overlap information is stored, respectively.
     If overlap information is stored, but there are no overlaps, `[]` should be used instead.
     """
-    def __init__(self, left: Pansyn, right: Pansyn, overlapping):
+    def __init__(self, region:Range, left: Pansyn, right: Pansyn, overlapping):
+        self.region = region
         self.left = left
         self.right = right
         self.overlapping = overlapping
@@ -35,6 +36,15 @@ class Neighbourhood:
     def __eq__(l, r):
         # do not check for overlapping
         return l.left == r.left and l.right == r.right
+
+    ## these two functions compute the gap between the region and the left/right neighbour
+    ## 
+    def get_left_gap(self):
+        return min(self.region.start, self.region.end) - self.left.ranges_dict[self.region.org].end # max/min because region could be inverted if dealing with inversions.
+    #TODO maybe refactor that into Range as a get_leftest/get_rightest function?
+
+    def get_right_gap(self):
+        return self.right.ranges_dict[self.region.org].start - max(self.region.end, self.region.start)
 
     def dist(l, r):
         # TODO implement a distance function between two neighbourhood objects
@@ -81,4 +91,4 @@ class Neighbourhood:
         except StopIteration:
             print("WARN: get_pansyn_neighbours found rng to be right of all pansyntenic regions! Double-Check if calling with the right set of pansyns")
 
-        return Neighbourhood(left, right, overlapping)
+        return Neighbourhood(rng, left, right, overlapping)
