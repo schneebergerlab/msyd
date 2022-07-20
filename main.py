@@ -62,7 +62,7 @@ def syn_score(syri):
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
     syns = pansyn.extract_regions(syri, ann='SYN')
-    return sum(map(lambda x: len(x[1][0]), df1.iterrows()))
+    return sum(map(lambda x: len(x[1][0]), syns.iterrows()))
 
 def order_plotsr_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x+'_'+y+"syri.out"):
     """
