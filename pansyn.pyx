@@ -259,6 +259,8 @@ def match_synal(syn, aln, ref='a'):
         try:
             org = synr[1].org
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
+                if synr[1] == None:
+                    print(synr, alnr)
                 ret.append(Pansyn(ref=synr[0], ranges_dict={org:synr[1]}, cigars_dict={org:Cigar.from_string(alnr['cg'])}))
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
