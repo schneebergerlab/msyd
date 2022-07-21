@@ -101,7 +101,7 @@ if sys.argv[1] == 'order':
 df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1)
 #print(df1.to_string())
 print("regions:", len(df1))
-print("total lengths:", sum(map(lambda x: len(x[1][0]), df1.iterrows())))
+print("total lengths:", sum(map(lambda x: len(x[1][0].ref), df1.iterrows())))
 
 
 
