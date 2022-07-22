@@ -184,8 +184,8 @@ class Pansyn:
         if not self.cigars_dict:
             ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items()}
         else:
+            cigars_dict = dict()
             for org, rng in self.ranges_dict.items():
-                cigars_dict = dict()
                 cg = self.cigars_dict[org]
                 try:
                     start, cg = cg.get_removed(start, start=True, ref=True)
@@ -195,12 +195,6 @@ class Pansyn:
                     continue
                 ranges_dict[org] = rng.drop(start, end)
                 cigars_dict[org] = cg
-
-        if ranges_dict.keys() != cigars_dict.keys():
-            print("triggered trap in drop")
-            print(self, start, end)
-            print(self.ranges_dict, self.cigars_dict)
-            print(ranges_dict, cigars_dict)
 
         return Pansyn(ref, ranges_dict, cigars_dict)
 
