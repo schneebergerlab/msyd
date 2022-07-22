@@ -171,7 +171,8 @@ class Pansyn:
         ref = self.ref.drop(start, end)
         ranges_dict = dict()
         cigars_dict = None
-        print(self)
+        if not self.ranges_dict:
+            print(self)
         if not self.cigars_dict: # for some reason there is a None self.ranges_dict. TODO debug!
             ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items()}
         else:
