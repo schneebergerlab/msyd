@@ -40,11 +40,14 @@ class Neighbourhood:
     ## these two functions compute the gap between the region and the left/right neighbour
     ## 
     def get_left_gap(self):
-        return min(self.region.start, self.region.end) - self.left.ranges_dict[self.region.org].end # max/min because region could be inverted if dealing with inversions.
-    #TODO maybe refactor that into Range as a get_leftest/get_rightest function?
+        # use left/rightmost because region could be inverted
+        return self.region.get_leftmost() - self.left.ranges_dict[self.region.org].end
 
     def get_right_gap(self):
-        return self.right.ranges_dict[self.region.org].start - max(self.region.end, self.region.start)
+        return self.right.ranges_dict[self.region.org].start - self.region.get_rightmost()
+
+    def get_gaps(self):
+        return self.get_left_gap(), self.get_right_gap()
 
     def dist(l, r):
         # TODO implement a distance function between two neighbourhood objects

@@ -5,7 +5,6 @@
 import re
 import copy
 import itertools
-import traceback
 
 ## constants
 reffwd = set(['M', 'D', 'N', '=', 'X'])
@@ -134,9 +133,7 @@ class Cigar:
                 return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
 
         except IndexError:
-            traceback.print_exc()
-            print("ERROR: not removing more than sequence length, returning None")
-            print(f"ERROR: occurred in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
+            print(f"ERROR: tried to remove mor than sequence length in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
             raise ValueError("invalid skip")
 
     def __repr__(self):

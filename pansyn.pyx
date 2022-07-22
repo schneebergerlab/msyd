@@ -89,6 +89,12 @@ class Range:
     def __hash__(self):
         return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.start) + hash(self.end)
 
+    def get_rightmost(self):
+        return max(self.start, self.end)
+
+    def get_leftmost(self):
+        return min(self.start, self.end)
+
     def drop(self, start, end):
         """
         :param: 'start'/'end' specify how much to drop on each end.
@@ -178,6 +184,7 @@ class Pansyn:
         """
         Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed, respecting cigar alignments if not `None`.
         """
+        oldref = self.ref
         ref = self.ref.drop(start, end)
         ranges_dict = dict()
         cigars_dict = None
@@ -191,7 +198,10 @@ class Pansyn:
                     start, cg = cg.get_removed(start, start=True, ref=True)
                     end, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
-                    print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on a Range with start {rng.start} and end {rng.end}. Check if start, end are correct!")
+                    print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on {rng} (len: {len(rng)}). Check if start, end are correct!")
+                    if len(rng) < 2000:
+                        print("ref is:", ref, "was:", oldref)
+                        print("cigar was:", self.cigars_dict[org])
                     continue
                 ranges_dict[org] = rng.drop(start, end)
                 cigars_dict[org] = cg
