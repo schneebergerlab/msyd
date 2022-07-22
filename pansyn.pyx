@@ -190,10 +190,11 @@ class Pansyn:
                 try:
                     start, cg = cg.get_removed(start, start=True, ref=True)
                     end, cg = cg.get_removed(end, start=False, ref=True)
-                    ranges_dict[org] = rng.drop(start, end)
-                    cigars_dict[org] = cg
                 except ValueError:
                     print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on a Range with start {rng.start} and end {rng.end}. Check if start, end are correct!")
+                    continue
+                ranges_dict[org] = rng.drop(start, end)
+                cigars_dict[org] = cg
 
         return Pansyn(ref, ranges_dict, cigars_dict)
 
