@@ -118,7 +118,7 @@ class Pansyn:
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
     def __init__(self, ref:Range, ranges_dict, cigars_dict):
         if not ranges_dict:
-            raise ValueError("ERROR: Trying to initialiase Pansyn with no non-reference Range (ref: {ref})")
+            raise ValueError(f"ERROR: Trying to initialiase Pansyn with no non-reference Range (ref: {ref})")
         if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
             raise ValueError("ERROR: Trying to initialise Pansyn with ranges_dict not matching cigars_dict!")
         self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
@@ -162,10 +162,17 @@ class Pansyn:
         Convenience function to concatenate two `Pansyn` objects.
         Uses a shallow copy of the cigar/range to stay without side effects.
         """
-        rngs = copy.deepcopy(self.ranges_dict).update(other.ranges_dict)
+        rngs = copy.copy(self.ranges_dict)
+        rngs.update(other.ranges_dict)
         if rngs == None:
             print(self, other, rngs)
-        cgs = copy.deepcopy(self.cigars_dict).update(other.cigars_dict)
+
+        cgs = None
+        if self.cigars_dict and other.cigars_dict:
+            cgs = copy.copy(self.cigars_dict).update(other.cigars_dict)
+        elif self.cigars_dict or other.cigars_dict:
+            print(f"WARN: Trying to add two Pansyns {self}, {other} with one having CIGARs and one not! Discarding CIGARS!")
+
         return Pansyn(self.ref, rngs, cgs)
 
     def drop(self, start, end):
