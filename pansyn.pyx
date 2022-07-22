@@ -318,6 +318,8 @@ def remove_overlap(syn):
     syniter = syn.iterrows()
     prev = next(syniter)[1][0]
     for _, cur in syniter:
+        if not prev.ranges_dict:
+            print(prev)
         cur = cur[0]
         # check for overlap on the reference
         ov = prev.ref.end - cur.ref.start
