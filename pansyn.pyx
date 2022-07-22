@@ -120,7 +120,7 @@ class Pansyn:
         if not ranges_dict:
             raise ValueError(f"ERROR: Trying to initialiase Pansyn with no non-reference Range (ref: {ref})")
         if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
-            raise ValueError("ERROR: Trying to initialise Pansyn with ranges_dict not matching cigars_dict!")
+            raise ValueError(f"ERROR: Trying to initialise Pansyn with ranges_dict keys {ranges_dict.keys()} not matching cigars_dict keys {cigars_dict.keys()}!")
         self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
         self.ranges_dict = ranges_dict
         self.cigars_dict = cigars_dict # optional if using approximate matching
@@ -181,7 +181,7 @@ class Pansyn:
         ref = self.ref.drop(start, end)
         ranges_dict = dict()
         cigars_dict = None
-        if not self.cigars_dict: # for some reason there is a None self.ranges_dict. TODO debug!
+        if not self.cigars_dict:
             ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items()}
         else:
             for org, rng in self.ranges_dict.items():
