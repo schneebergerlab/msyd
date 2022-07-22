@@ -162,10 +162,10 @@ class Pansyn:
         Convenience function to concatenate two `Pansyn` objects.
         Uses a shallow copy of the cigar/range to stay without side effects.
         """
-        rngs = copy.copy(self.ranges_dict).update(other.ranges_dict)
+        rngs = copy.deepcopy(self.ranges_dict).update(other.ranges_dict)
         if rngs == None:
             print(self, other, rngs)
-        cgs = copy.copy(self.cigars_dict).update(other.cigars_dict)
+        cgs = copy.deepcopy(self.cigars_dict).update(other.cigars_dict)
         return Pansyn(self.ref, rngs, cgs)
 
     def drop(self, start, end):
