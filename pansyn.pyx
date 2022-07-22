@@ -164,12 +164,11 @@ class Pansyn:
         """
         rngs = copy.copy(self.ranges_dict)
         rngs.update(other.ranges_dict)
-        if rngs == None:
-            print(self, other, rngs)
 
         cgs = None
         if self.cigars_dict and other.cigars_dict:
-            cgs = copy.copy(self.cigars_dict).update(other.cigars_dict)
+            cgs = copy.copy(self.cigars_dict)
+            cgs.update(other.cigars_dict)
         elif self.cigars_dict or other.cigars_dict:
             print(f"WARN: Trying to add two Pansyns {self}, {other} with one having CIGARs and one not! Discarding CIGARS!")
 
@@ -182,8 +181,6 @@ class Pansyn:
         ref = self.ref.drop(start, end)
         ranges_dict = dict()
         cigars_dict = None
-        if not self.ranges_dict:
-            print(self)
         if not self.cigars_dict: # for some reason there is a None self.ranges_dict. TODO debug!
             ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items()}
         else:
@@ -329,8 +326,6 @@ def remove_overlap(syn):
     syniter = syn.iterrows()
     prev = next(syniter)[1][0]
     for _, cur in syniter:
-        if not prev.ranges_dict:
-            print(prev)
         cur = cur[0]
         # check for overlap on the reference
         ov = prev.ref.end - cur.ref.start
