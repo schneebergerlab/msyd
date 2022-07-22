@@ -196,6 +196,12 @@ class Pansyn:
                 ranges_dict[org] = rng.drop(start, end)
                 cigars_dict[org] = cg
 
+        if ranges_dict.keys() != cigars_dict.keys():
+            print("triggered trap in drop")
+            print(self, start, end)
+            print(self.ranges_dict, self.cigars_dict)
+            print(ranges_dict, cigars_dict)
+
         return Pansyn(ref, ranges_dict, cigars_dict)
 
 
