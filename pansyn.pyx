@@ -117,6 +117,8 @@ class Pansyn:
     """
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
     def __init__(self, ref:Range, ranges_dict, cigars_dict):
+        if not ranges_dict:
+            raise ValueError("ERROR: Trying to initialiase Pansyn with no non-reference Range (ref: {ref})")
         if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
             raise ValueError("ERROR: Trying to initialise Pansyn with ranges_dict not matching cigars_dict!")
         self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
