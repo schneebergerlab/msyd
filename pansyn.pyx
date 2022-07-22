@@ -163,6 +163,8 @@ class Pansyn:
         Uses a shallow copy of the cigar/range to stay without side effects.
         """
         rngs = copy.copy(self.ranges_dict).update(other.ranges_dict)
+        if rngs == None:
+            print(self, other, rngs)
         cgs = copy.copy(self.cigars_dict).update(other.cigars_dict)
         return Pansyn(self.ref, rngs, cgs)
 
