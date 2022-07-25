@@ -229,7 +229,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
     ovend = min(l.ref.end, r.ref.end)
     if not ovstart < ovend:
         print(f"WARNING: no overlap found between {l} and {r}, returning empty!")
-        return []
+        return set()
 
     leftest = l if l.ref.start < r.ref.start else r
     rightest = l if l.ref.end > r.ref.end else r
