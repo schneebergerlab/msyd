@@ -251,7 +251,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
         if allow_overlap:
             ret.add(rightest)
         else:
-            ret.add(rightest.drop(0, rightest.ref.end - ovstart))
+            ret.add(rightest.drop(rightest.ref.start - ovend, 0))
 
     return sorted(ret)
 
