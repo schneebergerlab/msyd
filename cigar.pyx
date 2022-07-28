@@ -37,7 +37,7 @@ class Cigar:
         Returns the number of bases covered by this Cigar in the reference or query genome.
         """
         s = reffwd if ref else qryfwd
-        return sum([i[0] for i in self.pairs if i[1] in s])
+        return sum([i[0] for i in self.pairs if i[1] in s and not i[1] in cig_clips])
 
     def __len__(self):
         return sum([i[0] for i in self.pairs])
