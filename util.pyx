@@ -5,6 +5,8 @@
 
 import functools
 import multiprocessing
+from cigar import Cigar
+import pandas as pd
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?
@@ -24,5 +26,4 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     p2.join()
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
-
 

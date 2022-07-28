@@ -643,3 +643,6 @@ def readsyriout(f):
         chrid_dict[i] = np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]
     df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
     return df, chrid_dict
+
+
+
