@@ -417,7 +417,7 @@ def find_overlaps(left, right, **kwargs):
     return pd.DataFrame(data=list(ret))
 
 
-def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
+def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=False, **kwargs):
     """
     Finds core and cross-syntenic regions in the input files, depending on if the parameter `detect_crossyn` that is ultimately passed on to `calc_overlap` is set to `True`.
     Fairly conservative.
@@ -427,7 +427,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syns = extract_regions_to_list(syris, ann="SYNAL")
+    syns = extract_regions_to_list(syris, ann="SYNAL" if SYNAL else "SYN")
 
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
@@ -438,7 +438,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
             'paf': ingest.readPAF
             }
 
-    if alns:
+    if alns or SYNAL:
         alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
         alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
         #print(alns)
