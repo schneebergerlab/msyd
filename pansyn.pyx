@@ -352,10 +352,14 @@ def remove_overlap(syn):
         # this performs essentially the same function as compute_overlap
         # in intersect_syns
         cur.ref.start += ov
-        for org, cg in cur.cigars_dict.items():
-            drop, cgnew = cg.get_removed(ov, start=True)
-            cur.cigars_dict[org] = cgnew
-            cur.ranges_dict[org].start += drop
+        if cur.cigars_dict:
+            for org, cg in cur.cigars_dict.items():
+                drop, cgnew = cg.get_removed(ov, start=True)
+                cur.cigars_dict[org] = cgnew
+                cur.ranges_dict[org].start += drop
+        else:
+            for rng in cur.ranges_dict.values():
+                rng.start += ov
 
         prev = cur
 
@@ -418,6 +422,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
     Finds core and cross-syntenic regions in the input files, depending on if the parameter `detect_crossyn` that is ultimately passed on to `calc_overlap` is set to `True`.
     Fairly conservative.
     :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, parameters optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    `alns` can be set to `None`, in which case the region lengts will be estimated instead of calculated exactly from CIGAR strings.
     Crosssynteny is detected if the `detect_crosssyn` parameter is set to `True`.
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
@@ -433,11 +438,18 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, **kwargs):
             'paf': ingest.readPAF
             }
 
-    alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
-    alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
-    #print(alns)
+    if alns:
+        alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
+        alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
+        #print(alns)
 
-    syns = list(map(lambda x: match_synal(*x, ref=ref), zip(syns, alns)))
+        syns = [match_synal(*x, ref=ref) for x in zip(syns, alns)]
+    else:
+        syns = [
+                pd.DataFrame(
+                    [ Pansyn(ref=row[1][0],
+                        ranges_dict={row[1][1].org:row[1][1]})
+                        for row in s.iterrows()]) for s in syns]
 
     for syn in syns:
         for pansyn in syn.iterrows():
