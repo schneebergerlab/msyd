@@ -438,17 +438,18 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=False, **kwar
             'paf': ingest.readPAF
             }
 
-    if alns and not SYNAL:
+    if alns and SYNAL:
+        #TODO log
         alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
         alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
-        #print(alns)
 
         syns = [match_synal(*x, ref=ref) for x in zip(syns, alns)]
     else:
+        #TODO log
         syns = [
                 pd.DataFrame(
                     [ Pansyn(ref=row[1][0],
-                        ranges_dict={row[1][1].org:row[1][1]})
+                        ranges_dict={row[1][1].org:row[1][1]}, cigars_dict = None)
                         for row in s.iterrows()]) for s in syns]
 
     #for syn in syns:
