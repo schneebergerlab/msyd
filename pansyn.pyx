@@ -438,7 +438,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=False, **kwar
             'paf': ingest.readPAF
             }
 
-    if alns or SYNAL:
+    if alns and not SYNAL:
         alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
         alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
         #print(alns)
