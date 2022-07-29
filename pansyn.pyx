@@ -236,9 +236,9 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
 
     ret = set() # use a set to automatically remove duplicates
 
-    def add_lenfiltered(rng): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
-        if len(rng) > MIN_SYN_THRESH:
-            ret.add(rng)
+    def add_lenfiltered(pansyn): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
+        if len(pansyn.ref) > MIN_SYN_THRESH:
+            ret.add(pansyn)
 
     if detect_crosssyn:
         if allow_overlap:
