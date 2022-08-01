@@ -414,7 +414,9 @@ def find_overlaps(left, right, **kwargs):
 
     del riter
     del liter
-    return pd.DataFrame(data=list(ret))
+    # sort to be safe, maybe optimitze this away later?
+    ret = pd.DataFrame(data=list(ret))
+    return ret.sort_values(ret.columns[0])
 
 
 def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=False, **kwargs):
