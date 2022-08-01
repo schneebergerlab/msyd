@@ -449,7 +449,6 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
 
         syns = [match_synal(*x, ref=ref) for x in zip(syns, alns)]
     else:
-        #TODO log
         syns = [
                 pd.DataFrame(
                     [ Pansyn(ref=row[1][0],
@@ -462,11 +461,9 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
             cg = list(pansyn.cigars_dict.values())[0]
             rng = list(pansyn.ranges_dict.values())[0]
             # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != cg.get_len(ref=True):
-                print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)} does not match reference length in {pansyn}")
+            if len(pansyn.ref) != cg.get_len(ref=True) or len(rng) != cg.get_len(ref=False):
+                print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match ref or qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
                 #print(cg)
-            if len(rng) != cg.get_len(ref=False):
-                print(f"ERRORERRROR: cigar string length {cg.get_len(ref=False)} does not match query length in {pansyn}")
                 print(cg)
     #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
     #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
