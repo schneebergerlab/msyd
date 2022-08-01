@@ -421,7 +421,7 @@ def find_overlaps(left, right, **kwargs):
     return ret.sort_values(ret.columns[0])
 
 
-def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=False, **kwargs):
+def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwargs):
     """
     Finds core and cross-syntenic regions in the input files, depending on if the parameter `detect_crossyn` that is ultimately passed on to `calc_overlap` is set to `True`.
     Fairly conservative.
