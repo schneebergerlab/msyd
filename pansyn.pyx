@@ -100,6 +100,8 @@ class Range:
         :param: 'start'/'end' specify how much to drop on each end.
         :return: A Range missing the specified area.
         """
+        if start > len(self) or end > len(self):
+            raise ValueError("ERROR: tried to drop more than Range length!")
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
 
