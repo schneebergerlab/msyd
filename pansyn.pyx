@@ -165,6 +165,29 @@ class Pansyn:
     def get_ranges(self):
         return self.ranges_dict.values()
 
+    def check(self):
+        """ A function to check a Pansyn object for intactness, mainly for debugging purposes.
+        Raises an error if any invariants are violated.
+        :returns: None
+        """
+        if not self.ranges_dict:
+            raise ValueError("ERROR in Pansyn.check()! ranges_dict None!")
+
+        if not self.cigars_dict:
+            return None
+
+        if self.ranges_dict.keys() != self.cigars_dict.keys():
+            raise ValueError("ERROR in Pansyn.check()! ranges_dict keys not matching cigars_dict keys!")
+        
+        reflen = len(self.ref)
+        for org in self.get_organisms():
+            if self.cigars_dict[org].get_len(ref=True) != reflen:
+                raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching reference length!")
+            if self.cigars_dict[org].get_len(ref=False) != len(self.ranges_dict[org]):
+                raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching query length!")
+
+
+
     def __add__(self, other):
         """
         Convenience function to concatenate two `Pansyn` objects.
@@ -284,7 +307,10 @@ def match_synal(syn, aln, ref='a'):
         try:
             org = synr[1].org
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                ret.append(Pansyn(ref=synr[0], ranges_dict={org:synr[1]}, cigars_dict={org:Cigar.from_string(alnr['cg'])}))
+                cg = Cigar.from_string(alnr['cg'])
+                rng = synr[1]
+                rng.end = rng.start + cg.get_len(ref=False) # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
+                ret.append(Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg}))
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
@@ -458,13 +484,14 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
     for syn in syns:
         for pansyn in syn.iterrows():
             pansyn = pansyn[1][0]
-            cg = list(pansyn.cigars_dict.values())[0]
-            rng = list(pansyn.ranges_dict.values())[0]
-            # at this point, each pansyn should only have a reference and one query region
-            if len(pansyn.ref) != cg.get_len(ref=True) or len(rng) != cg.get_len(ref=False):
+            try:
+                pansyn.check()
+            except ValueError as  e:
+                print(e)
+                cg = list(pansyn.cigars_dict.values())[0]
                 print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match ref or qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                #print(cg)
-                print(cg)
+                print(pansyn)
+                # at this point, each pansyn should only have a reference and one query region
     #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
     #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
 
