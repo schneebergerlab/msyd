@@ -309,7 +309,7 @@ def match_synal(syn, aln, ref='a'):
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
                 cg = Cigar.from_string(alnr['cg'])
                 rng = synr[1]
-                rng.end = rng.start + cg.get_len(ref=False) # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
+                rng.end = rng.start + cg.get_len(ref=False) -1 # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
                 ret.append(Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg}))
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
