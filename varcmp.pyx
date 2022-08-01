@@ -19,6 +19,12 @@ def get_snps(syri, rngs):
     """
     pass
 
+#TODO implement
+# a function getting all snps that are syntenic to a region
+# how to deal with positions in synteny? maybe just count from start of syntenic region according to cigar distance?
+def get_syntenic_snps(syri, rng):
+    pass
+
 # maybe optionally save with variant annotation later?
 class Neighbourhood:
     """
