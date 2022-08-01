@@ -98,8 +98,9 @@ if sys.argv[1] == 'order':
     print(order_plotsr_greedy(orgs))
     sys.exit()
 
-df1 = crosssyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True)
-print(df1.to_string())
+df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True)
+#print(df1.to_string())
+print(df1)
 print("regions:", len(df1))
 print("total lengths:", sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() >= int(sys.argv[2]), map(lambda x: x[1][0], df1.iterrows())))))
 

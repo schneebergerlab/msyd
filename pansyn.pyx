@@ -156,7 +156,7 @@ class Pansyn:
             else:
                 print("WARNING: attempted to add cigar to Pansyn without cigars_dict, ignoring")
 
-    def degree(self):
+    def get_degree(self):
         return len(self.ranges_dict)
 
     def get_organisms(self):
