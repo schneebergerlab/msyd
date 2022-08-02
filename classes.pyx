@@ -216,18 +216,21 @@ class Pansyn:
             cigars_dict = dict()
             for org, rng in self.ranges_dict.items():
                 cg = self.cigars_dict[org]
+                oldcg = cg
                 try:
-                    start, cg = cg.get_removed(start, start=True, ref=True)
-                    end, cg = cg.get_removed(end, start=False, ref=True)
+                    start_dropped, cg = cg.get_removed(start, start=True, ref=True)
+                    end_dropped, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
                     print(f"ERROR: invalid input to cg.get_removed({start}/{end}) on {rng} (len: {len(rng)}). Check if start, end are correct!")
                     print("start/end were", oldstart, oldend)
                     print("ref is:", ref, "was:", oldref)
                     print("occurred in:", self)
                     print("lens", self.get_lens())
+                    if len(oldcg) < 2000:
+                        print("cigar:", oldcg)
                     raise ValueError("test")
                     continue
-                ranges_dict[org] = rng.drop(start, end)
+                ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 cigars_dict[org] = cg
 
         return Pansyn(ref, ranges_dict, cigars_dict)
