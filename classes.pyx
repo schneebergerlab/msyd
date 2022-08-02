@@ -117,10 +117,10 @@ class Pansyn:
     """
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
     def __init__(self, ref:Range, ranges_dict, cigars_dict):
-        if not ranges_dict:
-            raise ValueError(f"ERROR: Trying to initialiase Pansyn with no non-reference Range (ref: {ref})")
-        if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
-            raise ValueError(f"ERROR: Trying to initialise Pansyn with ranges_dict keys {ranges_dict.keys()} not matching cigars_dict keys {cigars_dict.keys()}!")
+        #if not ranges_dict:
+        #    raise ValueError(f"ERROR: Trying to initialiase Pansyn with no non-reference Range (ref: {ref})")
+        #if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
+        #    raise ValueError(f"ERROR: Trying to initialise Pansyn with ranges_dict keys {ranges_dict.keys()} not matching cigars_dict keys {cigars_dict.keys()}!")
         self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
         self.ranges_dict = ranges_dict
         self.cigars_dict = cigars_dict # optional if using approximate matching
@@ -208,7 +208,7 @@ class Pansyn:
         ranges_dict = dict()
         cigars_dict = None
         if not self.cigars_dict:
-            ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items()}
+            ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items() if len(rng) > start + end}
         else:
             cigars_dict = dict()
             for org, rng in self.ranges_dict.items():

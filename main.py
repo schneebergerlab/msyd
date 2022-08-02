@@ -98,7 +98,7 @@ if sys.argv[1] == 'order':
     print(order_plotsr_greedy(orgs))
     sys.exit()
 
-df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True)
+df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=False)
 #print(df1.to_string())
 print(df1)
 print("regions:", len(df1))
