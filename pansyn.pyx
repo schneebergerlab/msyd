@@ -165,6 +165,9 @@ class Pansyn:
     def get_ranges(self):
         return self.ranges_dict.values()
 
+    def get_lens(self):
+        return {org: len(self.ranges_dict[org]) for org in self.get_organisms()}
+
     def check(self):
         """ A function to check a Pansyn object for intactness, mainly for debugging purposes.
         Raises an error if any invariants are violated.
@@ -224,10 +227,10 @@ class Pansyn:
                     end, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
                     print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on {rng} (len: {len(rng)}). Check if start, end are correct!")
-                    if len(rng) < 2000:
-                        print("occurred in:", self)
-                        print("ref is:", ref, "was:", oldref)
-                        print("cigar was:", self.cigars_dict[org])
+                    print("ref is:", ref, "was:", oldref)
+                    print("occurred in:", self)
+                    print("lens", self.get_lens())
+                    raise ValueError("test")
                     continue
                 ranges_dict[org] = rng.drop(start, end)
                 cigars_dict[org] = cg
@@ -273,9 +276,12 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
             add_lenfiltered(leftest.drop(0, leftest.ref.end - ovstart))
     
     # core synteny
-    add_lenfiltered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
-    # this sometimes tries to drop more than a range has – maybe handle this properly somehow?
-    # idea from manish: check if cigar string length also corresponds to length in query, to check for errors in code/data
+    try:
+        add_lenfiltered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
+    except ValueError:
+        print(ovstart, ovend)
+        print(l, l.get_lens())
+        print(r, r.get_lens())
 
     if detect_crosssyn:
         if allow_overlap:
@@ -311,19 +317,18 @@ def match_synal(syn, aln, ref='a'):
                 cg = Cigar.from_string(alnr['cg'])
                 rng = synr[1]
                 pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
-                try:
-                    pansyn.check()
-                except ValueError as  e:
-                    print(e)
-                    print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match ref or qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                    print(cg)
-                    print(pansyn)
-                    print("Adjusting to cg length")
-                    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
-                    rng.end = rng.start + cg.get_len(ref=False) -1
-            #TODO weird bug: WTF, the lengths of cigar/alignment do not match???
-            #TODO weird bug: maybe mistake in reading in from alignment file?? maybe double-check alignments for correctness
-
+                rng.end = rng.start + cg.get_len(ref=False) -1
+                ## debugging output
+                #try:
+                #    pansyn.check()
+                #except ValueError as  e:
+                #    print(e)
+                #    print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match ref or qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
+                #    print(cg)
+                #    print(pansyn)
+                #    print("Adjusting to cg length")
+                #    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
+                #    rng.end = rng.start + cg.get_len(ref=False) -1
 
                 ret.append(pansyn)
                 synr = next(syniter)[1]
