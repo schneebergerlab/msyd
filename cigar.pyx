@@ -90,7 +90,6 @@ class Cigar:
 
 
     def get_removed(self, n, ref=True, start=True):
-        # TODO proper error handling when removing more than possible or if input null or sth 
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.

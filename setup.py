@@ -8,7 +8,8 @@ setup(ext_modules = cythonize([
             Extension('pansyn', ['pansyn.pyx']),
             Extension('varcmp', ['varcmp.pyx']),
             Extension('util', ['util.pyx']),
-            Extension('cigar', ['cigar.pyx'])
+            Extension('cigar', ['cigar.pyx']),
+            Extension('classes', ['classes.pyx'])
             ]),
         scripts=["main.py"]
         )
