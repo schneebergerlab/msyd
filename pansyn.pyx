@@ -225,6 +225,7 @@ class Pansyn:
                 except ValueError:
                     print(f"ERROR: invalid input to cg.get_removed({start}, {end}) on {rng} (len: {len(rng)}). Check if start, end are correct!")
                     if len(rng) < 2000:
+                        print("occurred in:", self)
                         print("ref is:", ref, "was:", oldref)
                         print("cigar was:", self.cigars_dict[org])
                     continue
