@@ -4,17 +4,17 @@
 # cython: language_level = 3
 
 import pandas as pd
-import numpy as np
+#import numpy as np
+import copy
+import functools
+from collections import deque
+
 import ingest
 import util
 from cigar import Cigar
 from classes import Pansyn, Range, Position
-import functools
-from collections import deque
-import copy
 
 MIN_SYN_THRESH = 0
-
 
 
 def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=False):
