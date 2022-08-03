@@ -48,8 +48,10 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
             return
         if len(pansyn.ref) < MIN_SYN_THRESH:
             return
-        #if pansyn.get_degree() < 1 if detect_crosssyn else 2:
-        #    return
+        if not detect_crosssyn and pansyn.get_degree() < 2: # TODO filter for max degree instead of only 2
+            return
+        elif pansyn.get_degree() < 1:
+            return
         ret.add(pansyn)
 
 
