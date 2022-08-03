@@ -178,7 +178,7 @@ class Pansyn:
 
         if not self.ranges_dict:
             return False
-            raise ValueError("ERROR in Pansyn.check()! ranges_dict None!")
+            #raise ValueError("ERROR in Pansyn.check()! ranges_dict None!")
 
         if not self.ref.check() or self.ref.is_inverted():
             return False
@@ -194,17 +194,17 @@ class Pansyn:
 
         if self.ranges_dict.keys() != self.cigars_dict.keys():
             return False
-            raise ValueError("ERROR in Pansyn.check()! ranges_dict keys not matching cigars_dict keys!")
+            #raise ValueError("ERROR in Pansyn.check()! ranges_dict keys not matching cigars_dict keys!")
         
         # length check
         reflen = len(self.ref)
         for org in self.get_organisms():
             if self.cigars_dict[org].get_len(ref=True) != reflen:
                 return False
-                raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching reference length!")
+                #raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching reference length!")
             if self.cigars_dict[org].get_len(ref=False) != len(self.ranges_dict[org]):
                 return False
-                raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching query length!")
+                #raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching query length!")
 
 
 
