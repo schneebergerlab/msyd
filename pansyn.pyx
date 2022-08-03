@@ -43,24 +43,31 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
 
     ret = set() # use a set to automatically remove duplicates
 
-    def add_lenfiltered(pansyn): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
-        if pansyn and len(pansyn.ref) > MIN_SYN_THRESH:
-            ret.add(pansyn)
+    def add_filtered(pansyn): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
+        if not pansyn:
+            return
+        if len(pansyn.ref) < MIN_SYN_THRESH:
+            return
+        if pansyn.get_degree < 1 if detect_crosssyn else 2:
+            return
+        ret.add(pansyn)
+
+
 
     if detect_crosssyn:
         if allow_overlap:
-            add_lenfiltered(leftest)
+            add_filtered(leftest)
         else:
-            add_lenfiltered(leftest.drop(0, leftest.ref.end - ovstart))
+            add_filtered(leftest.drop(0, leftest.ref.end - ovstart))
     
     # core synteny
-    add_lenfiltered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
+    add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
 
     if detect_crosssyn:
         if allow_overlap:
-            add_lenfiltered(rightest)
+            add_filtered(rightest)
         else:
-            add_lenfiltered(rightest.drop(rightest.ref.start - ovend, 0))
+            add_filtered(rightest.drop(rightest.ref.start - ovend, 0))
 
     return sorted(ret)
 
