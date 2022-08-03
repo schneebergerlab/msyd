@@ -234,8 +234,9 @@ class Pansyn:
         cigars_dict = None
         if not self.cigars_dict:
             for org, rng in self.ranges_dict.items():
-                rng = rng.drop(start, end)
-                if rng.check() and not rng.is_inverted():
+                if start + end < len(rng):
+                    rng = rng.drop(start, end)
+                    #if rng.check() and not rng.is_inverted():
                     ranges_dict[org] = rng
         else:
             cigars_dict = dict()
