@@ -102,16 +102,13 @@ def match_synal(syn, aln, ref='a'):
                 pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1
                 ## debugging output
-                #try:
-                #    pansyn.check()
-                #except ValueError as  e:
-                #    print(e)
-                #    print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match ref or qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                #    print(cg)
-                #    print(pansyn)
-                #    print("Adjusting to cg length")
-                #    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
-                #    rng.end = rng.start + cg.get_len(ref=False) -1
+                if not len(rng) == cg.get_len(ref=False):
+                    print(f"WARN: cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
+                    #print(cg)
+                    #print(pansyn)
+                    print("Adjusting to cg length")
+                    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
+                    rng.end = rng.start + cg.get_len(ref=False) -1
 
                 ret.append(pansyn)
                 synr = next(syniter)[1]
