@@ -37,7 +37,7 @@ class Cigar:
         Returns the number of bases covered by this Cigar in the reference or query genome.
         """
         s = reffwd if ref else qryfwd
-        return sum([i[0] for i in self.pairs if i[1] in s])
+        return sum([i[0] for i in self.pairs if i[1] in s and not i[1] in cig_clips])
 
     def __len__(self):
         return sum([i[0] for i in self.pairs])
@@ -102,40 +102,41 @@ class Cigar:
         # two sets containing the CIGAR codes incrementing one or the other strand
         fwd = reffwd if ref else qryfwd 
         altfwd = qryfwd if ref else reffwd
+        rem = n # tally how much still left to remove
         
 
         # loop and remove regions as long as the skip is more than one region
-        while ind < len(self.pairs):
+        try:
+            while ind < len(self.pairs):
+                cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+                if cgi[1] not in fwd:
+                    ind += 1
+                    if cgi[1] in altfwd:
+                        skip += cgi[0]
+                # this region counts towards n, determine if it can be removed or is too large
+                elif rem >= cgi[0]:
+                    rem -= cgi[0]
+                    ind += 1
+                    if cgi[1] in altfwd:
+                        skip += cgi[0]
+                else:
+                    break
+
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-            #print(ind, cgi, n, skip)
-            if cgi[1] not in fwd:
-                ind += 1
-                if cgi[1] in altfwd:
-                    skip += cgi[0]
-                continue
-            
-            # this region counts towards n, determine if it can be removed or is too large
-            if n >= cgi[0]:
-                n -= cgi[0]
-                ind += 1
-                if cgi[1] in altfwd:
-                    skip += cgi[0]
+            if cgi[1] in altfwd:
+                skip += rem
+
+            if start:
+                return (skip, Cigar([[cgi[0]-rem, cgi[1]]] + self.pairs[ind+1:]))
             else:
-                break
+                return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
 
-        # remaining skip must be < 1 in a fwd-region
-        # construct the new return cigar, without altering self
-        cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-        if cgi[1] in altfwd:
-            skip += n
-
-        if start:
-            return (skip, Cigar([[cgi[0]-n, cgi[1]]] + self.pairs[ind+1:]))
-        else:
-            return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-n, cgi[1]]]))
+        except IndexError:
+            print(f"ERROR: tried to remove more than sequence length in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
+            raise ValueError("invalid skip")
 
     def __repr__(self):
-        return f"Cigar({self.pairs})"
+        return f"Cigar({self.to_string()})"
 
     def to_string(self):
         return ''.join([str(p[0]) + p[1] for p in self.pairs])
@@ -279,63 +280,7 @@ if __name__ == "__main__":
 
     for x in sys.argv[1:]:
         cg = Cigar.from_string(x)
+
         print(cg)
-        print(cg.get_removed_faster(10), cg.get_removed(10), sep='\n')
-        print(cg.get_removed_faster(10, ref=False), cg.get_removed(10, ref=False), sep='\n')
-        print(cg.get_removed_faster(10, start=False), cg.get_removed(10, start=False), sep='\n')
-        print(cg.get_removed_faster(10, start=False, ref=False), cg.get_removed(10, start=False, ref=False), sep='\n')
-
-        
-    
-
-    sys.exit()
-    import ingest
-    
-    print(Cigar.from_full_string(sys.argv[1]).to_string())
-    sys.exit()
-
-    dfr = ingest.readSAMBAM(sys.argv[1])
-    dfq = ingest.readSAMBAM(sys.argv[2])
-    dfc = ingest.readSAMBAM(sys.argv[3])
-
-    rowr = dfr.loc[0]
-    rowq = dfq.loc[1]
-    rowc = dfc.loc[1]
-
-    print(rowr)
-    print(rowq)
-    print(rowc)
-
-
-    # find the overlap
-    start = max(rowr['astart'], rowq['astart'], rowc['astart'])
-    end = min(rowr['aend'], rowq['aend'], rowc['aend'])
-    print(start, end)
-
-    strskpr, endskpr = start - rowr['astart'], rowr['aend'] - end
-    strskpq, endskpq = start - rowq['astart'], rowq['aend'] - end
-    strskpc, endskpc = start - rowc['astart'], rowc['aend'] - end
-
-    # QUERY sequences
-    sqr = dfr.loc[0, 'seq'][strskpr:-endskpr-1]
-    sqq = dfq.loc[1, 'seq'][strskpq:-endskpq-1]
-    sqc = dfc.loc[1, 'seq'][strskpc:-endskpc-1]
-
-    cgr = Cigar.from_string(dfr.loc[0, 'cg']).get_removed(strskpr)[1].get_removed(endskpr, start=False)[1]
-    cgq = Cigar.from_string(dfq.loc[1, 'cg']).get_removed(strskpq)[1].get_removed(endskpq, start=False)[1]
-    cgc = Cigar.from_string(dfc.loc[1, 'cg']).get_removed(strskpc)[1].get_removed(endskpc, start=False)[1]
-    
-    assert(cgr.get_len() == cgq.get_len() == cgc.get_len())
-
-    cgi = Cigar.impute(cgr, cgq)
-
-    # prettyprint
-    cgcstr = cgc.to_full_string()
-    cgistr = cgi.to_full_string()
-    #for n in range(79, len(cgcstr), 79):
-        #if all([cgistr[i]==cgcstr[i] and cgcstr[i]=='=' for i in range(n-79,n)]):
-        #    continue
-    #    print(">", cgcstr[n-79:n])
-    #    print("<", cgistr[n-79:n])
-
-
+        print("len on ref:", cg.get_len())
+        print("len on qry:", cg.get_len(ref=False))
