@@ -104,8 +104,7 @@ def match_synal(syn, aln, ref='a'):
                 ## debugging output
                 if not len(rng) == cg.get_len(ref=False):
                     print(f"WARN: cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                    #print(cg)
-                    #print(pansyn)
+                    print("Cigar is:", cg)
                     print("Adjusting to cg length")
                     # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
                     rng.end = rng.start + cg.get_len(ref=False) -1
