@@ -93,10 +93,45 @@ def order_plotsr_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x
 
     return order
 
+
+maxdegree = 10
+len_getter = lambda df: sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
+len_tabularizer = lambda df: [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+
+
+def length_compare():
+    syns, alns = parse_input_tsv(sys.argv[2])
+    syns, alns = list(syns), list(alns)
+    cores = int(sys.argv[3]) if len(sys.argv) >= 4 else 1
+    for _ in range(len(syns)):
+        cores_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=False, cores=cores)
+        cores_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=True, cores=cores)
+
+        cross_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=False, cores=cores)
+        cross_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=True, cores=cores)
+
+        print("\nComparing", syns)
+        
+        print(f"cores_syn:\tRegions: {len(cores_syn)}\tTotal length:{len_getter(cores_syn)}")
+        print(f"cores_synal:\tRegions: {len(cores_synal)}\tTotal length:{len_getter(cores_synal)}")
+        print("")
+        print(f"cross_syn:\tRegions: {len(cross_syn)}\tTotal length:{len_getter(cross_syn)}")
+        print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
+        print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_syn)]), sep='\t')
+        print(f"cross_synal:\tRegions: {len(cross_synal)}\tTotal length:{len_getter(cross_synal)}")
+
+        syns = syns[1:]
+        alns = alns[1:]
+
+    sys.exit()
+
 if sys.argv[1] == 'order':
     orgs = sys.argv[2:]
     print(order_plotsr_greedy(orgs))
     sys.exit()
+
+if sys.argv[1] == 'len':
+    length_compare()
 
 df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=False)
 df2 = crosssyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=False)
@@ -106,11 +141,5 @@ print(df2)
 print("regions:", len(df1))
 print("total coresyn length:", sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df1.iterrows()))))
 
-maxdegree = max(map(lambda x: x[1][0].get_degree(), df2.iterrows()))
-maxdegree = 10 # above not working properly for some reason
-lens = [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df2.iterrows())))) for i in range(maxdegree)]
-print("crossyn lengths by degree:")
-print('\t\t'.join([str(i) for i in range(maxdegree)]))
-print('\t'.join([str(i) for i in lens]))
 
 
