@@ -119,6 +119,8 @@ def length_compare():
         print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
         print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_syn)]), sep='\t')
         print(f"cross_synal:\tRegions: {len(cross_synal)}\tTotal length:{len_getter(cross_synal)}")
+        print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
+        print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
 
         syns = syns[1:]
         alns = alns[1:]
