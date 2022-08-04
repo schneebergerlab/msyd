@@ -105,13 +105,6 @@ print(df1)
 print(df2)
 print("regions:", len(df1))
 print("total coresyn length:", sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df1.iterrows()))))
-maxdegree = max(map(lambda x: x[1][0].get_degree(), df1.iterrows()))
-maxdegree = 10 # above not working properly for some reason
-lens = [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df1.iterrows())))) for i in range(maxdegree)]
-print("coresyn lengths by degree:")
-print('\t\t'.join([str(i) for i in range(maxdegree)]))
-print('\t'.join([str(i) for i in lens]))
-
 
 maxdegree = max(map(lambda x: x[1][0].get_degree(), df2.iterrows()))
 maxdegree = 10 # above not working properly for some reason
