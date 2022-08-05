@@ -5,7 +5,8 @@
 
 import copy
 import functools
-from cigar import Cigar
+
+from pansr.cigar import Cigar
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position

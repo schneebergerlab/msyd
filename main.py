@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import pansyn
-#import Cigar from cigar
+import pansr.pansyn as pansyn
+#import Cigar from pansr.cigar
 
 import logging
 import logging.config

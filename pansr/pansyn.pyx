@@ -9,10 +9,10 @@ import copy
 import functools
 from collections import deque
 
-import ingest
-import util
-from cigar import Cigar
-from classes import Pansyn, Range, Position
+import pansr.ingest as ingest
+import pansr.util as util
+from pansr.cigar import Cigar
+from pansr.coords import Pansyn, Range, Position
 
 MIN_SYN_THRESH = 0
 
