@@ -31,13 +31,10 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
 
-def extract_regions(fin, ref='a', ann={'SYN'}, reforg='ref', qryorg='qry'):
+def extract_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
     """
-    if type(ann) is not set:
-        ann = set(ann)
-
     # columns to look for as start/end positions
     refchr = ref + "chr"
     refhaplo = "NaN"
@@ -52,7 +49,7 @@ def extract_regions(fin, ref='a', ann={'SYN'}, reforg='ref', qryorg='qry'):
 
     buf = deque()
     raw, chr_mapping = ingest.readsyriout(fin) #TODO? handle chr_mapping
-    raw = raw.loc[raw['type'] in ann]
+    raw = pd.concat([raw.loc[raw['type'] == ann] for ann in anns])
     # if implementing filtering later, filter here
 
     for row in raw.iterrows():
