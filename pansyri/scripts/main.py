@@ -90,7 +90,6 @@ def length_compare(syns, alns, cores=1):
 
 
 def main(argv):
-    print(argv)
     if argv[0] == 'order':
         orgs = argv[1:]
         print(ordering.order_plotsr_greedy(orgs))
