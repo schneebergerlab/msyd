@@ -94,8 +94,14 @@ def main(argv):
     if argv[0] == 'order':
         scores = [syn_score, sv_score, len_correct(syn_score), len_correct(sv_score)]
         orgs = argv[1:]
-        for score in scores:
-            print(order_greedy(orgs, score_fn=score))
+        print("syn_score")
+        print(order_greedy(orgs, score_fn=syn_score))
+        print("syn_score, len-corrected")
+        print(order_greedy(orgs, score_fn=len_correct(syn_score)))
+        print("sv_score")
+        print(order_greedy(orgs, score_fn=sv_score))
+        print("sv_score, len-corrected")
+        print(order_greedy(orgs, score_fn=len_correct(sv_score)))
         sys.exit()
 
     syns, alns = parse_input_tsv(argv[0])
