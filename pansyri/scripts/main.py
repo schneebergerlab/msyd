@@ -35,7 +35,7 @@ def parse_input_tsv(path):
     alns = deque()
     with open(path, 'r') as fin:
         for line in fin:
-            if line[0] == '#':
+            if line[0] == '#' or line.strip() == '':
                 continue
 
             val = line.strip().split('#')[0].split('\t')
