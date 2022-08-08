@@ -95,8 +95,8 @@ def main(argv):
         print(ordering.order_greedy(orgs))
         sys.exit()
 
-    syns, alns = parse_input_tsv(argv[1])
-    cores = int(argv[2]) if len(argv) >= 4 else 1
+    syns, alns = parse_input_tsv(argv[0])
+    cores = int(argv[1]) if len(argv) >= 4 else 1
 
     if argv[0] == 'len':
         length_compare(syns, alns, cores=cores)
