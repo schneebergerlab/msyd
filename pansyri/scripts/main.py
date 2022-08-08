@@ -2,7 +2,8 @@
 # in python, probably not worth cythonizing
 
 import pansyri.pansyn as pansyn
-import pansyri.ordering as ordering
+#import pansyri.ordering as ordering
+from pansyri.ordering import *
 #import Cigar from pansr.cigar
 
 import logging
@@ -91,7 +92,6 @@ def length_compare(syns, alns, cores=1):
 
 def main(argv):
     if argv[0] == 'order':
-        from ordering import *
         scores = [syn_score, sv_score, len_correct(syn_score), len_correct(sv_score)]
         orgs = argv[1:]
         for score in scores:
