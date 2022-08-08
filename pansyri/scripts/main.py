@@ -91,8 +91,11 @@ def length_compare(syns, alns, cores=1):
 
 def main(argv):
     if argv[0] == 'order':
+        from ordering import *
+        scores = [syn_score, sv_score, len_correct(syn_score), len_correct(sv_score)]
         orgs = argv[1:]
-        print(ordering.order_greedy(orgs))
+        for score in scores:
+            print(order_greedy(orgs, score_fn=score))
         sys.exit()
 
     syns, alns = parse_input_tsv(argv[0])

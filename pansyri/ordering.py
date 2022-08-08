@@ -1,24 +1,43 @@
 #!/usr/bin/python3
 # maybe cythonize later, probably not worth it though
-import pansyri.util as util
 import math
 
-def syn_score(syri):
-    """
-    Defines a distance metric from syri output.
+import pansyri.util as util
+import pansyri.ingest as ingest
+
+def syn_score(syri, gen1, gen2):
+    """Defines a similarity score from syri output.
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
-    syns = util.extract_regions(syri, ann='SYN')
-    return sum(map(lambda x: len(x[1][0]), syns.iterrows()))
+    return sum(map(lambda x: len(x[1][0]), util.extract_regions(syri, anns=['SYN']).iterrows()))
 
-def 
+def len_correct(score_fn):
+    """Higher-order function returning a length-corrected scoring function given an uncorrected score.
+    """
+    def corrected(syri, gen1, gen2):
+        gen1 = ingest.readfasta(gen1)
+        gen2 = ingest.readfasta(gen2)
+        print(gen1)
+        print(gen2)
+        l_eff = math.avg(gen1 + gen2)
+        return score_fn(syri, gen1, gen2)/l_eff
+    return corrected
 
-def order_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x+'_'+y+"syri.out", maximize=True):
+def sv_score(syri, gen1, gen2):
+    """Defines a dissimilarity score by summing up the length of all regions annotated to be a structural variant, excluding duplications.
+    """
+    return sum(map(lambda x: len(x[1][0]), util.extract_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
+
+
+def order_greedy(orgs, score_fn=syn_score, gen_mapper=lambda x: x + '.filtered.fa', syri_mapper=lambda x, y: x+'_'+y+"syri.out", maximize=True):
     """A simple, greedy algorithm ordering a list of organisms while trying to maximize (or minimize, depending on `maximize`) the similarity score between each organism and the next one.
+    The first organism is chosen at random.
     :param orgs: a sequence of organism/filenames
     :param score_fn: similarity score to use, by default `syn_score`. The scoring function needs to accept the filename of a syri.out file as output.
     :param_type score_fn: a function mapping a file path to a numerical score
-    :param filename_mapper: a function mapping two genome ids to a syri file comparing the two. By default set up to work with the `../data/ampril` dataset.
+    :param gen_mapper: a function mapping a genome id to a fasta file containing the genome corresponding to that ID. By default set up to work with the `../data/ampril` dataset.
+    :param_type filename_mapper: lambda str: str
+    :param syri_mapper: a function mapping two genome ids to a syri file comparing the two. By default set up to work with the `../data/ampril` dataset.
     :param_type filename_mapper: lambda str, str: str
     :param maximize: Boolean toggling whether to minimize/maximize the score (similarity vs dissimilarity scoring). Defaults to True.
     :returns: a list containing the elements of orgs ordered according to the algorithm.
@@ -34,7 +53,7 @@ def order_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x+'_'+y+
         # find the next organism with maximal similarity score to this one
         ext_score = 0 if maximize else math.inf
         for org in orgs:
-            score = score_fn(filename_mapper(cur, org))
+            score = score_fn(syri_mapper(cur, org), gen_mapper(cur), gen_mapper(org))
             if maximize and score > ext_score:
                 ext_score = score
                 cur = org
