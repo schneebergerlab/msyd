@@ -36,3 +36,4 @@ Running the following command will start identifying core synteny in a single-th
 
 `$ python3 ./main.py pansr.tsv`
 
+`pansyri order an1 c24 col cvi eri kyo ler sha`

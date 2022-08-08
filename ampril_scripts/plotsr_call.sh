@@ -8,7 +8,7 @@ plotsr --genomes genomes_lex.txt -o ~/plotsr_lex.png\
 	--sr kyo_lersyri.out\
 	--sr ler_shasyri.out
 
-plotsr --genomes genomes_lex.txt -o ~/plotsr_pansyri.png\
+plotsr --genomes genomes_pansyri.txt -o ~/plotsr_pansyri.png\
 	--sr kyo_cvisyri.out\
 	--sr cvi_an1syri.out\
 	--sr an1_colsyri.out\
