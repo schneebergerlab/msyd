@@ -99,51 +99,44 @@ len_getter = lambda df: sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.
 len_tabularizer = lambda df: [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
 
-def length_compare():
-    syns, alns = parse_input_tsv(sys.argv[2])
+def eval_combinations(syns, alns, cores=1):
+    cores_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=False, cores=cores)
+    cores_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=True, cores=cores)
+
+    cross_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=False, cores=cores)
+    cross_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=True, cores=cores)
+
+    print("\nComparing", syns)
+    
+    print(f"cores_syn:\tRegions: {len(cores_syn)}\tTotal length:{len_getter(cores_syn)}")
+    print(f"cores_synal:\tRegions: {len(cores_synal)}\tTotal length:{len_getter(cores_synal)}")
+    print("")
+    print(f"cross_syn:\tRegions: {len(cross_syn)}\tTotal length:{len_getter(cross_syn)}")
+    print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
+    print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_syn)]), sep='\t')
+    print(f"cross_synal:\tRegions: {len(cross_synal)}\tTotal length:{len_getter(cross_synal)}")
+    print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
+    print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
+
+
+def length_compare(syns, alns, cores=1):
     syns, alns = list(syns), list(alns)
-    cores = int(sys.argv[3]) if len(sys.argv) >= 4 else 1
     for _ in range(len(syns)):
-        cores_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=False, cores=cores)
-        cores_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=True, cores=cores)
-
-        cross_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=False, cores=cores)
-        cross_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=True, cores=cores)
-
-        print("\nComparing", syns)
-        
-        print(f"cores_syn:\tRegions: {len(cores_syn)}\tTotal length:{len_getter(cores_syn)}")
-        print(f"cores_synal:\tRegions: {len(cores_synal)}\tTotal length:{len_getter(cores_synal)}")
-        print("")
-        print(f"cross_syn:\tRegions: {len(cross_syn)}\tTotal length:{len_getter(cross_syn)}")
-        print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
-        print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_syn)]), sep='\t')
-        print(f"cross_synal:\tRegions: {len(cross_synal)}\tTotal length:{len_getter(cross_synal)}")
-        print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
-        print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
-
+        eval_combinations(syns, alns)
         syns = syns[1:]
         alns = alns[1:]
-
-    sys.exit()
 
 if sys.argv[1] == 'order':
     orgs = sys.argv[2:]
     print(order_plotsr_greedy(orgs))
     sys.exit()
 
+
+syns, alns = parse_input_tsv(sys.argv[1])
+cores = int(sys.argv[2]) if len(sys.argv) >= 4 else 1
+
 if sys.argv[1] == 'len':
-    length_compare()
-
-df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=True)
-df2 = crosssyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=True)
-#print(df1.to_string())
-print(df1)
-print(df2)
-print("regions:", len(df1))
-print("total lengths:", sum(map(lambda x: x[1][0].end-x[1][0].start+1, df1.iterrows())))    # I assume the start and end bases are included in the coresyn. This seems to be the case based on length of the CIGAR string
-print("total lengths:", sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() >= int(sys.argv[2]), map(lambda x: x[1][0], df1.iterrows())))))
-print("total coresyn length:", sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df1.iterrows()))))
-
-
+    length_compare(syns, alns, cores=cores)
+else:
+    eval_combinations(syns, alns, cores=cores)
 
