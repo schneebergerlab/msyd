@@ -2,7 +2,7 @@
 # in python, probably not worth cythonizing
 
 import pansyri.pansyn as pansyn
-import ordering
+import pansyri.ordering as ordering
 #import Cigar from pansr.cigar
 
 import logging
@@ -89,16 +89,17 @@ def length_compare(syns, alns, cores=1):
         alns = alns[1:]
 
 
-def main():
-    if sys.argv[1] == 'order':
-        orgs = sys.argv[2:]
+def main(argv):
+    print(argv)
+    if argv[0] == 'order':
+        orgs = sys.argv[1:]
         print(ordering.order_plotsr_greedy(orgs))
         sys.exit()
 
     syns, alns = parse_input_tsv(sys.argv[1])
     cores = int(sys.argv[2]) if len(sys.argv) >= 4 else 1
 
-    if sys.argv[1] == 'len':
+    if sys.argv[0] == 'len':
         length_compare(syns, alns, cores=cores)
     else:
         eval_combinations(syns, alns, cores=cores)

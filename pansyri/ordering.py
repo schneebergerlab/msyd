@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+# maybe cythonize later, probably not worth it though
 import pansyri.util as util
 #import math
 
