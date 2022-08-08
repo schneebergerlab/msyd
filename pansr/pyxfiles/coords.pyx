@@ -5,6 +5,7 @@
 
 import copy
 import functools
+#import cython
 
 from pansr.cigar import Cigar
 
@@ -44,6 +45,7 @@ class Position:
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
+#@cython.total_ordering
 class Range:
     def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
         self.org = org

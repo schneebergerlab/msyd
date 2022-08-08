@@ -135,8 +135,8 @@ if sys.argv[1] == 'order':
 if sys.argv[1] == 'len':
     length_compare()
 
-df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=False)
-df2 = crosssyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=False)
+df1 = coresyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=True)
+df2 = crosssyn_from_tsv(sys.argv[1], cores=int(sys.argv[2]) if len(sys.argv) >= 3 else 1, sort=True, SYNAL=True)
 #print(df1.to_string())
 print(df1)
 print(df2)
