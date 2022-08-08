@@ -6,7 +6,7 @@
 import pandas as pd
 import numpy as np
 
-from pansr.pansyn import Range, Pansyn
+from pansyri.pansyn import Range, Pansyn
 
 def get_snps(syri, rngs):
     """
