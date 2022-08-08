@@ -15,11 +15,9 @@ def len_correct(score_fn):
     """Higher-order function returning a length-corrected scoring function given an uncorrected score.
     """
     def corrected(syri, gen1, gen2):
-        gen1 = ingest.readfasta(gen1)
-        gen2 = ingest.readfasta(gen2)
-        print(gen1)
-        print(gen2)
-        l_eff = math.avg(gen1 + gen2)
+        gen1_len = sum(map(lambda x: len(x), ingest.readfasta(gen1).values()))
+        gen2_len = sum(map(lambda x: len(x), ingest.readfasta(gen2).values()))
+        l_eff = (gen1_len + gen2_len)/2
         return score_fn(syri, gen1, gen2)/l_eff
     return corrected
 
