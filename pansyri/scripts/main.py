@@ -92,7 +92,7 @@ def length_compare(syns, alns, cores=1):
 def main(argv):
     if argv[0] == 'order':
         orgs = argv[1:]
-        print(ordering.order_plotsr_greedy(orgs))
+        print(ordering.order_greedy(orgs))
         sys.exit()
 
     syns, alns = parse_input_tsv(argv[1])

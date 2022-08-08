@@ -11,7 +11,7 @@ def syn_score(syri):
     syns = util.extract_regions(syri, ann='SYN')
     return sum(map(lambda x: len(x[1][0]), syns.iterrows()))
 
-def order_plotsr_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x+'_'+y+"syri.out"):
+def order_greedy(orgs, score_fn=syn_score, filename_mapper=lambda x, y: x+'_'+y+"syri.out"):
     """
     A simple, greedy algorithm ordering a list of organisms while trying to maximize the similarity score between each organism and the next one.
     :params:
