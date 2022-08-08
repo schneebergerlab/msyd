@@ -5,7 +5,8 @@
 
 import copy
 import functools
-from cigar import Cigar
+
+from pansr.cigar import Cigar
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
@@ -96,6 +97,15 @@ class Range:
             raise ValueError("ERROR: tried to drop more than Range length!")
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
+    def is_inverted(self):
+        return self.start <= self.end
+
+    def check(self):
+        if self.start < 0:
+            return False
+        if self.end < 0:
+            return False
+
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering
@@ -161,25 +171,41 @@ class Pansyn:
         return {org: len(self.ranges_dict[org]) for org in self.get_organisms()}
 
     def check(self):
-        """ A function to check a Pansyn object for intactness, mainly for debugging purposes.
-        Raises an error if any invariants are violated.
-        :returns: None
         """
-        if not self.ranges_dict:
-            raise ValueError("ERROR in Pansyn.check()! ranges_dict None!")
+        A function to check a Pansyn object for intactness, mainly for debugging purposes.
+        Returns `False` if any invariants are violated.
+        :returns: `True` if the object is a valid `Pansyn` object, else `False`
+        """
 
+        if not self.ranges_dict:
+            return False
+            #raise ValueError("ERROR in Pansyn.check()! ranges_dict None!")
+
+        if not self.ref.check() or self.ref.is_inverted():
+            return False
+
+        for rng in self.ranges_dict.values():
+            if not rng.check() or rng.is_inverted():
+                return False
+
+
+        ## CIGAR checks
         if not self.cigars_dict:
-            return None
+            return True
 
         if self.ranges_dict.keys() != self.cigars_dict.keys():
-            raise ValueError("ERROR in Pansyn.check()! ranges_dict keys not matching cigars_dict keys!")
+            return False
+            #raise ValueError("ERROR in Pansyn.check()! ranges_dict keys not matching cigars_dict keys!")
         
+        # length check
         reflen = len(self.ref)
         for org in self.get_organisms():
             if self.cigars_dict[org].get_len(ref=True) != reflen:
-                raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching reference length!")
+                return False
+                #raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching reference length!")
             if self.cigars_dict[org].get_len(ref=False) != len(self.ranges_dict[org]):
-                raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching query length!")
+                return False
+                #raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching query length!")
 
 
 
@@ -208,7 +234,9 @@ class Pansyn:
         ranges_dict = dict()
         cigars_dict = None
         if not self.cigars_dict:
-            ranges_dict = {org:rng.drop(start, end) for (org, rng) in self.ranges_dict.items() if len(rng) > start + end}
+            for org, rng in self.ranges_dict.items():
+                if start + end < len(rng):
+                    ranges_dict[org] = rng.drop(start, end)
         else:
             cigars_dict = dict()
             for org, rng in self.ranges_dict.items():

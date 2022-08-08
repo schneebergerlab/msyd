@@ -9,10 +9,10 @@ import copy
 import functools
 from collections import deque
 
-import ingest
-import util
-from cigar import Cigar
-from classes import Pansyn, Range, Position
+import pansr.ingest as ingest
+import pansr.util as util
+from pansr.cigar import Cigar
+from pansr.coords import Pansyn, Range, Position
 
 MIN_SYN_THRESH = 0
 
@@ -43,24 +43,34 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
 
     ret = set() # use a set to automatically remove duplicates
 
-    def add_lenfiltered(pansyn): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
-        if pansyn and len(pansyn.ref) > MIN_SYN_THRESH:
-            ret.add(pansyn)
+    def add_filtered(pansyn): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
+        if not pansyn:
+            return
+        if len(pansyn.ref) < MIN_SYN_THRESH:
+            return
+        if pansyn.get_degree() < 1:
+            return
+        if not detect_crosssyn:
+            if pansyn.get_degree() < l.get_degree() + r.get_degree():
+                return
+        ret.add(pansyn)
+
+
 
     if detect_crosssyn:
         if allow_overlap:
-            add_lenfiltered(leftest)
+            add_filtered(leftest)
         else:
-            add_lenfiltered(leftest.drop(0, leftest.ref.end - ovstart))
+            add_filtered(leftest.drop(0, leftest.ref.end - ovstart))
     
     # core synteny
-    add_lenfiltered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
+    add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
 
     if detect_crosssyn:
         if allow_overlap:
-            add_lenfiltered(rightest)
+            add_filtered(rightest)
         else:
-            add_lenfiltered(rightest.drop(rightest.ref.start - ovend, 0))
+            add_filtered(rightest.drop(rightest.ref.start - ovend, 0))
 
     return sorted(ret)
 
@@ -92,16 +102,12 @@ def match_synal(syn, aln, ref='a'):
                 pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1
                 ## debugging output
-                #try:
-                #    pansyn.check()
-                #except ValueError as  e:
-                #    print(e)
-                #    print(f"ERRORERRROR: cigar string length {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match ref or qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                #    print(cg)
-                #    print(pansyn)
-                #    print("Adjusting to cg length")
-                #    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
-                #    rng.end = rng.start + cg.get_len(ref=False) -1
+                if not len(rng) == cg.get_len(ref=False):
+                    #print(f"WARN: cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
+                    #print("Cigar is:", cg)
+                    #print("Adjusting to cg length")
+                    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
+                    rng.end = rng.start + cg.get_len(ref=False) -1
 
                 ret.append(pansyn)
                 synr = next(syniter)[1]
