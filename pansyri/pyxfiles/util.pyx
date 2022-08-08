@@ -8,9 +8,9 @@ import multiprocessing
 import pandas as pd
 from collections import deque
 
-from pansr.cigar import Cigar
-import pansr.ingest as ingest
-from pansr.coords import Pansyn, Range
+from pansyri.cigar import Cigar
+import pansyri.ingest as ingest
+from pansyri.coords import Pansyn, Range
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?
