@@ -27,6 +27,8 @@ from function cimport getmeblocks, getOverlapWithSynBlocks
 cimport numpy as np
 cimport cython
 
+from pansyri.coords import Range
+
 np.random.seed(1)
 
 
@@ -645,4 +647,42 @@ def readsyriout(f):
     return df, chrid_dict
 
 
+
+def extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+    """
+    Given a syri output file, extract all regions matching a given annotation.
+    """
+    # columns to look for as start/end positions
+    refchr = ref + "chr"
+    refhaplo = "NaN"
+    refstart = ref + "start"
+    refend = ref + "end"
+
+    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
+    qrychr = qry + "chr"
+    qryhaplo = "NaN"
+    qrystart = qry + "start"
+    qryend = qry + "end"
+
+    buf = deque()
+    raw, chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
+    raw = pd.concat([raw.loc[raw['type'] == ann] for ann in anns])
+    # if implementing filtering later, filter here
+
+    for row in raw.iterrows():
+        row = row[1]
+        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
+            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+            ])
+
+    return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
+
+def extract_syri_regions_to_list(fins, **kwargs):
+    """
+    `extract_syri_regions`, but for processing a list of inputs
+    """
+    return [extract_syri_regions(fin, **kwargs,\
+            reforg=fin.split('/')[-1].split('_')[0],\
+            qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
+            for fin in fins]
 

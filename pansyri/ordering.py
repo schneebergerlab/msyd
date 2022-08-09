@@ -1,15 +1,16 @@
 #!/usr/bin/python3
-# maybe cythonize later, probably not worth it though
+# -*- coding: utf-8 -*-
+# distutils: language = c++
+# cython: language_level = 3
 import math
 
-import pansyri.util as util
 import pansyri.ingest as ingest
 
 def syn_score(syri, gen1, gen2):
     """Defines a similarity score from syri output.
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
-    return sum(map(lambda x: len(x[1][0]), util.extract_regions(syri, anns=['SYN']).iterrows()))
+    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['SYN']).iterrows()))
 
 def len_correct(score_fn):
     """Higher-order function returning a length-corrected scoring function given an uncorrected score.
@@ -24,7 +25,7 @@ def len_correct(score_fn):
 def sv_score(syri, gen1, gen2):
     """Defines a dissimilarity score by summing up the length of all regions annotated to be a structural variant, excluding duplications.
     """
-    return sum(map(lambda x: len(x[1][0]), util.extract_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
+    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
 
 
 def order_greedy(orgs, score_fn=syn_score, gen_mapper=lambda x: x + '.filtered.fa', syri_mapper=lambda x, y: x+'_'+y+"syri.out", maximize=True):

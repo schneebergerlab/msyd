@@ -217,7 +217,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syns = util.extract_regions_to_list(syris, anns=["SYNAL"] if SYNAL else ["SYN"])
+    syns = ingest.extract_syri_regions_to_list(syris, anns=["SYNAL"] if SYNAL else ["SYN"])
 
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]

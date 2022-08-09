@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-# distutils: language = c++
+# dist: language = c++
 # cython: language_level = 3
 
 import functools
@@ -9,8 +9,8 @@ import pandas as pd
 from collections import deque
 import os
 
+import pansyri.pansyn as pansyn
 from pansyri.cigar import Cigar
-import pansyri.ingest as ingest
 from pansyri.coords import Pansyn, Range
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
@@ -31,44 +31,6 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     p2.join()
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
-
-def extract_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
-    """
-    Given a syri output file, extract all regions matching a given annotation.
-    """
-    # columns to look for as start/end positions
-    refchr = ref + "chr"
-    refhaplo = "NaN"
-    refstart = ref + "start"
-    refend = ref + "end"
-
-    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
-    qrychr = qry + "chr"
-    qryhaplo = "NaN"
-    qrystart = qry + "start"
-    qryend = qry + "end"
-
-    buf = deque()
-    raw, chr_mapping = ingest.readsyriout(fin) #TODO? handle chr_mapping
-    raw = pd.concat([raw.loc[raw['type'] == ann] for ann in anns])
-    # if implementing filtering later, filter here
-
-    for row in raw.iterrows():
-        row = row[1]
-        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
-            ])
-
-    return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
-
-def extract_regions_to_list(fins, **kwargs):
-    """
-    `extract_regions`, but for processing a list of inputs
-    """
-    return [extract_regions(fin, **kwargs,\
-            reforg=fin.split('/')[-1].split('_')[0],\
-            qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
-            for fin in fins]
 
 def parse_input_tsv(path):
     """
@@ -99,3 +61,39 @@ def parse_input_tsv(path):
 
     return (syris, alns)
 
+
+def coresyn_from_tsv(path, **kwargs):
+    return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=False, **kwargs)
+def crosssyn_from_tsv(path, **kwargs):
+    return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=True, **kwargs)
+
+maxdegree = 10
+len_getter = lambda df: sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
+len_tabularizer = lambda df: [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+
+def eval_combinations(syns, alns, cores=1):
+    cores_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=False, cores=cores)
+    cores_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=True, cores=cores)
+
+    cross_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=False, cores=cores)
+    cross_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=True, cores=cores)
+
+    print("\nComparing", syns)
+    
+    print(f"cores_syn:\tRegions: {len(cores_syn)}\tTotal length:{len_getter(cores_syn)}")
+    print(f"cores_synal:\tRegions: {len(cores_synal)}\tTotal length:{len_getter(cores_synal)}")
+    print("")
+    print(f"cross_syn:\tRegions: {len(cross_syn)}\tTotal length:{len_getter(cross_syn)}")
+    print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
+    print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_syn)]), sep='\t')
+    print(f"cross_synal:\tRegions: {len(cross_synal)}\tTotal length:{len_getter(cross_synal)}")
+    print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
+    print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
+
+
+def length_compare(syns, alns, cores=1):
+    syns, alns = list(syns), list(alns)
+    for _ in range(len(syns)):
+        eval_combinations(syns, alns)
+        syns = syns[1:]
+        alns = alns[1:]
