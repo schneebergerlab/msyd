@@ -99,9 +99,9 @@ def main(argv):
         print("syn_score, len-corrected")
         print(order_greedy(orgs, score_fn=len_correct(syn_score)))
         print("sv_score")
-        print(order_greedy(orgs, score_fn=sv_score))
+        print(order_greedy(orgs, score_fn=sv_score), maximize=False)
         print("sv_score, len-corrected")
-        print(order_greedy(orgs, score_fn=len_correct(sv_score)))
+        print(order_greedy(orgs, score_fn=len_correct(sv_score)), maximize=False)
         sys.exit()
 
     syns, alns = parse_input_tsv(argv[0])
