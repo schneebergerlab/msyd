@@ -7,11 +7,7 @@ import copy
 import functools
 #import cython
 
-<<<<<<<< HEAD:pansyri/pyxfiles/coords.pyx
-from pansyri.cigar import Cigar
-========
 from pansyri.classes.cigar import Cigar
->>>>>>>> leon:pansyri/pyxfiles/classes/coords.pyx
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
