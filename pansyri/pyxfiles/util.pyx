@@ -10,8 +10,8 @@ from collections import deque
 import os
 
 import pansyri.pansyn as pansyn
-from pansyri.cigar import Cigar
-from pansyri.coords import Pansyn, Range
+from pansyri.classes.cigar import Cigar
+from pansyri.classes.coords import Pansyn, Range
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?

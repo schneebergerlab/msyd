@@ -27,7 +27,7 @@ from function cimport getmeblocks, getOverlapWithSynBlocks
 cimport numpy as np
 cimport cython
 
-from pansyri.coords import Range
+from pansyri.classes.coords import Range
 
 np.random.seed(1)
 

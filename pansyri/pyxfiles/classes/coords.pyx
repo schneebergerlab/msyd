@@ -7,7 +7,7 @@ import copy
 import functools
 #import cython
 
-from pansyri.cigar import Cigar
+from pansyri.classes.cigar import Cigar
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position

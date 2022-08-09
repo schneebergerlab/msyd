@@ -11,8 +11,8 @@ from collections import deque
 
 import pansyri.ingest as ingest
 import pansyri.util as util
-from pansyri.cigar import Cigar
-from pansyri.coords import Pansyn, Range, Position
+from pansyri.classes.cigar import Cigar
+from pansyri.classes.coords import Pansyn, Range, Position
 
 MIN_SYN_THRESH = 0
 
