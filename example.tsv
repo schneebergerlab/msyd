@@ -1,0 +1,7 @@
+# this is an example tsv file for comparing two haploid genomes from the hgsv dataset
+# empty lines, lines beginning with '#' and everything after a '#' in a line is ignored
+# columns are tab-separated
+
+# aln file, can be e.g. in BAM/SAM and PAF format  syri output file containing SV annotation
+alns_filtered/v12_HG00171_hgsvc_pbsq2-clr_1000-flye.h1-un.arrow-p1.fna.bgz.paf	syri/v12_HG00171_hgsvc_pbsq2-clr_1000-flye.h1-un.arrow-p1.fna.bgzsyri.out
+alns_filtered/v12_HG00096_hgsvc_pbsq2-clr_1000-flye.h1-un.arrow-p1.fna.bgz.paf	syri/v12_HG00096_hgsvc_pbsq2-clr_1000-flye.h1-un.arrow-p1.fna.bgzsyri.out
