@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-from pansyri.convenience import *
 from pansyri.ordering import *
 import pansyri.util as util
 
@@ -34,7 +33,7 @@ def main(argv):
     cores = int(argv[1]) if len(argv) >= 4 else 1
 
     if argv[0] == 'len':
-        length_compare(syns, alns, cores=cores)
+        util.length_compare(syns, alns, cores=cores)
     else:
-        eval_combinations(syns, alns, cores=cores)
+        util.eval_combinations(syns, alns, cores=cores)
 
