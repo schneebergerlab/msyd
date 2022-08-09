@@ -8,7 +8,7 @@ plotsr --genomes genomes_lex.txt -o ~/plotsr_lex.png\
 	--sr kyo_lersyri.out\
 	--sr ler_shasyri.out
 
-plotsr --genomes genomes_pansyri.txt -o ~/plotsr_pansyri.png\
+plotsr --genomes genomes_pansyri_syn.txt -o ~/plotsr_pansyri_syn.png\
 	--sr kyo_cvisyri.out\
 	--sr cvi_an1syri.out\
 	--sr an1_colsyri.out\
@@ -16,3 +16,12 @@ plotsr --genomes genomes_pansyri.txt -o ~/plotsr_pansyri.png\
 	--sr ler_c24syri.out\
 	--sr c24_erisyri.out\
 	--sr eri_shasyri.out
+
+plotsr --genomes genomes_pansyri_sv.txt -o ~/plotsr_pansyri_sv.png\
+	--sr kyo_erisyri.out\
+	--sr eri_c24syri.out\
+	--sr c24_lersyri.out\
+	--sr ler_cvisyri.out\
+	--sr cvi_an1syri.out\
+	--sr an1_colsyri.out\
+	--sr col_shasyri.out
