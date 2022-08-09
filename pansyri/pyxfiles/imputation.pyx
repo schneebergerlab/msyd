@@ -5,6 +5,18 @@
 
 from pansyn.classes.cigar import Cigar, cig_clips, cig_aln_types
 
+"""
+TODOs
+– write unit tests
+– write frontend:
+    • impute including ranges, to handle different positions (use clipping)
+    • impute unequal sequences, also use clipping
+    • maybe have a convenience function imputing everything given two bam files?
+    • maybe have a convenience function automatically detecting core/cross synteny from such imputed bams?
+    • maybe have a fucntion that automatically imputes along all pansyntenic regions?
+    => convenience functions may be moved to util
+"""
+
 
 def impute(l, r):
     """
