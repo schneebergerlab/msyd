@@ -51,6 +51,49 @@ class Cigar:
         """
         return sum([int(i[0]) for i in self.pairs if i[1] == '='])/self.get_len()
 
+    def pad(self, left: int, right: int, clip='S'):
+        """Small function that adds padding to one or both sides of this `Cigar`.
+        Mutates self!
+
+        :param left, right: How much padding to add to each side.
+        :type left, right: `int`
+        :param clip: which kind of padding to use, can be 'S' or 'H'. 'S' by default.
+        :return: `None`
+        """
+        if left > 0:
+            self.pairs = [left, clip] + self.pairs
+        if right > 0:
+            self.pairs = self.pairs + [right, clip]
+
+    def unpad(self):
+        """Removes padding from the borders of this `Cigar`.
+        Mutates self!
+        :return: `None`
+        """
+        i_start = 0
+        for x in self.pairs:
+            if x[1] not in cig_clips:
+                break
+            i_start += 1
+        i_end = len(self.pairs)
+        for x in self.pairs[::-1]:
+            if x[1] not in cig_clips:
+                break
+            i_end -= 1
+
+        self.pairs = self.pairs[i_start:i_end]
+
+    def unpad_all(self):
+        """Removes all padding, even from inside of this `Cigar` (however it got there...)
+        Mutates self!
+        :return: `None`
+        """
+        for pos, pair in enumerate(self.pairs):
+            if pair[1] in cig_clips:
+                del self.pairs[pos]
+
+
+
     def get_removed_legacy(self, n, ref=True, start=True):
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.

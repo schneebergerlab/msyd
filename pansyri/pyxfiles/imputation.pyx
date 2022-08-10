@@ -19,6 +19,7 @@ TODOs
 
 def impute_strings(strl: str, strr: str):
     """Convenience function performing the imputation on just two CIGAR strings.
+
     :param strl, strr: the two strings to impute the alignment from.
     :return: A CIGAR string containing an approximated alignment of `strr` to `strl`
     :rtype: str
@@ -26,7 +27,23 @@ def impute_strings(strl: str, strr: str):
     cgl, cgr = Cigar.from_string(strl), Cigar.from_string(strr)
     return impute(cgl, cgr).to_string()
 
+
 def impute_ranges(cgl, rngl, cgr, rngr):
+    """A function for imputing two regions not corresponding 1:1 in start/end position by padding appropriately.
+    Emits a warning if the two regions do not have an overlap.
+
+    :param cgl, cgr: Two `Cigar` objects containing the alignments to the common reference for each of the two positions.
+    :param rngl, rngr: Two `Range` objects containing the positions on the common reference
+    :return: A `Cigar` containing the approximated alignment of the two `Cigars`.
+    :rtype: `Cigar`
+    """#TODO maybe also compute Range of alignment on target alignment? issue: needs to supply starting point in methot arguments => move to different method or use default arguments to not do this as standard
+    maxstart = max(rngl.start, rngr.start)
+    minend = min(rngl.end, rngr.end)
+    if not maxstart < minend:
+        print(f"WARNING: no overlap found between {rngl} and {rngr}, double-check input!")
+
+    return impute(cgl.pad(maxstart - rngl.start, rngl.end - minend), cgr.pad(maxstart - rngr.start, rngr.end - minend))
+
 
 
 def impute(l: Cigar, r: Cigar):
@@ -35,6 +52,7 @@ def impute(l: Cigar, r: Cigar):
     By necessity, this is a crude approximation and can in no way replace a full alignment.
     The algorithm assumes the alignments to not start shifted from each other.
     If one of the two alignments has a larger total length than the other one, soft-clipping will be appended to the imputed `Cigar` until the lengths match
+
     :param l, r: Two `Cigar`s.
     :return: A Cigar containing an approximated alignment of `r` to `l`
     """
