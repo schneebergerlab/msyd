@@ -3,7 +3,7 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-from pansyn.classes.cigar import Cigar, cig_clips, cig_aln_types
+from pansyri.classes.cigar import Cigar, cig_clips, cig_aln_types
 
 """
 TODOs
@@ -18,7 +18,7 @@ TODOs
 """
 
 
-def impute(l, r):
+def impute(l: Cigar, r: Cigar):
     """
     This function combines two CIGAR strings of two queries on one reference and tries to impute the CIGAR string for a 1:1 alignment of one query to the other.
     By necessity, this is a crude approximation and can in no way replace a full alignment.
@@ -51,10 +51,10 @@ def impute(l, r):
             # compute the max possible step
             step = min(lpr[0]-lprog, rpr[0]-rprog)
             # compute the type and which strand to step
-            t, stepl, stepr = Cigar.impute_type(lpr[1], rpr[1])
+            t, stepl, stepr = impute_type(lpr[1], rpr[1])
             if t is not None:
                 imputed_pairs.append([step, t])
-            # do the step #TO/DO make this branchless with cdefs
+            # do the step #TO/DO make this branchless with cdefs by multiplying with stepl instead
             if stepr:
                 rprog += step
             if stepl:
@@ -74,7 +74,7 @@ def impute(l, r):
     cg.clean()
     return cg
 
-def impute_type(ltp, rtp):
+cdef impute_type(ltp, rtp):
     """
     Helper function for impute().
     Given two CIGAR types, outputs the one that is imputed
@@ -82,30 +82,34 @@ def impute_type(ltp, rtp):
     :return: the CIGAR char imputed for the inputs as well as two bools specifying whether to step ahead on the left/right Cigar.
     """
     if ltp in cig_aln_types:
-        if rtp == 'D':
+        if rtp == b'D':
             return 'D', True, True
 
-        if rtp == 'I':
+        if rtp == b'I':
             return 'I', True, True
 
-        if ltp == 'X' or rtp == 'X':
+        if ltp == b'X' or rtp == b'X':
             return 'X', True, True
         else:
-            if ltp == '=' and rtp == '=':
+            if ltp == b'=' and rtp == b'=':
                 return '=', True, True
             else: # at least one must be an M, none is an X
                 return 'M', True, True
 
-    if ltp == 'I':
-        if rtp == 'I': # TO/DO be even more conservative and resolve this to D followed by I?
+    if ltp == b'I':
+        if rtp == b'I': # TO/DO be even more conservative and resolve this to D followed by I?
             return 'M', True, True
         else:
             return 'D', True, False # right has deletion relative to left
         
-    if ltp == 'D':
-        if rtp == 'D':
+    if ltp == b'D':
+        if rtp == b'D':
             return None, True, True # None to skip this region
         elif rtp in cig_aln_types:
             return 'I', True, True
-        elif rtp == 'I':
+        elif rtp == b'I':
             return 'I', True, True
+
+def impute_strings(strl: str, strr: str):
+    cgl, cgr = Cigar.from_string(strl), Cigar.from_string(strr)
+    return impute(cgl, cgr).to_string()

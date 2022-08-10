@@ -3,6 +3,7 @@
 
 from pansyri.ordering import *
 import pansyri.util as util
+import pansyri.imputation as imputation
 
 import logging
 import logging.config
@@ -16,6 +17,11 @@ Experimental and WIP.
 """
 
 def main(argv):
+
+    if argv[0] == 'impute':
+        print(imputation.impute_strings(argv[1], argv[2]))
+        sys.exit()
+
     if argv[0] == 'order':
         scores = [syn_score, sv_score, len_correct(syn_score), len_correct(sv_score)]
         orgs = argv[1:]
