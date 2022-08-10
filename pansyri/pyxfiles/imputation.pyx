@@ -81,23 +81,26 @@ cdef impute_type(ltp, rtp):
     :param: two valid CIGAR chars (M=IDSHX)
     :return: the CIGAR char imputed for the inputs as well as two bools specifying whether to step ahead on the left/right Cigar.
     """
+    # shortcut for the most common part
+    if ltp == '=' and rtp == '=':
+        return '=', True, True
+
     if ltp in cig_aln_types:
         if rtp == 'D':
             return 'D', True, True
 
         if rtp == 'I':
-            return 'I', True, True
+            return 'I', False, True
 
-        if ltp == 'X' or rtp == 'X':
-            return 'X', True, True
-        else:
-            if ltp == '=' and rtp == '=':
-                return '=', True, True
-            else: # at least one must be an M, none is an X
-                return 'M', True, True
+        if ltp == 'X':
+            return 'X' if rtp == '=' else 'M', True, True
+        elif ltp == '=': # rtp cannot be '=' in that case b/c that's handled above
+            return 'X' if rtp == 'X' else 'M', True, True
+        else: # ltp must be 'M'
+            return 'M', True, True
 
     if ltp == 'I':
-        if rtp == 'I': # TO/DO be even more conservative and resolve this to D followed by I?
+        if rtp == 'I':
             return 'M', True, True
         else:
             return 'D', True, False # right has deletion relative to left
@@ -108,7 +111,7 @@ cdef impute_type(ltp, rtp):
         elif rtp in cig_aln_types:
             return 'I', True, True
         elif rtp == 'I':
-            return 'I', True, True
+            return 'I', False, True
 
 def impute_strings(strl: str, strr: str):
     cgl, cgr = Cigar.from_string(strl), Cigar.from_string(strr)
