@@ -37,6 +37,8 @@ def main(argv):
 
     syns, alns = util.parse_input_tsv(argv[0])
     cores = int(argv[1]) if len(argv) >= 4 else 1
+    import pansyri.ingest as ingest
+    print(ingest.readsyriout(syns[0])[0].to_string())
 
     if argv[0] == 'len':
         util.length_compare(syns, alns, cores=cores)

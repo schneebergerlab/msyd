@@ -8,17 +8,22 @@ Copied & adapted from SyRI 1.
 """
 
 import numpy as np
-import sys
-from collections import deque, defaultdict
-from scipy.stats import *
-from datetime import datetime
 import pandas as pd
+from scipy.stats import *
+
+from datetime import datetime
 from multiprocessing import Pool
 from functools import partial
+from collections import deque, defaultdict, OrderedDict
+from gzip import open as gzopen
+from gzip import BadGzipFile
+
+import sys
 import os
-from gc import collect
 import logging
 import psutil
+import pysam
+from gc import collect
 
 from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.map cimport map as cpp_map
@@ -50,8 +55,6 @@ def mergeRanges(ranges):
     :param ranges:
     :return:
     """
-    from collections import deque
-    import numpy as np
     if len(ranges) < 2:
         return ranges
     ranges = ranges[ranges[:, 0].argsort()]
@@ -90,10 +93,6 @@ def revcomp(seq):
 
 
 def readfasta(f):
-    from gzip import open as gzopen
-    from gzip import BadGzipFile
-    from collections import deque
-    import sys
     out = {}
     chrid = ''
     chrseq = deque()
@@ -147,8 +146,6 @@ def readfasta(f):
 
 
 def samtocoords(f):
-    from pandas import DataFrame
-    from collections import deque
     logger = logging.getLogger('SAM reader')
     rc = {}        # Referece chromosomes
     rcs = {}        # Selected chromosomes
@@ -234,7 +231,6 @@ def samtocoords(f):
 # END
 
 def readSAMBAM(fin, type='B'):
-    import pysam
     logger = logging.getLogger('Reading BAM/SAM file')
     try:
         if type == 'B':
@@ -609,10 +605,6 @@ def readCoords(coordsfin, chrmatch, cwdpath, prefix, args, cigar = False):
 # pasted from plotsr, parsing syri output
 VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
 def readsyriout(f):
-    from pandas import DataFrame
-    import numpy as np
-    from collections import deque, OrderedDict
-    import logging
     # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
     logger = logging.getLogger("readsyriout")
     syri_regs = deque()
@@ -629,7 +621,7 @@ def readsyriout(f):
                     logger.warning("{} is not a valid annotation for alignments in file {}. Alignments should belong to the following classes {}. Skipping alignment.".format(l[10], f, VARS))
 
     try:
-        df = DataFrame(list(syri_regs))[[0, 1, 2, 5, 6, 7, 10]]
+        df = pd.DataFrame(list(syri_regs))[[0, 1, 2, 5, 6, 7, 10]]
     except KeyError:
         raise ImportError("Incomplete input file {}, syri.out file should have 11 columns.".format(f))
     df[[0, 5, 10]] = df[[0, 5, 10]].astype(str)
@@ -646,6 +638,19 @@ def readsyriout(f):
     df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
     return df, chrid_dict
 
+def readsyrisnps(fin):
+    syri_regs = deque()
+    with open(f, 'r') as fin:
+        for line in fin:
+            l = line.strip().split()
+            if l[10] == 'SNP':
+                #TODO maybe store annotation information from fields 8-10
+                snv = SNV(Position('a', 'NaN', l[0], int(l[1])), Position('b', 'NaN', l[5], int(l[6])), l[4], l[5])
+                syri_regs.append()
+
+    df = pd.DataFrame(list(syri_regs))#[[0, 1, 3, 4, 5, 6, 8, 9, 10]]
+    #TODO maybe do chromosome mapping?
+    return df
 
 
 #TODO maybe implement more fine-grained filtering? but can probably done with normal pandas calls

@@ -5,6 +5,7 @@
 
 import pandas as pd
 import numpy as np
+from collections import defaultdict
 
 from pansyri.pansyn import Range, Pansyn
 
@@ -18,10 +19,15 @@ def get_snps(syri, rngs):
         A dictionary mapping a `Pansyn` to a dictionary containing the corresponding SNPs identified on it for each organism that `Pansyn` has a position in.
     """
     pass
+"""
+    ret = defaultdict(lambda x: [])
+    snps = syri.loc[
+"""
+
 
 #TODO implement
 # a function getting all snps that are syntenic to a region
-# how to deal with positions in synteny? maybe just count from start of syntenic region according to cigar distance?
+# how to deal with positions in synteny? maybe just count from start of SYNAL region according to cigar distance?
 def get_syntenic_snps(syri, rng):
     pass
 
