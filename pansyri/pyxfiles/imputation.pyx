@@ -17,14 +17,26 @@ TODOs
     => convenience functions may be moved to util
 """
 
+def impute_strings(strl: str, strr: str):
+    """Convenience function performing the imputation on just two CIGAR strings.
+    :param strl, strr: the two strings to impute the alignment from.
+    :return: A CIGAR string containing an approximated alignment of `strr` to `strl`
+    :rtype: str
+    """
+    cgl, cgr = Cigar.from_string(strl), Cigar.from_string(strr)
+    return impute(cgl, cgr).to_string()
+
+def impute_ranges(cgl, rngl, cgr, rngr):
+
 
 def impute(l: Cigar, r: Cigar):
     """
-    This function combines two CIGAR strings of two queries on one reference and tries to impute the CIGAR string for a 1:1 alignment of one query to the other.
+    This function combines two `Cigar` objects consistisng of the alignment of two queries to a common reference and tries to impute the CIGAR string for a 1:1 alignment of one query to the other.
     By necessity, this is a crude approximation and can in no way replace a full alignment.
     The algorithm assumes the alignments to not start shifted from each other.
-    :param: Two Cigars.
-    :return: A Cigar.
+    If one of the two alignments has a larger total length than the other one, soft-clipping will be appended to the imputed `Cigar` until the lengths match
+    :param l, r: Two `Cigar`s.
+    :return: A Cigar containing an approximated alignment of `r` to `l`
     """
     imputed_pairs = []
     if len(l.pairs) == 0 or len(r.pairs) ==0:
@@ -112,7 +124,3 @@ cdef impute_type(ltp, rtp):
             return 'I', True, True
         elif rtp == 'I':
             return 'I', False, True
-
-def impute_strings(strl: str, strr: str):
-    cgl, cgr = Cigar.from_string(strl), Cigar.from_string(strr)
-    return impute(cgl, cgr).to_string()
