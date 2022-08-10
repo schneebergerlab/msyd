@@ -648,6 +648,7 @@ def readsyriout(f):
 
 
 
+#TODO maybe implement more fine-grained filtering? but can probably done with normal pandas calls
 def extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
