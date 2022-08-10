@@ -84,7 +84,7 @@ class Cigar:
         self.pairs = self.pairs[i_start:i_end]
 
     def unpad_all(self):
-        """Removes all padding, even from inside of this `Cigar` (however it got there...)
+        """Removes all padding from this `Cigar`, even from the middle of the alignment (however it got there...)
         Mutates self!
         :return: `None`
         """
