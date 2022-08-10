@@ -132,7 +132,7 @@ class Cigar:
         return (skip, cg)
 
 
-    def get_removed(self, n, ref=True, start=True):
+    def get_removed(self, n, ref=True, start=True, only_pos=False):
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
@@ -145,7 +145,7 @@ class Cigar:
         # two sets containing the CIGAR codes incrementing one or the other strand
         fwd = reffwd if ref else qryfwd 
         altfwd = qryfwd if ref else reffwd
-        rem = n # tally how much still left to remove
+        rem = n # tally how much is still left to remove
         
 
         # loop and remove regions as long as the skip is more than one region
@@ -168,6 +168,9 @@ class Cigar:
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             if cgi[1] in altfwd:
                 skip += rem
+
+            if only_pos:
+                return skip
 
             if start:
                 return (skip, Cigar([[cgi[0]-rem, cgi[1]]] + self.pairs[ind+1:]))
