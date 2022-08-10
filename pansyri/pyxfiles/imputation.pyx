@@ -64,10 +64,10 @@ def impute(l: Cigar, r: Cigar):
             break
 
     # append clippings at end for the sequence that hasn't ran out
-    #for p in liter:
-    #    imputed_pairs.append([p[0], 'S'])
-    #for p in riter:
-    #    imputed_pairs.append([p[0], 'S'])
+    for p in liter:
+        imputed_pairs.append([p[0], 'S'])
+    for p in riter:
+        imputed_pairs.append([p[0], 'S'])
 
     # return
     cg = Cigar(imputed_pairs)
@@ -82,32 +82,32 @@ cdef impute_type(ltp, rtp):
     :return: the CIGAR char imputed for the inputs as well as two bools specifying whether to step ahead on the left/right Cigar.
     """
     if ltp in cig_aln_types:
-        if rtp == b'D':
+        if rtp == 'D':
             return 'D', True, True
 
-        if rtp == b'I':
+        if rtp == 'I':
             return 'I', True, True
 
-        if ltp == b'X' or rtp == b'X':
+        if ltp == 'X' or rtp == 'X':
             return 'X', True, True
         else:
-            if ltp == b'=' and rtp == b'=':
+            if ltp == '=' and rtp == '=':
                 return '=', True, True
             else: # at least one must be an M, none is an X
                 return 'M', True, True
 
-    if ltp == b'I':
-        if rtp == b'I': # TO/DO be even more conservative and resolve this to D followed by I?
+    if ltp == 'I':
+        if rtp == 'I': # TO/DO be even more conservative and resolve this to D followed by I?
             return 'M', True, True
         else:
             return 'D', True, False # right has deletion relative to left
         
-    if ltp == b'D':
-        if rtp == b'D':
+    if ltp == 'D':
+        if rtp == 'D':
             return None, True, True # None to skip this region
         elif rtp in cig_aln_types:
             return 'I', True, True
-        elif rtp == b'I':
+        elif rtp == 'I':
             return 'I', True, True
 
 def impute_strings(strl: str, strr: str):
