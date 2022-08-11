@@ -71,6 +71,14 @@ def coresyn_from_lists(syns, alns, **kwargs):
 def crosssyn_from_lists(syns, alns, **kwargs):
     return pansyn.find_multisyn(syns, alns, detect_crosssyn=True, **kwargs)
 
+def get_orgs_from_df(df):
+    """Small utility function to get all organism from a DataFrame of `Pansyn` objects.
+    :param df: A `DataFrame` containing `Pansyn` objects.
+    :param_type df: `pandas.DataFrame`
+    :returns: A `set` containing all of the organisms in a DataFrame of `pansyn` objects.
+    """
+    return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()), df.iterrows()))
+
 
 #TODO implement function to direcly filter multisyn out for degrees
 

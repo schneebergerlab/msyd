@@ -24,14 +24,15 @@ import pansyri.util as util
 
 def order(syns, alns):
     df = util.crosssyn_from_lists(syns, alns, cores=6)
-    orgs = []# draw from df?
+    orgs = util.get_orgs_from_df(df)
     return order_greedy(orgs, df)
 
 def syn_score(cur, org, df):
     """Defines a similarity score from syri output.
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
-    return sum(map(lambda x: len(x),filter(lambda x: cur in x.ranges_dict and org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
+    # using length on org, but this shouldn't matter too much
+    return sum(map(lambda x: len(x.ranges_dict[org]),filter(lambda x: cur in x.ranges_dict and org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
 
 #def len_correct(score_fn):
 #    """Higher-order function returning a length-corrected scoring function given an uncorrected score.
