@@ -24,7 +24,9 @@ import pansyri.util as util
 
 def order(syns, alns):
     df = util.crosssyn_from_lists(syns, alns, cores=6)
+    print("INFO: got crossyn df")
     orgs = util.get_orgs_from_df(df)
+    print("INFO: got orgs from crossyn df")
     return order_greedy(orgs, df)
 
 def syn_score(cur, org, df):
@@ -71,6 +73,7 @@ def order_greedy(orgs, df, score_fn=syn_score, maximize=True):
     orgs.remove(cur)
 
     while orgs:
+        print("INFO: currently selected:", orgs)
         # find the next organism with maximal similarity score to this one
         ext_score = -math.inf if maximize else math.inf
         for org in orgs:
