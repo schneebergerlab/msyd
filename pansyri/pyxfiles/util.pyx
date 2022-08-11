@@ -62,6 +62,8 @@ def parse_input_tsv(path):
     return (syris, alns)
 
 
+# set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
+# For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
     return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=False, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
