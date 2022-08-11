@@ -20,54 +20,60 @@ import math
 
 
 import pansyri.ingest as ingest
+import pansyri.util as util
 
-def syn_score(syri, gen1, gen2):
+def order(syns, alns):
+    df = util.crosssyn_from_lists(syns, alns, cores=6)
+    orgs = []# draw from df?
+    return order_greedy(orgs, df)
+
+def syn_score(cur, org, df):
     """Defines a similarity score from syri output.
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
-    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['SYN']).iterrows()))
+    return sum(map(lambda x: len(x),filter(lambda x: cur in x.ranges_dict and org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
 
-def len_correct(score_fn):
-    """Higher-order function returning a length-corrected scoring function given an uncorrected score.
-    """
-    def corrected(syri, gen1, gen2):
-        gen1_len = sum(map(lambda x: len(x), ingest.readfasta(gen1).values()))
-        gen2_len = sum(map(lambda x: len(x), ingest.readfasta(gen2).values()))
-        l_eff = (gen1_len + gen2_len)/2
-        return score_fn(syri, gen1, gen2)/l_eff
-    return corrected
+#def len_correct(score_fn):
+#    """Higher-order function returning a length-corrected scoring function given an uncorrected score.
+#    """
+#    def corrected(syri):
+#        gen1_len = sum(map(lambda x: len(x), ingest.readfasta(gen1).values()))
+#        gen2_len = sum(map(lambda x: len(x), ingest.readfasta(gen2).values()))
+#        l_eff = (gen1_len + gen2_len)/2
+#        return score_fn(syri)/l_eff
+#    return corrected
 
-def sv_score(syri, gen1, gen2):
-    """Defines a dissimilarity score by summing up the length of all regions annotated to be a structural variant, excluding duplications.
-    """
-    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
+# temporarily commented out, later reincorporate from proper multigenomic varcalling
+# needs Equality between SVs solved, redone syri imports
+#def sv_score(cur, org, df):
+#    """Defines a dissimilarity score by summing up the length of all regions annotated to be a structural variant, excluding duplications.
+#    """
+#    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
 
 
-def order_greedy(orgs, score_fn=syn_score, gen_mapper=lambda x: x + '.filtered.fa', syri_mapper=lambda x, y: x+'_'+y+"syri.out", maximize=True):
+def order_greedy(orgs, df, score_fn=syn_score, maximize=True):
     """A simple, greedy algorithm ordering a list of organisms while trying to maximize (or minimize, depending on `maximize`) the similarity score between each organism and the next one.
     The first organism is chosen at random.
-    :param orgs: a sequence of organism/filenames
+
+    :param orgs: a sequence of organism names.
+    :param df: a DataFrame of `Pansyn` objects, as produced by `find_multisyn(detect_crosssyn=True)`.
     :param score_fn: similarity score to use, by default `syn_score`. The scoring function needs to accept the filename of a syri.out file as output.
     :param_type score_fn: a function mapping a file path to a numerical score
-    :param gen_mapper: a function mapping a genome id to a fasta file containing the genome corresponding to that ID. By default set up to work with the `../data/ampril` dataset.
-    :param_type filename_mapper: lambda str: str
-    :param syri_mapper: a function mapping two genome ids to a syri file comparing the two. By default set up to work with the `../data/ampril` dataset.
-    :param_type filename_mapper: lambda str, str: str
     :param maximize: Boolean toggling whether to minimize/maximize the score (similarity vs dissimilarity scoring). Defaults to True.
     :returns: a list containing the elements of orgs ordered according to the algorithm.
     :rtype: List[str]
     """
     orgs = set(orgs)
 
-    cur = list(orgs)[0] # arbitrarily choose start point
+    cur = list(orgs)[0] # arbitrarily choose first organism
     order = [cur]
     orgs.remove(cur)
 
     while orgs:
         # find the next organism with maximal similarity score to this one
-        ext_score = 0 if maximize else math.inf
+        ext_score = -math.inf if maximize else math.inf
         for org in orgs:
-            score = score_fn(syri_mapper(cur, org), gen_mapper(cur), gen_mapper(org))
+            score = score_fn(cur, org, df)
             if maximize and score > ext_score:
                 ext_score = score
                 cur = org

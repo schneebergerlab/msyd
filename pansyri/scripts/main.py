@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-from pansyri.ordering import *
 import pansyri.util as util
+import pansyri.ordering as ordering
 import pansyri.imputation as imputation
 
 import logging
@@ -22,25 +22,15 @@ def main(argv):
         print(imputation.impute_strings(argv[1], argv[2]))
         sys.exit()
 
-    if argv[0] == 'order':
-        scores = [syn_score, sv_score, len_correct(syn_score), len_correct(sv_score)]
-        orgs = argv[1:]
-        print("syn_score")
-        print(order_greedy(orgs, score_fn=syn_score))
-        print("syn_score, len-corrected")
-        print(order_greedy(orgs, score_fn=len_correct(syn_score)))
-        print("sv_score")
-        print(order_greedy(orgs, score_fn=sv_score, maximize=False))
-        print("sv_score, len-corrected")
-        print(order_greedy(orgs, score_fn=len_correct(sv_score), maximize=False))
-        sys.exit()
 
     syns, alns = util.parse_input_tsv(argv[0])
-    cores = int(argv[1]) if len(argv) >= 4 else 1
-    import pansyri.ingest as ingest
-    print(ingest.readsyriout(syns[0])[0].to_string())
+    cores = int(argv[2]) if len(argv) >= 4 else 1
 
-    if argv[0] == 'len':
+    if argv[1] == 'order':
+        print(ordering.order(syns, alns))
+    elif argv[1] == 'len':
         util.length_compare(syns, alns, cores=cores)
-    else:
+    elif argv[1] == 'comb':
         util.eval_combinations(syns, alns, cores=cores)
+    elif argv[1]:
+        print(util.crosssyn_from_lists(syns, alns, cores=cores))

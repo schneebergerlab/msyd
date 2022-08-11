@@ -66,6 +66,10 @@ def coresyn_from_tsv(path, **kwargs):
     return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=False, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
     return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=True, **kwargs)
+def coresyn_from_lists(syns, alns, **kwargs):
+    return pansyn.find_multisyn(syns, alns, detect_crosssyn=False, **kwargs)
+def crosssyn_from_lists(syns, alns, **kwargs):
+    return pansyn.find_multisyn(syns, alns, detect_crosssyn=True, **kwargs)
 
 
 #TODO implement function to direcly filter multisyn out for degrees
