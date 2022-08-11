@@ -14,6 +14,8 @@ def order(syns, alns):
     :returns: the calculated ordering of the organisms as a `list` of strings
     :rtype: List[str]
     """
+    # disabled using SYNAL for now, runtime fairly slow on the dell nodes, not quite sure why
+    # might even be the better idea, we want to capture large-scale synteny anyway
     df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
     print("INFO: got crossyn df")
     orgs = util.get_orgs_from_df(df)
