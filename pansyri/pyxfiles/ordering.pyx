@@ -23,7 +23,7 @@ import pansyri.ingest as ingest
 import pansyri.util as util
 
 def order(syns, alns):
-    df = util.crosssyn_from_lists(syns, alns, cores=6)
+    df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
     print("INFO: got crossyn df")
     orgs = util.get_orgs_from_df(df)
     print("INFO: got orgs from crossyn df")
