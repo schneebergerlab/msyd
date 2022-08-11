@@ -4,6 +4,12 @@
 # cython: language_level = 3
 import math
 
+#TODO do all qry to reference as rest of pansyri
+# use output from find_multisyn
+# can do either pairwise for each or extract from whole output
+# pairwise might be faster? but maybe irrelevant given parallelization
+# full has advantage of selecting for degrees, and later multigenomic SVs
+
 import pansyri.ingest as ingest
 
 def syn_score(syri, gen1, gen2):

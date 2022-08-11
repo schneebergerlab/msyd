@@ -22,6 +22,8 @@ def get_snps(syri, rngs):
 """
     ret = defaultdict(lambda x: [])
     snps = syri.loc[
+    Maybe move this to util or ingest?
+    => big filtering function that combines multiple features for reuse in other variant types
 """
 
 

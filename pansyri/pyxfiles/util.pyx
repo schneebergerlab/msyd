@@ -67,6 +67,9 @@ def coresyn_from_tsv(path, **kwargs):
 def crosssyn_from_tsv(path, **kwargs):
     return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=True, **kwargs)
 
+
+#TODO implement function to direcly filter multisyn out for degrees
+
 maxdegree = 10
 len_getter = lambda df: sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
 len_tabularizer = lambda df: [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
