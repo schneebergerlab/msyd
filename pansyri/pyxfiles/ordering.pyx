@@ -10,6 +10,15 @@ import math
 # pairwise might be faster? but maybe irrelevant given parallelization
 # full has advantage of selecting for degrees, and later multigenomic SVs
 
+# to refactor:
+# – use same input as main, parse the tsv using util.parse_tsv
+# – remove size correction for now => no more need for genomes
+    # => probably not all that relevant if using subset from range anyway, should have equal lengths
+    # possibly readd with length from ranges later?
+# – filter for range, matching on chromosome
+# for now just do that here using DataFrame.loc[]
+
+
 import pansyri.ingest as ingest
 
 def syn_score(syri, gen1, gen2):
