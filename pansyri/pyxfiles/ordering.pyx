@@ -7,7 +7,7 @@ import math
 import pansyri.ingest as ingest
 import pansyri.util as util
 
-def order(syns, alns, rng=None):
+def order(syns, alns, chr=None):
     """Convenience function performing a full ordering imputation given syns/alns extracted from a.tsv
     Mostly meant to be called from main.py.
     It also demonstrates the way to compute an ordering using the new procedure:
@@ -15,7 +15,8 @@ def order(syns, alns, rng=None):
     Then, the organism names are extracted from the Crosssynteny DF (this might be moved to the ingest module in the future).
     Finally, the optimizing algorithm is called with the appropriate scoring function, in this case the greedy algorithm with the default syn_score.
     :param syns, alns: list of syn/aln files, as output by parse_tsv in util
-    :param rng: The `Range` to restrict the ordering to. Range.[start|end|chr] are taken into account, organism and haplotype information is ignored. If `None` (default), the ordering is performed across the entire genome. The filtering is performed according to position on the reference.
+    :param chr: The chromosome to restrict the ordering to. If `None` (default), the ordering is performed across the entire genome. The filtering is performed according to chromosome on the reference.
+    :type chr: `str`
     :returns: the calculated ordering of the organisms as a `list` of strings
     :rtype: List[str]
     """
@@ -23,8 +24,10 @@ def order(syns, alns, rng=None):
     # might even be the better idea, we want to capture large-scale synteny anyway
     df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
     print("INFO: got crossyn df")
-    if rng is not None:
-        df = util.filter_multisyn_df(df, rng)
+    if chr is not None:
+        df = util.filter_multisyn_df_chr(df, chr)
+        # if filtering to a range of interest, call filter_multisyn_df instead like this:
+        # df = util.filter_multisyn_df(df, Range(None, <chr>, 'NaN', <start>, <end>))
         print("INFO: Filtered crossyn df")
     orgs = util.get_orgs_from_df(df)
     print("INFO: got orgs from crossyn df")

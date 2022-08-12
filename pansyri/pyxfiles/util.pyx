@@ -107,7 +107,17 @@ def eval_combinations(syns, alns, cores=1):
     print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
     print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
 
-def filter_multisyn_df(df, rng, only_contained=False): # TODO get to work, add non-overlapping variant
+def filter_multisyn_df(df, rng, only_contained=False):
+    """Misc function for filtering a DF produced by find_multisyn for a certain range.
+    Only the position on the reference is taken into account.
+    Only the chromosome, start and end of the supplied Range are used, org and chromosome information is discarded.
+
+    :param df: `find_multisyn` `DataFrame` of `Pansyn` objects.
+    :type df: `DataFrame[Pansyn]`
+    :param rng: `Range` for selecting the `Pansyn` objects.
+    :param only_contained: switches between selecting any region intersecting or contained in the specified `Range`.
+    :type only_contained: bool
+    """
     def filter_fn(x):
         ref = x.ref
         # check if on same chr
@@ -127,6 +137,14 @@ def filter_multisyn_df(df, rng, only_contained=False): # TODO get to work, add n
     return df.loc[inds]
 
 def filter_multisyn_df_chr(df, chr):
+    """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
+    Does essentially the same thing as `filter_multsyn_df`, but only uses chromosome information
+
+    :param df: `find_multisyn` `DataFrame` of `Pansyn` objects.
+    :type df: `DataFrame[Pansyn]`
+    :param chr: Chromosome to select.
+    :type chr: `str`
+    """
     return df.loc[df[0].apply(lambda x: chr == x.ref.chr)]
 
 def length_compare(syns, alns, cores=1):
