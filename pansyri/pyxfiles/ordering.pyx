@@ -29,9 +29,12 @@ def order(syns, alns, chr=None):
         # if filtering to a range of interest, call filter_multisyn_df instead like this:
         # df = util.filter_multisyn_df(df, Range(None, <chr>, 'NaN', <start>, <end>))
         print("INFO: Filtered crossyn df")
+    # automatically get the list of orgs to order from the entire DF
+    # if only comparing a subset of the orgs from the multisyn dataframe, this can be manually set or shrunk late
     orgs = util.get_orgs_from_df(df)
     print("INFO: got orgs from crossyn df")
-    return order_greedy(orgs, df)
+    # make the call to the optimizer, using the default/only scoring function right now:
+    return order_greedy(orgs, df, score_fn=syn_score)
 
 def syn_score(cur, org, df):
     """Defines a similarity score from syri output.
