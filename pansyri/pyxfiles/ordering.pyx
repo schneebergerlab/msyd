@@ -28,12 +28,10 @@ def order(syns, alns, chr=None):
         # if filtering to a range of interest, call filter_multisyn_df instead like this:
         # df = util.filter_multisyn_df(df, Range(None, <chr>, 'NaN', <start>, <end>))
         print("INFO: Filtered crossyn df")
-    # automatically get the list of orgs to order from the entire DF
-    # if only comparing a subset of the orgs from the multisyn dataframe, this can be manually set or shrunk late
-    orgs = util.get_orgs_from_df(df)
-    print("INFO: got orgs from crossyn df")
+    # optionally adjust the organism list
+    # orgs = util.get_orgs_from_df(df)[:4]
     # make the call to the optimizer, using the default/only scoring function right now:
-    return order_greedy(orgs, df, score_fn=syn_score)
+    return order_greedy(df, orgs=None, score_fn=syn_score)
 
 def syn_score(cur, org, df):
     """Defines a similarity score from syri output.
@@ -54,18 +52,24 @@ def syn_score(cur, org, df):
 #    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
 
 
-def order_greedy(orgs, df, score_fn=syn_score, maximize=True):
+def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True):
     """A simple, greedy algorithm ordering a list of organisms while trying to maximize (or minimize, depending on `maximize`) the similarity score between each organism and the next one.
     The first organism is chosen at random.
 
-    :param orgs: a sequence of organism names.
-    :param df: a DataFrame of `Pansyn` objects, as produced by `find_multisyn(detect_crosssyn=True)`.
+    :param df: a `DataFrame` of `Pansyn` objects, as produced by `find_multisyn(detect_crosssyn=True)`.
+    :param orgs: a sequence of organism names. If `None`, all the org names in `df` are used.
+    :type orgs: Set[str]
+
     :param score_fn: similarity score to use, by default `syn_score`. The scoring function needs to accept the filename of a syri.out file as output.
     :param_type score_fn: a function mapping a file path to a numerical score
     :param maximize: Boolean toggling whether to minimize/maximize the score (similarity vs dissimilarity scoring). Defaults to True.
     :returns: a list containing the elements of orgs ordered according to the algorithm.
     :rtype: List[str]
     """
+    if orgs is None:
+        print("INFO: getting orgs from crossyn df")
+        orgs = util.get_orgs_from_df(df)
+    orgs = set(orgs)
 
     cur = list(orgs)[0] # arbitrarily choose first organism
     order = [cur]
