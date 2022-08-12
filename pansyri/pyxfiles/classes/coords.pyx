@@ -97,6 +97,8 @@ class Range:
         """
         if start > len(self) or end > len(self):
             raise ValueError("ERROR: tried to drop more than Range length!")
+        if start < 0 or end < 0:
+            raise ValueError("ERROR: tried to drop negative value!")
         return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
 
     def is_inverted(self):
@@ -232,6 +234,9 @@ class Pansyn:
         """
         Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed, respecting cigar alignments if not `None`.
         """
+        if start < 0 or end < 0 or start + end > len(self.ref):
+            raise ValueError("ERROR: tried to drop invalid start/end. Either negative or longer than this Pansyn on the reference!")
+
         ref = self.ref.drop(start, end)
         ranges_dict = dict()
         cigars_dict = None

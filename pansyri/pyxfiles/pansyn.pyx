@@ -70,7 +70,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
         if allow_overlap:
             add_filtered(rightest)
         else:
-            add_filtered(rightest.drop(rightest.ref.start - ovend, 0))
+            add_filtered(rightest.drop(ovend - rightest.ref.start, 0))
 
     return sorted(ret)
 
