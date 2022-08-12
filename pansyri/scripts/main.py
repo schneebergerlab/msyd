@@ -26,11 +26,15 @@ def main(argv):
     syns, alns = util.parse_input_tsv(argv[0])
     cores = int(argv[2]) if len(argv) >= 4 else 1
 
-    if argv[1] == 'order':
+    # call the plotsr ordering functionality on a set of organisms described in the .tsv
+    if argv[1] == 'order': # example call in the ampril dataset folder: pansyri pansr.tsv order 8
         print(ordering.order(syns, alns))
-    elif argv[1] == 'len':
-        util.length_compare(syns, alns, cores=cores)
-    elif argv[1] == 'comb':
+    # compares the output of all four possible values of detect_crosssyn and SYNAL when calling find_multisyn, tabularizes by length
+    elif argv[1] == 'comb':# example call in the ampril dataset folder: pansyri pansr.tsv order
         util.eval_combinations(syns, alns, cores=cores)
-    elif argv[1]:
+    # do what is done in eval_combinations for every syn/aln file list produced by removing from the end
+    elif argv[1] == 'len':# example call in the ampril dataset folder: pansyri pansr.tsv len 8
+        util.length_compare(syns, alns, cores=cores)
+    # just print the called cross synteny 
+    elif argv[1] == 'print':
         print(util.crosssyn_from_lists(syns, alns, cores=cores))
