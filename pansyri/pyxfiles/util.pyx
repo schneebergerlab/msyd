@@ -107,6 +107,29 @@ def eval_combinations(syns, alns, cores=1):
     print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
     print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
 
+def filter_multisyn_df(df, rng, only_contained=False): # TODO get to work, add non-overlapping variant
+    def filter_fn(x):
+        ref = x.ref
+        # check if on same chr
+        if not rng.chr == ref.chr:
+            return False
+        # check if contained:
+        if rng.start < ref.start < rng.end and rng.start < ref.end < rng.end:
+            return True
+        # quit if only looking for contained regions
+        if only_contained:
+            return False
+        # check if start within rng
+        if rng.start < ref.start < rng.end:
+            return True
+        # check if end within rng
+        if rng.start < ref.end < rng.end:
+            return True
+        return False
+
+    inds = df[0].apply(filter_fn)
+    print(inds)
+    return df.loc[inds]
 
 def length_compare(syns, alns, cores=1):
     syns, alns = list(syns), list(alns)
@@ -114,3 +137,6 @@ def length_compare(syns, alns, cores=1):
         eval_combinations(syns, alns)
         syns = syns[1:]
         alns = alns[1:]
+
+
+

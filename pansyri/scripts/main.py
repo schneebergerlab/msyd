@@ -4,6 +4,7 @@
 import pansyri.util as util
 import pansyri.ordering as ordering
 import pansyri.imputation as imputation
+from pansyri.classes.coords import Range
 
 import logging
 import logging.config
@@ -37,4 +38,7 @@ def main(argv):
         util.length_compare(syns, alns, cores=cores)
     # just print the called cross synteny 
     elif argv[1] == 'print':
-        print(util.crosssyn_from_lists(syns, alns, cores=cores))
+        df = util.crosssyn_from_lists(syns, alns, cores=cores)
+        print(df)
+        print(util.filter_multisyn_df(df, Range(None, 'Chr5', 'NaN', 26000000, 27000000)))
+
