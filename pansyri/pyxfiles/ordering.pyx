@@ -4,7 +4,6 @@
 # cython: language_level = 3
 import math
 
-import pansyri.ingest as ingest
 import pansyri.util as util
 
 def order(syns, alns, chr=None):
