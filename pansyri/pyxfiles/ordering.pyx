@@ -23,8 +23,9 @@ def order(syns, alns, rng=None):
     # might even be the better idea, we want to capture large-scale synteny anyway
     df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
     print("INFO: got crossyn df")
-    df = df.filter_multisyn_df(df, rng)
-    print("INFO: Filtered crossyn df")
+    if rng is not None:
+        df = util.filter_multisyn_df(df, rng)
+        print("INFO: Filtered crossyn df")
     orgs = util.get_orgs_from_df(df)
     print("INFO: got orgs from crossyn df")
     return order_greedy(orgs, df)
