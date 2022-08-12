@@ -10,6 +10,10 @@ import pansyri.util as util
 def order(syns, alns):
     """Convenience function performing a full ordering imputation given syns/alns extracted from a.tsv
     Mostly meant to be called from main.py.
+    It also demonstrates the way to compute an ordering using the new procedure:
+    First, the crosssyntenic regions are extracted from the SyRI and alignment files, supplied e.g. by reading from a tsv file.
+    Then, the organism names are extracted from the Crosssynteny DF (this might be moved to the ingest module in the future).
+    Finally, the optimizing algorithm is called with the appropriate scoring function, in this case the greedy algorithm with the default syn_score.
     :param syns, alns: list of syn/aln files, as output by parse_tsv in util
     :returns: the calculated ordering of the organisms as a `list` of strings
     :rtype: List[str]
@@ -59,7 +63,7 @@ def order_greedy(orgs, df, score_fn=syn_score, maximize=True):
     orgs.remove(cur)
 
     while orgs:
-        print("INFO: currently selected:", orgs)
+        print("INFO: currently selected:", order)
         # find the next organism with maximal similarity score to this one
         ext_score = -math.inf if maximize else math.inf
         for org in orgs:
