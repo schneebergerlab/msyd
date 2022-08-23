@@ -22,6 +22,7 @@ def order(syns, alns, chr=None):
     # disabled using SYNAL for now, runtime fairly slow on the dell nodes, not quite sure why
     # might even be the better idea, we want to capture large-scale synteny anyway
     df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
+    print(df.head(100).to_string())
     print("INFO: got crossyn df")
     if chr is not None:
         df = util.filter_multisyn_df_chr(df, chr)
