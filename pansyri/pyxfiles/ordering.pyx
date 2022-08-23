@@ -39,6 +39,8 @@ def syn_score(cur, org, df):
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
     # using length on org, but this shouldn't matter too much
+    if cur == 'ref': # special case to handle the reference sequence
+        return sum(map(lambda x: len(x.ranges_dict[org]),filter(lambda x: org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
     return sum(map(lambda x: len(x.ranges_dict[org]),filter(lambda x: cur in x.ranges_dict and org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
     # Ideas for future better synscores:
     # – filter for degree (maybe lower and upper bound? likely the medium degree crosssyntenic regions most informative
@@ -70,6 +72,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True):
     if orgs is None:
         print("INFO: getting orgs from crossyn df")
         orgs = util.get_orgs_from_df(df)
+    orgs.append('ref') # include reference
     orgs = set(orgs)
 
     cur = list(orgs)[0] # arbitrarily choose first organism
