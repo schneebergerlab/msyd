@@ -72,7 +72,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True):
     if orgs is None:
         print("INFO: getting orgs from crossyn df")
         orgs = util.get_orgs_from_df(df)
-    orgs.append('ref') # include reference
+    orgs.add('ref') # include reference
     orgs = set(orgs)
 
     cur = list(orgs)[0] # arbitrarily choose first organism
