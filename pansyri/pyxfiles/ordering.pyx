@@ -22,7 +22,7 @@ def order(syns, alns, chr=None):
     # disabled using SYNAL for now, runtime fairly slow on the dell nodes, not quite sure why
     # might even be the better idea, we want to capture large-scale synteny anyway
     df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
-    print(df.head(100).to_string())
+    #print(df.head(100).to_string())
     print("INFO: got crossyn df")
     if chr is not None:
         df = util.filter_multisyn_df_chr(df, chr)
@@ -55,7 +55,7 @@ def syn_score(cur, org, df):
 #    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
 
 
-def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True):
+def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     """A simple, greedy algorithm ordering a list of organisms while trying to maximize (or minimize, depending on `maximize`) the similarity score between each organism and the next one.
     The first organism is chosen at random.
 
@@ -66,13 +66,16 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True):
     :param score_fn: similarity score to use, by default `syn_score`. The scoring function needs to accept the filename of a syri.out file as output.
     :param_type score_fn: a function mapping a file path to a numerical score
     :param maximize: Boolean toggling whether to minimize/maximize the score (similarity vs dissimilarity scoring). Defaults to True.
+    :param ref: `bool` controlling whether to include the reference in the ordering
+    :param_type ref: `bool`
     :returns: a list containing the elements of orgs ordered according to the algorithm.
     :rtype: List[str]
     """
     if orgs is None:
         print("INFO: getting orgs from crossyn df")
         orgs = util.get_orgs_from_df(df)
-    orgs.add('ref') # include reference
+    if ref is True:
+        orgs.add('ref') # include reference
     orgs = set(orgs)
 
     cur = list(orgs)[0] # arbitrarily choose first organism
