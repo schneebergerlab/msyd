@@ -4,7 +4,11 @@
 # cython: language_level = 3
 import math
 
+import logging
+
 import pansyri.util as util
+
+logger = logging.getLogger(__name__)
 
 def order(syns, alns, chr=None):
     """Convenience function performing a full ordering imputation given syns/alns extracted from a.tsv
@@ -22,13 +26,15 @@ def order(syns, alns, chr=None):
     # disabled using SYNAL for now, runtime fairly slow on the dell nodes, not quite sure why
     # might even be the better idea, we want to capture large-scale synteny anyway
     df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
-    #print(df.head(100).to_string())
-    print("INFO: got crossyn df")
+    #logger.debug(df.head(100).to_string())
+    logger.info("got crossyn df")
+
     if chr is not None:
         df = util.filter_multisyn_df_chr(df, chr)
         # if filtering to a range of interest, call filter_multisyn_df instead like this:
         # df = util.filter_multisyn_df(df, Range(None, <chr>, 'NaN', <start>, <end>))
-        print("INFO: Filtered crossyn df")
+        logger.info("Filtered Crossyn DF")
+
     # optionally adjust the organism list
     # orgs = util.get_orgs_from_df(df)[:4]
     # make the call to the optimizer, using the default/only scoring function right now:
@@ -72,7 +78,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     :rtype: List[str]
     """
     if orgs is None:
-        print("INFO: getting orgs from crossyn df")
+        logger.warning("getting orgs from crossyn df")
         orgs = util.get_orgs_from_df(df)
     if ref is True:
         orgs.add('ref') # include reference
@@ -83,7 +89,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     orgs.remove(cur)
 
     while orgs:
-        print("INFO: currently selected:", order)
+        logger.debug(f"currently selected: {order}")
         # find the next organism with maximal similarity score to this one
         ext_score = -math.inf if maximize else math.inf
         for org in orgs:

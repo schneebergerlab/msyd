@@ -8,10 +8,13 @@ import multiprocessing
 import pandas as pd
 from collections import deque
 import os
+import logging
 
 import pansyri.pansyn as pansyn
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range
+
+logger = logging.getLogger(__name__)
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?
@@ -48,7 +51,7 @@ def parse_input_tsv(path):
 
             val = line.strip().split('#')[0].split('\t')
             if len(val) > 2:
-                print(f"ERROR: invalid entry in {path}. Skipping line: {line}")
+                logger.error(f"invalid entry in {path}. Skipping line: {line}")
                 continue
             # Check that the files are accessible
             if not os.path.isfile(val[0]):
@@ -110,7 +113,7 @@ def eval_combinations(syns, alns, cores=1):
 def filter_multisyn_df(df, rng, only_contained=False):
     """Misc function for filtering a DF produced by find_multisyn for a certain range.
     Only the position on the reference is taken into account.
-    Only the chromosome, start and end of the supplied Range are used, org and chromosome information is discarded.
+    Only the chromosome, start and end of the supplied `Range` are used, org and chromosome information is discarded.
 
     :param df: `find_multisyn` `DataFrame` of `Pansyn` objects.
     :type df: `DataFrame[Pansyn]`
@@ -133,7 +136,7 @@ def filter_multisyn_df(df, rng, only_contained=False):
         return rng.start < ref.start < rng.end or rng.start < ref.end < rng.end
 
     inds = df[0].apply(filter_fn)
-    print(inds)
+    #print(inds)
     return df.loc[inds]
 
 def filter_multisyn_df_chr(df, chr):

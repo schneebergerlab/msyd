@@ -3,6 +3,10 @@
 # distutils: language = c++
 # cython: language_level = 3
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 class SNV:
     """A class storing a SNV.
     TODO how to expand to multigenomics? List[SNV]? SNV{qry=List/dict[Position]}? how to store multiple different alleles?

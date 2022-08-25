@@ -5,12 +5,15 @@
 
 from pansyri.classes.cigar import Cigar, cig_clips, cig_aln_types
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 """
 TODOs
 – write unit tests
 – write frontend:
-    • impute including ranges, to handle different positions (use clipping)
-    • impute unequal sequences, also use clipping
     • maybe have a convenience function imputing everything given two bam files?
     • maybe have a convenience function automatically detecting core/cross synteny from such imputed bams?
     • maybe have a fucntion that automatically imputes along all pansyntenic regions?
@@ -40,7 +43,7 @@ def impute_ranges(cgl, rngl, cgr, rngr):
     maxstart = max(rngl.start, rngr.start)
     minend = min(rngl.end, rngr.end)
     if not maxstart < minend:
-        print(f"WARNING: no overlap found between {rngl} and {rngr}, double-check input!")
+        logger.warning(f"WARNING: no overlap found between {rngl} and {rngr}, double-check input!")
 
     return impute(cgl.pad(maxstart - rngl.start, rngl.end - minend), cgr.pad(maxstart - rngr.start, rngr.end - minend))
 

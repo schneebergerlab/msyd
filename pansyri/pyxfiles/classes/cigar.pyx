@@ -5,6 +5,9 @@
 import re
 import copy
 import itertools
+import logging
+
+logger = logging.getLogger(__name__)
 
 ## constants
 reffwd = set(['M', 'D', 'N', '=', 'X'])
@@ -111,7 +114,7 @@ class Cigar:
             # then copy the subset and finally adjust the border element
             # TODO implement this
             cgi = cg.pairs[ind]
-            #print(n, start, cgi)
+            #logger.info(f"{n}, {start}, {cgi}")
             if cgi[1] in altfwd:
                 skip += cgi[0]
 
@@ -178,7 +181,7 @@ class Cigar:
                 return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
 
         except IndexError:
-            print(f"ERROR: tried to remove more than sequence length in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
+            logger.error(f"tried to remove more than sequence length in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
             raise ValueError("invalid skip")
 
     def __repr__(self):

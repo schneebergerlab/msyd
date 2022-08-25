@@ -17,6 +17,8 @@ This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
 
+logging.basicConfig(level=logging.DEBUG)
+
 def main(argv):
 
     if argv[0] == 'impute':

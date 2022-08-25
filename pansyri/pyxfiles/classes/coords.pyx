@@ -6,8 +6,11 @@
 import copy
 import functools
 #import cython
+import logging
 
 from pansyri.classes.cigar import Cigar
+
+logger = logging.getLogger(__name__)
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
@@ -160,7 +163,7 @@ class Pansyn:
             if self.cigars_dict:
                 self.cigars_dict[rng.org] = cg
             else:
-                print("WARNING: attempted to add cigar to Pansyn without cigars_dict, ignoring")
+                logger.warning("attempted to add cigar to Pansyn without cigars_dict, ignoring")
 
     def get_degree(self):
         return len(self.ranges_dict)
@@ -226,7 +229,7 @@ class Pansyn:
             cgs = copy.copy(self.cigars_dict)
             cgs.update(other.cigars_dict)
         elif self.cigars_dict or other.cigars_dict:
-            print(f"WARN: Trying to add two Pansyns {self}, {other} with one having CIGARs and one not! Discarding CIGARS!")
+            logger.warning(f"Trying to add two Pansyns {self}, {other} with one having CIGARs and one not! Discarding CIGARS!")
 
         return Pansyn(self.ref, rngs, cgs)
 
@@ -252,7 +255,7 @@ class Pansyn:
                     start_dropped, cg = cg.get_removed(start, start=True, ref=True)
                     end_dropped, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
-                    print(f"ERROR: invalid input to cg.get_removed({start}/{end}) on {rng} (len: {len(rng)}). Check if start, end are correct!")
+                    logger.error(f"invalid input to cg.get_removed({start}/{end}) on {rng} (len: {len(rng)}). Check if start, end are correct!")
                     continue
                 ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 cigars_dict[org] = cg

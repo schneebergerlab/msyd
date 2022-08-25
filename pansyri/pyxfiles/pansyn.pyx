@@ -8,6 +8,7 @@ import pandas as pd
 import copy
 import functools
 from collections import deque
+import logging
 
 import pansyri.ingest as ingest
 import pansyri.util as util
@@ -15,6 +16,8 @@ from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range, Position
 
 MIN_SYN_THRESH = 0
+
+logger = logging.getLogger(__name__)
 
 
 def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=False):
@@ -35,7 +38,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
     ovstart = max(l.ref.start, r.ref.start)
     ovend = min(l.ref.end, r.ref.end)
     if not ovstart < ovend:
-        print(f"WARNING: no overlap found between {l} and {r}, returning empty!")
+        logger.warning(f"no overlap found between {l} and {r}, returning empty!")
         return []
 
     leftest = l if l.ref.start < r.ref.start else r
@@ -103,9 +106,9 @@ def match_synal(syn, aln, ref='a'):
                 #rng.end = rng.start + cg.get_len(ref=False) -1
                 ## debugging output
                 if not len(rng) == cg.get_len(ref=False):
-                    #print(f"WARN: cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                    #print("Cigar is:", cg)
-                    #print("Adjusting to cg length")
+                    #logger.warning(f"cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
+                    #logger.warning(f"Cigar is: {cg}")
+                    #logger.warning("Adjusting to cg length")
                     # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
                     rng.end = rng.start + cg.get_len(ref=False) -1
 
@@ -135,7 +138,7 @@ def remove_overlap(syn):
             prev = cur
             continue
 
-        #print(ov, prevref, curref)
+        #logger.debug(f"{ov}, {prevref}, {curref}")
         # remove the overlap from the previous row;
         # this performs essentially the same function as compute_overlap
         # in intersect_syns
@@ -247,7 +250,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
     # remove overlap
     for syn in syns:
         remove_overlap(syn)
-    print("INFO: overlap removed")
+    logger.info("overlap removed")
 
     pansyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)

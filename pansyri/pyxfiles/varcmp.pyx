@@ -3,11 +3,15 @@
 # distutils: language = c++
 # cython: language_level = 3
 
+
 import pandas as pd
 import numpy as np
 from collections import defaultdict
+import logging
 
 from pansyri.pansyn import Range, Pansyn
+
+logger = logging.getLogger(__name__)
 
 def get_snps(syri, rngs):
     """
@@ -78,7 +82,7 @@ class Neighbourhood:
         """
         # neighbouring := nearest in each direction
         if len(pansyns) < 2:
-            print("WARN: get_pansyn_neighbours called with just one pansyn, returning as neighbours!")
+            logger.warning("get_pansyn_neighbours called with just one pansyn, returning as neighbours!")
             return pansyns
 
         org = rng.org
@@ -106,6 +110,6 @@ class Neighbourhood:
             right = cur
                     
         except StopIteration:
-            print("WARN: get_pansyn_neighbours found rng to be right of all pansyntenic regions! Double-Check if calling with the right set of pansyns")
+            logger.warning("get_pansyn_neighbours found rng to be right of all pansyntenic regions! Double-Check if calling with the right set of pansyns")
 
         return Neighbourhood(rng, left, right, overlapping)
