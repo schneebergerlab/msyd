@@ -78,7 +78,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     :rtype: List[str]
     """
     if orgs is None:
-        logger.warning("getting orgs from crossyn df")
+        logger.info("getting orgs from crossyn df as none were supplied")
         orgs = util.get_orgs_from_df(df)
     if ref is True:
         orgs.add('ref') # include reference
