@@ -30,6 +30,7 @@ class Cigar:
         """
         Takes a cigar string as input and returns a Cigar tuple
         """
+        #TODO more error handling
         
         for i in "MIDNSHPX=":
             cg = cg.replace(i, ';'+i+',')
@@ -45,8 +46,17 @@ class Cigar:
     def __len__(self):
         return sum([i[0] for i in self.pairs])
 
-    def __eq__(l, r):
-        return l.pairs == r.pairs
+    def __eq__(self, other):
+        if isinstance(other, Cigar):
+            return self.pairs == other.pairs
+        else:
+            return False
+
+    def __ne__(self, other):
+        if isinstance(other, Cigar):
+            return self.pairs != other.pairs
+        else:
+            return True
 
     def get_identity(self):
         """
