@@ -63,6 +63,9 @@ class Cigar:
         :param clip: which kind of padding to use, can be 'S' or 'H'. 'S' by default.
         :return: `None`
         """
+        if left < 0 or right < 0:
+            raise ValueError("pad supplied with negative length!")
+
         if left > 0:
             self.pairs = [left, clip] + self.pairs
         if right > 0:
