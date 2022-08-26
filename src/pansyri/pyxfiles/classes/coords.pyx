@@ -54,8 +54,8 @@ class Range:
         self.org = org
         self.chr = chr
         self.haplo = haplo
-        self.start = start
-        self.end = end
+        self.start = start # inclusive
+        self.end = end # inclusive
 
     def __repr__(self):
         return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
@@ -151,6 +151,7 @@ class Pansyn:
     # for now, only sorts on the reference (falling back to the Range comparison operator)
     def __lt__(l, r):
         if not l.ref or not r.ref:
+            logger.error(f"comparing {l} with {r}: both need to have a reference!")
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
         return l.ref < r.ref
 
