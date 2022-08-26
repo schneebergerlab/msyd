@@ -1,3 +1,4 @@
+#!/bin/python3
 """
 File to write tests/unittests
 """
