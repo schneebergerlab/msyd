@@ -1,4 +1,7 @@
 #/usr/bin/env python3
+import os
+os.chdir('./src')
+
 from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
@@ -21,7 +24,7 @@ setup(name="pansyri",
                              Extension('pansyri.varcmp', ['pansyri/pyxfiles/varcmp.pyx'])]),
       packages=["pansyri", "pansyri.scripts"],
       include_dirs=[numpy.get_include()],
-      scripts=['bin/pansyri'],
+      scripts=['pansyri/scripts/pansyri'],
       # scripts=['bin/pansyri', 'bin/chroder'],
-      long_description=open('README.md').read(),
+      long_description=open('../README.md').read(),
       )
