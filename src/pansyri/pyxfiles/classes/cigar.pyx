@@ -67,9 +67,9 @@ class Cigar:
             raise ValueError("pad supplied with negative length!")
 
         if left > 0:
-            self.pairs = [left, clip] + self.pairs
+            self.pairs = [[left, clip]] + self.pairs
         if right > 0:
-            self.pairs = self.pairs + [right, clip]
+            self.pairs = self.pairs + [[right, clip]]
 
     def unpad(self):
         """Removes padding from the borders of this `Cigar`.
