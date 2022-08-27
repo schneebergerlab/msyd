@@ -46,7 +46,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
 
     ret = set() # use a set to automatically remove duplicates
 
-    def add_filtered(pansyn): # checks if the region is higher than MIN_SYN_THRESH, if so, adds it to ret
+    def add_filtered(pansyn): # Filters out pansyns that should be discarded at this step, and adds those that we want to keep to the results list
         if not pansyn:
             return
         if len(pansyn.ref) < MIN_SYN_THRESH:
