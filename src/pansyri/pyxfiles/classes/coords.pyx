@@ -30,6 +30,8 @@ class Position:
         return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
 
     def __eq__(l, r):
+        if not isinstance(r, Position):
+            return False
         return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
                 l.pos == r.pos
 
@@ -60,9 +62,11 @@ class Range:
     def __repr__(self):
         return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
     
-    #def __eq__(l, r):
-    #    return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
-    #            l.start == r.start & l.start == r.start
+    def __eq__(l, r):
+        if not isinstance(r, Range):
+            return False
+        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
+                l.start == r.start & l.start == r.start
 
     # this operator sorts according to the END, not start value,
     # to enable the end ratchet to work properly
@@ -146,6 +150,8 @@ class Pansyn:
         return f"Pansyn({self.ref}, {self.ranges_dict})"
 
     def __eq__(l, r):
+        if not isinstance(r, Pansyn):
+            return False
         return l.ref == r.ref and l.ranges_dict == r.ranges_dict and l.cigars_dict == r.cigars_dict
         
     # for now, only sorts on the reference (falling back to the Range comparison operator)
@@ -246,7 +252,7 @@ class Pansyn:
         cigars_dict = None
         if not self.cigars_dict:
             for org, rng in self.ranges_dict.items():
-                if start + end < len(rng):
+                if start + end < len(rng): # TODO maybe handle this case to drop proportionally, i.e. if the drop is 10% of ref, drop 10% of qry instead of having absolute length the same
                     ranges_dict[org] = rng.drop(start, end)
         else:
             cigars_dict = dict()
