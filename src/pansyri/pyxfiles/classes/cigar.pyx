@@ -134,7 +134,7 @@ class Cigar:
             if cgi[1] in fwd:
                 rem -= cgi[0]
             # abort routine
-            if rem < 0:
+            if rem <= 0:
                 if cgi[1] in altfwd: # add remainder if necessary
                     skip += rem
                 break
