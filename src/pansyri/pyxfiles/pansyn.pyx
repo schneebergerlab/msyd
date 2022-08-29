@@ -72,7 +72,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
         if allow_overlap:
             add_filtered(leftest)
         else:
-            add_filtered(leftest.drop(0, leftest.ref.end - ovstart))
+            add_filtered(leftest.drop(0, leftest.ref.end - ovstart + 1))
     
     # core synteny
     add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
@@ -81,7 +81,7 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
         if allow_overlap:
             add_filtered(rightest)
         else:
-            add_filtered(rightest.drop(ovend - rightest.ref.start, 0))
+            add_filtered(rightest.drop(ovend - rightest.ref.start + 1, 0))
 
     return sorted(ret)
 
