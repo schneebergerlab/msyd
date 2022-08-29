@@ -196,6 +196,7 @@ def find_overlaps(left, right, **kwargs):
             if ovend - ovstart > MIN_SYN_THRESH: # there is valid overlap
                 ret.extend(calc_overlap(lrow, rrow, **kwargs))
 
+            # the bug's gotta be somewhere in here…
             # ratchet by dropping the segment with a smaller end
             if lref.end > rref.end: # left is after right
                 rrow = next(riter)[1][0]
