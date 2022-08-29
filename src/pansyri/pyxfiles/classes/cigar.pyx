@@ -3,7 +3,6 @@
 # distutils: language = c++
 # cython: language_level = 3
 import re
-import copy
 import itertools
 import logging
 
@@ -110,44 +109,6 @@ class Cigar:
 
 
 
-    def get_removed_legacy(self, n, ref=True, start=True):
-        """
-        If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
-        :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
-        """
-        cg = copy.deepcopy(self)
-
-        ind = 0 if start else -1
-        skip = 0
-        fwd = reffwd if ref else qryfwd
-        altfwd = qryfwd if ref else reffwd
-
-        while n > 0:
-            #TODO speed this up by first determining the index to subset,
-            # then copy the subset and finally adjust the border element
-            # TODO implement this
-            cgi = cg.pairs[ind]
-            #logger.info(f"{n}, {start}, {cgi}")
-            if cgi[1] in altfwd:
-                skip += cgi[0]
-
-            if cgi[1] not in fwd:
-                # if ever removing the copy, refactor!
-                del cg.pairs[ind]
-                continue
-
-            # cgi must be in fwd
-            n -= cgi[0]
-            if n >= 0:
-                del cg.pairs[ind]
-            else:
-                cgi[0] = -n # n == n- cg[ind][0] implies -n == cg[ind][0] -n
-                if cgi[1] in altfwd: # subtract the overcounting
-                    skip += n
-
-        return (skip, cg)
-
-
     def get_removed(self, n, ref=True, start=True, only_pos=False):
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
@@ -165,32 +126,32 @@ class Cigar:
         
 
         # loop and remove regions as long as the skip is more than one region
-        try:
+        while ind < len(self.pairs):
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-            while rem <= cgi[0]:
-                # increment appropriate counters depending on which strand this cgi forwards
-                if cgi[1] in altfwd:
-                    skip += cgi[0]
-                if cgi[1] in fwd:
-                    rem -= cgi[0]
-                # look at the next region
-                ind += 1
-                cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-
+            # increment appropriate counters depending on which strand this cgi forwards
             if cgi[1] in altfwd:
-                skip += rem
+                skip += cgi[0]
+            if cgi[1] in fwd:
+                rem -= cgi[0]
+            # abort routine
+            if rem < 0:
+                if cgi[1] in altfwd: # add remainder if necessary
+                    skip += rem
+                break
+            ind += 1
 
-            if only_pos:
-                return skip
+        if rem > 0:
+            logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar length: {len(self)}, terminated at index {ind}")
+            raise ValueError("tried to remove more than CIGAR length")
 
-            if start:
-                return (skip, Cigar([[cgi[0]-rem, cgi[1]]] + self.pairs[ind+1:]))
-            else:
-                return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
+        if only_pos:
+            return skip
 
-        except IndexError:
-            logger.error(f"tried to remove more than sequence length in get_removed of {n} with start {start} on ref {ref} on Cigar with length {len(self)} at index {ind}")
-            raise ValueError("invalid skip")
+        if start:
+            return (skip, Cigar([[cgi[0]-rem, cgi[1]]] + self.pairs[ind+1:]))
+        else:
+            return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
+
 
     def __repr__(self):
         return f"Cigar({self.to_string()})"
@@ -234,3 +195,42 @@ class Cigar:
                 del self.pairs[i]
             else:
                 i += 1
+
+#import copy
+#
+#    def get_removed_legacy(self, n, ref=True, start=True):
+#        """
+#        If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
+#        :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
+#        """
+#        cg = copy.deepcopy(self)
+#
+#        ind = 0 if start else -1
+#        skip = 0
+#        fwd = reffwd if ref else qryfwd
+#        altfwd = qryfwd if ref else reffwd
+#
+#        while n > 0:
+#            #TODO speed this up by first determining the index to subset,
+#            # then copy the subset and finally adjust the border element
+#            # TODO implement this
+#            cgi = cg.pairs[ind]
+#            #logger.info(f"{n}, {start}, {cgi}")
+#            if cgi[1] in altfwd:
+#                skip += cgi[0]
+#
+#            if cgi[1] not in fwd:
+#                # if ever removing the copy, refactor!
+#                del cg.pairs[ind]
+#                continue
+#
+#            # cgi must be in fwd
+#            n -= cgi[0]
+#            if n >= 0:
+#                del cg.pairs[ind]
+#            else:
+#                cgi[0] = -n # n == n- cg[ind][0] implies -n == cg[ind][0] -n
+#                if cgi[1] in altfwd: # subtract the overcounting
+#                    skip += n
+#
+#        return (skip, cg)
