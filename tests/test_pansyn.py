@@ -186,11 +186,11 @@ ov_noov_right_nocg = Pansyn(Range('test', 1, 'NaN', 201, 220),
 
 ov_ov_left = Pansyn(Range('test', 1, 'NaN', 101, 150),
         {
-            'test1': Range('test1', 1, 'NaN', 161, 210),
+            'test1': Range('test1', 1, 'NaN', 151, 210),
             'test2': Range('test2', 1, 'NaN', 101, 150)
         }, {
-            'test1': Cigar.from_string('10=1X9=10D10=1X9='),
-            'test2': Cigar.from_string('10=1X29=1X4=1X4=')
+            'test1': Cigar.from_string('10I30=1X19='),
+            'test2': Cigar.from_string('30=2X18=')
             })
 
 ov_ov_right = Pansyn(Range('test', 1, 'NaN', 201, 220),
