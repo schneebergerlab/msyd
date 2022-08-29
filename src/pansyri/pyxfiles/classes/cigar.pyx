@@ -166,22 +166,17 @@ class Cigar:
 
         # loop and remove regions as long as the skip is more than one region
         try:
-            while ind < len(self.pairs):
-                cgi = self.pairs[ind] if start else self.pairs[-ind -1]
-                if cgi[1] not in fwd:
-                    ind += 1
-                    if cgi[1] in altfwd:
-                        skip += cgi[0]
-                # this region counts towards n, determine if it can be removed or is too large
-                elif rem >= cgi[0]:
-                    rem -= cgi[0]
-                    ind += 1
-                    if cgi[1] in altfwd:
-                        skip += cgi[0]
-                else:
-                    break
-
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+            while rem <= cgi[0]
+                # increment appropriate counters depending on which strand this cgi forwards
+                if cgi[1] in altfwd:
+                    skip += cgi[0]
+                if cgi[1] in fwd:
+                    rem -= cgi[0]
+                # look at the next region
+                ind += 1
+                cgi = self.pairs[ind] if start else self.pairs[-ind -1]
+
             if cgi[1] in altfwd:
                 skip += rem
 
