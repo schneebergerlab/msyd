@@ -147,10 +147,11 @@ class Cigar:
         if only_pos:
             return skip
 
+        newtuplist = [[-rem, cgi[1]]] if rem < 0 else []
         if start:
-            return (skip, Cigar([[cgi[0]-rem, cgi[1]]] + self.pairs[ind+1:]))
+            return (skip, Cigar(newtuplist + self.pairs[ind+1:]))
         else:
-            return (skip, Cigar(self.pairs[:-ind-1] + [[cgi[0]-rem, cgi[1]]]))
+            return (skip, Cigar(self.pairs[:-ind-1] + newtuplist))
 
 
     def __repr__(self):
