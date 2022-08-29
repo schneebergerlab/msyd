@@ -117,41 +117,45 @@ class Cigar:
         if not self.pairs:
             raise ValueError("empty Cigar!")
 
+        if n == 0: # shortcut for a common path
+            if only_pos:
+                return 0
+            else:
+                return (0, self)
+
         ind = 0 # position currently being evaluated for skipping
         skip = 0 # bases skipped in the other sequence
         # two sets containing the CIGAR codes incrementing one or the other strand
         fwd = reffwd if ref else qryfwd 
         altfwd = qryfwd if ref else reffwd
         rem = n # tally how much is still left to remove
-        
+        cgi = self.pairs[ind] if start else self.pairs[-ind -1]
 
         # loop and remove regions as long as the skip is more than one region
-        while ind < len(self.pairs):
+        while rem > 0 and ind < len(self.pairs):
             cgi = self.pairs[ind] if start else self.pairs[-ind -1]
             # increment appropriate counters depending on which strand this cgi forwards
             if cgi[1] in altfwd:
                 skip += cgi[0]
             if cgi[1] in fwd:
                 rem -= cgi[0]
-            # abort routine
-            if rem <= 0:
-                if cgi[1] in altfwd: # add remainder if necessary
-                    skip += rem
-                break
             ind += 1
 
         if rem > 0:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar length: {len(self)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
+        if cgi[1] in altfwd: # add remainder if necessary
+            skip += rem
+
         if only_pos:
             return skip
 
         newtuplist = [[-rem, cgi[1]]] if rem < 0 else []
         if start:
-            return (skip, Cigar(newtuplist + self.pairs[ind+1:]))
+            return (skip, Cigar(newtuplist + self.pairs[ind:]))
         else:
-            return (skip, Cigar(self.pairs[:-ind-1] + newtuplist))
+            return (skip, Cigar(self.pairs[:-ind] + newtuplist))
 
 
     def __repr__(self):
