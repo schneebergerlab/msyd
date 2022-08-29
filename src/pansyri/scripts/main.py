@@ -41,6 +41,5 @@ def main(argv):
     # just print the called cross synteny 
     elif argv[1] == 'print':
         df = util.crosssyn_from_lists(syns, alns, cores=cores)
-        print(df)
-        print(util.filter_multisyn_df(df, Range(None, 'Chr5', 'NaN', 26000000, 27000000)))
+        print(df.to_string())
 
