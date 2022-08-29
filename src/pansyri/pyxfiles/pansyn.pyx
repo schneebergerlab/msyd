@@ -15,7 +15,7 @@ import pansyri.util as util
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range, Position
 
-MIN_SYN_THRESH = 0
+MIN_SYN_THRESH = 20
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +58,8 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
                 return
 
         # remove small syntenic regions from the pansyn object, mutates pansyn but that should be fine in this context
-        for org in pansyn.get_organisms():
-            if len(pansyn.ranges_dict[org]) < MIN_SYN_THRESH:
+        for org, rng in pansyn.ranges_dict.items():
+            if not rng.check or len(rng) < MIN_SYN_THRESH:
                 del pansyn.ranges_dict[org]
                 if pansyn.cigars_dict:
                     del pansyn.cigars_dict[org]
