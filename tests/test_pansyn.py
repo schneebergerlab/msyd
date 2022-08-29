@@ -189,9 +189,10 @@ ov_ov_left = Pansyn(Range('test', 1, 'NaN', 101, 150),
             'test1': Range('test1', 1, 'NaN', 161, 210),
             'test2': Range('test2', 1, 'NaN', 101, 150)
         }, {
-            'test1': Cigar.from_string('10I30=1X19='),
-            'test2': Cigar.from_string('30=2X18=')
+            'test1': Cigar.from_string('10=1X9=10D10=1X9='),
+            'test2': Cigar.from_string('10=1X29=1X4=1X4=')
             })
+
 ov_ov_right = Pansyn(Range('test', 1, 'NaN', 201, 220),
         {
             'test3': Range('test3', 1, 'NaN', 201, 220)
@@ -232,8 +233,8 @@ def test_cov_cross_nocg(overlapping_pansyns):
     assert len(res) == 3
     assert res[1] == ov_ov_nocg # middle should be overlap
 
-    assert res[0] == ov_ov_left_nocg
-    assert res[2] == ov_ov_right_nocg
+    assert res[0] == ov_noov_left_nocg
+    assert res[2] == ov_noov_right_nocg
 
 def test_cov_cross(overlapping_pansyns):
     """
