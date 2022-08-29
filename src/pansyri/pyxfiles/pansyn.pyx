@@ -47,15 +47,23 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
     ret = set() # use a set to automatically remove duplicates
 
     def add_filtered(pansyn): # Filters out pansyns that should be discarded at this step, and adds those that we want to keep to the results list
-        if not pansyn:
+        if not pansyn: # filter empty objects to handle failures
             return
-        if len(pansyn.ref) < MIN_SYN_THRESH:
+        if len(pansyn.ref) < MIN_SYN_THRESH: # filter small regions
             return
-        if pansyn.get_degree() < 1:
+        if pansyn.get_degree() < 1: # filter regions without non-reference synteny
             return
         if not detect_crosssyn:
-            if pansyn.get_degree() < l.get_degree() + r.get_degree():
+            if pansyn.get_degree() < l.get_degree() + r.get_degree(): # filter non-core-syntenic regions in case that's relevant
                 return
+
+        # remove small syntenic regions from the pansyn object, mutates pansyn but that should be fine in this context
+        for org in pansyn.get_organisms():
+            if len(pansyn.ranges_dict[org]) < MIN_SYN_THRESH:
+                del pansyn.ranges_dict[org]
+                if pansyn.cigars_dict:
+                    del pansyn.cigars_dict[org]
+
         ret.add(pansyn)
 
 
