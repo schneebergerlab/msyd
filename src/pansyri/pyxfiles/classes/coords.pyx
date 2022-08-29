@@ -147,7 +147,7 @@ class Pansyn:
         self.cigars_dict = cigars_dict # optional if using approximate matching
 
     def __repr__(self):
-        return f"Pansyn({self.ref}, {self.ranges_dict})"
+        return f"Pansyn({self.ref}, {self.ranges_dict}, {self.cigars_dict})"
 
     def __eq__(l, r):
         if not isinstance(r, Pansyn):
