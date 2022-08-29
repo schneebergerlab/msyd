@@ -262,7 +262,7 @@ class Pansyn:
                     start_dropped, cg = cg.get_removed(start, start=True, ref=True)
                     end_dropped, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
-                    logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}).")
+                    #logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}).")
                     continue
                 ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 cigars_dict[org] = cg

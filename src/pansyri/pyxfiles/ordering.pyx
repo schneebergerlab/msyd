@@ -6,6 +6,9 @@ import math
 
 import logging
 
+import numpy as np
+from scipy.cluster.hierarchy import complete, dendrogram, leaves_list
+
 import pansyri.util as util
 
 logger = logging.getLogger(__name__)
@@ -38,16 +41,21 @@ def order(syns, alns, chr=None):
     # optionally adjust the organism list
     # orgs = util.get_orgs_from_df(df)[:4]
     # make the call to the optimizer, using the default/only scoring function right now:
-    return order_greedy(df, orgs=None, score_fn=syn_score)
+    return order_complete(df, orgs=None, score_fn=syn_score)
 
 def syn_score(cur, org, df):
     """Defines a similarity score from syri output.
     Currently just uses the sum of the lengths of all syntenic regions without correcting for genome size.
     """
-    # using length on org, but this shouldn't matter too much
-    if cur == 'ref': # special case to handle the reference sequence
-        return sum(map(lambda x: len(x.ranges_dict[org]),filter(lambda x: org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
+    if org == 'ref':    
+        return sum(map(lambda x: len(x.ranges_dict[cur]), filter(lambda x: cur in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
+
+    if cur == 'ref':    
+        return sum(map(lambda x: len(x.ranges_dict[org]), filter(lambda x: org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
+
     return sum(map(lambda x: len(x.ranges_dict[org]),filter(lambda x: cur in x.ranges_dict and org in x.ranges_dict, map(lambda x: x[1][0], df.iterrows()))))
+
+
     # Ideas for future better synscores:
     # – filter for degree (maybe lower and upper bound? likely the medium degree crosssyntenic regions most informative
     # – have some non-linearity in the length processing, e.g. square it
@@ -59,6 +67,28 @@ def syn_score(cur, org, df):
 #    """Defines a dissimilarity score by summing up the length of all regions annotated to be a structural variant, excluding duplications.
 #    """
 #    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
+
+def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
+    if orgs is None:
+        logger.info("getting orgs from crossyn df as none were supplied")
+        orgs = util.get_orgs_from_df(df)
+    if ref is True:
+        orgs.add('ref') # include reference
+    orgs = sorted(set(orgs))
+    n = len(orgs)
+
+    # construct and fill the distance matrix
+    distmat = np.zeros([n, n])
+    for x in range(n):
+        logger.info(f"Distance matrix calculation {x}/{n}")
+        for y in range(x+1, n):            
+            distmat[x][y] = score_fn(orgs[x], orgs[y], df)
+
+    # make the scipy call
+    Z = complete(distmat)
+    order = [orgs[i] for i in leaves_list(Z)]
+    return order
+    
 
 
 def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
@@ -85,15 +115,16 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     orgs = set(orgs)
 
     cur = list(orgs)[0] # arbitrarily choose first organism
+    print(orgs)
     order = [cur]
     orgs.remove(cur)
 
     while orgs:
-        logger.debug(f"currently selected: {order}")
         # find the next organism with maximal similarity score to this one
         ext_score = -math.inf if maximize else math.inf
         for org in orgs:
             score = score_fn(cur, org, df)
+            logger.debug(f"{cur}, {org}: {score}")
             if maximize and score > ext_score:
                 ext_score = score
                 cur = org
@@ -101,6 +132,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
                 ext_score = score
                 cur = org
 
+        logger.debug(f"selected: {order}, score: {ext_score}")
         orgs.remove(cur)
         order.append(cur)
 
