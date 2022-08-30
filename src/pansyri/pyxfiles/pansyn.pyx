@@ -85,6 +85,69 @@ def calc_overlap(l: Pansyn, r: Pansyn, detect_crosssyn=False, allow_overlap=Fals
 
     return sorted(ret)
 
+def find_overlaps(left, right, **kwargs):
+    """
+    This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
+    It runs in O(len(left) + len(right)).
+    Calls `calc_overlap` to determine the actual overlaps to merge as output.
+    """
+    ret = deque()
+
+    if len(right) == 0:
+        raise ValueError("right is empty!")
+    if len(left) == 0:
+        raise ValueError("left is empty!")
+
+    riter = right.iterrows()
+    rrow = next(riter)[1][0]
+    liter = left.iterrows()
+    lrow = next(liter)[1][0]
+    while True:
+        try: # python iterators suck, so this loop is entirely try-catch'ed
+            lref = lrow.ref
+            rref = rrow.ref
+            if rref.chr > lref.chr:
+                lrow = next(liter)[1][0]
+                continue
+            if lref.chr > rref.chr:
+                rrow = next(riter)[1][0]
+                continue
+            
+            # determine if there is an overlap
+            ovstart = max(rref.start, lref.start)
+            ovend = min(rref.end, lref.end)
+            if ovend - ovstart > MIN_SYN_THRESH: # there is valid overlap
+                ret.extend(calc_overlap(lrow, rrow, **kwargs))
+
+            # the bug's gotta be somewhere in here…
+            # ratchet by dropping the segment with a smaller end
+            if lref.end > rref.end: # left is after right
+                rrow = next(riter)[1][0]
+            elif rref.end > lref.end: # right is after left
+                lrow = next(liter)[1][0]
+                # if they stop at the same position, drop the one starting further left
+            elif lref.start > rref.start:
+                rrow = next(riter)[1][0]
+            else: # do whatever
+                lrow = next(liter)[1][0]
+
+        except StopIteration: # nothing more to match
+            break
+
+    del riter
+    del liter
+    # sort to be safe, maybe optimitze this away later?
+    ret = pd.DataFrame(data=sorted(list(ret)))
+
+    total_len_left = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], left.iterrows())))
+    total_len_right = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], right.iterrows())))
+    total_len_ret = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], ret.iterrows())))
+    logger.debug(f"left orgs: {util.get_orgs_from_df(left)}, right orgs: {util.get_orgs_from_df(right)}, ret orgs: {util.get_orgs_from_df(ret)}")
+    logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
+
+    return ret.sort_values(ret.columns[0])
+
+
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Pansyn objects
@@ -160,69 +223,6 @@ def remove_overlap(syn):
                 rng.start += ov
 
         prev = cur
-
-
-def find_overlaps(left, right, **kwargs):
-    """
-    This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
-    It runs in O(len(left) + len(right)).
-    Calls `calc_overlap` to determine the actual overlaps to merge as output.
-    """
-    ret = deque()
-
-    if len(right) == 0:
-        raise ValueError("right is empty!")
-    if len(left) == 0:
-        raise ValueError("left is empty!")
-
-    riter = right.iterrows()
-    rrow = next(riter)[1][0]
-    liter = left.iterrows()
-    lrow = next(liter)[1][0]
-    while True:
-        try: # python iterators suck, so this loop is entirely try-catch'ed
-            lref = lrow.ref
-            rref = rrow.ref
-            if rref.chr > lref.chr:
-                lrow = next(liter)[1][0]
-                continue
-            if lref.chr > rref.chr:
-                rrow = next(riter)[1][0]
-                continue
-            
-            # determine if there is an overlap
-            ovstart = max(rref.start, lref.start)
-            ovend = min(rref.end, lref.end)
-            if ovend - ovstart > MIN_SYN_THRESH: # there is valid overlap
-                ret.extend(calc_overlap(lrow, rrow, **kwargs))
-
-            # the bug's gotta be somewhere in here…
-            # ratchet by dropping the segment with a smaller end
-            if lref.end > rref.end: # left is after right
-                rrow = next(riter)[1][0]
-            elif rref.end > lref.end: # right is after left
-                lrow = next(liter)[1][0]
-                # if they stop at the same position, drop the one starting further left
-            elif lref.start > rref.start:
-                rrow = next(riter)[1][0]
-            else: # do whatever
-                lrow = next(liter)[1][0]
-
-        except StopIteration: # nothing more to match
-            break
-
-    del riter
-    del liter
-    # sort to be safe, maybe optimitze this away later?
-    ret = pd.DataFrame(data=list(ret))
-
-    total_len_left = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], left.iterrows())))
-    total_len_right = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], right.iterrows())))
-    total_len_ret = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], ret.iterrows())))
-    logger.debug(f"left orgs: {util.get_orgs_from_df(left)}, right orgs: {util.get_orgs_from_df(right)}, ret orgs: {util.get_orgs_from_df(ret)}")
-    logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
-
-    return ret.sort_values(ret.columns[0])
 
 
 def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwargs):
