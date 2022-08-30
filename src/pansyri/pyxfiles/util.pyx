@@ -68,13 +68,13 @@ def parse_input_tsv(path):
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
 # For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
-    return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=False, **kwargs)
+    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    return pansyn.find_multisyn(*parse_input_tsv(path), detect_crosssyn=True, **kwargs)
+    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
 def coresyn_from_lists(syns, alns, **kwargs):
-    return pansyn.find_multisyn(syns, alns, detect_crosssyn=False, **kwargs)
+    return pansyn.find_multisyn(syns, alns, only_core=True, **kwargs)
 def crosssyn_from_lists(syns, alns, **kwargs):
-    return pansyn.find_multisyn(syns, alns, detect_crosssyn=True, **kwargs)
+    return pansyn.find_multisyn(syns, alns, only_core=False, **kwargs)
 
 def get_orgs_from_df(df):
     """Small utility function to get all organism from a DataFrame of `Pansyn` objects.
@@ -92,11 +92,11 @@ len_getter = lambda df: sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.
 len_tabularizer = lambda df: [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
 def eval_combinations(syns, alns, cores=1):
-    cores_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=False, cores=cores)
-    cores_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=False, sort=True, SYNAL=True, cores=cores)
+    cores_syn = pansyn.find_multisyn(syns, alns, only_core=True, sort=True, SYNAL=False, cores=cores)
+    cores_synal = pansyn.find_multisyn(syns, alns, only_core=True, sort=True, SYNAL=True, cores=cores)
 
-    cross_syn = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=False, cores=cores)
-    cross_synal = pansyn.find_multisyn(syns, alns, detect_crosssyn=True, sort=True, SYNAL=True, cores=cores)
+    cross_syn = pansyn.find_multisyn(syns, alns, only_core=False, sort=True, SYNAL=False, cores=cores)
+    cross_synal = pansyn.find_multisyn(syns, alns, only_core=False, sort=True, SYNAL=True, cores=cores)
 
     print("\nComparing", syns)
     
