@@ -32,10 +32,10 @@ def find_overlaps(left, right, only_core=False):
     if len(left) == 0:
         raise ValueError("left is empty!")
 
-    rit = right.itertuples()
-    lit = left.itertuples()
-    r = next(rit)[0]
-    l = next(lit)[0]
+    rit = right.iterrows()
+    lit = left.iterrows()
+    r = next(rit)[1][0]
+    l = next(lit)[1][0]
 
     cdef int cov = 0 # store the last position in the ref that has been covered in ret
 
@@ -64,11 +64,11 @@ def find_overlaps(left, right, only_core=False):
             # ensure that the chr matches, reset the covered region
             if r.ref.chr > l.ref.chr:
                 cov = 0
-                l = next(lit)[0]
+                l = next(lit)[1][0]
                 continue
             if l.ref.chr > r.ref.chr:
                 cov = 0
-                r = next(rit)[0]
+                r = next(rit)[1][0]
                 continue
             
             # determine if there is an overlap
@@ -96,26 +96,26 @@ def find_overlaps(left, right, only_core=False):
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(r.drop(max(0, cov - r.ref.start)))
                 cov = r.ref.end # probably not necessary to update here, but still cleaner
-                r = next(rit)[0]
+                r = next(rit)[1][0]
 
             elif r.ref.end > l.ref.end: # right is after left
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(l.drop(max(0, cov - l.ref.start)))
                 cov = l.ref.end # probably not necessary to update here, but still cleaner
-                l = next(lit)[0]
+                l = next(lit)[1][0]
 
                 # if they stop at the same position, drop the one starting further left
             elif l.ref.start > r.ref.start:
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(r.drop(max(0, cov - r.ref.start)))
                 cov = r.ref.end # probably not necessary to update here, but still cleaner
-                r = next(rit)[0]
+                r = next(rit)[1][0]
 
             else: # do whatever
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(l.drop(max(0, cov - l.ref.start)))
                 cov = l.ref.end # probably not necessary to update here, but still cleaner
-                l = next(lit)[0]
+                l = next(lit)[1][0]
 
         except StopIteration: # nothing more to match
             break
