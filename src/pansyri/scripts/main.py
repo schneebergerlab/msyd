@@ -17,7 +17,7 @@ This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 def main(argv):
 

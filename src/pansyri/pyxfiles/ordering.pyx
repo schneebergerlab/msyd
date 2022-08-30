@@ -86,7 +86,7 @@ def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     # construct and fill the distance matrix
     distmat = np.zeros([n, n])
     for x in range(n):
-        logger.info(f"Distance matrix calculation {x}/{n}")
+        logger.debug(f"Distance matrix calculation {x}/{n}")
         for y in range(x+1, n):            
             distmat[x][y] = score_fn(orgs[x], orgs[y], df)
 
