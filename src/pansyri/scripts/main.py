@@ -31,7 +31,7 @@ def main(argv):
 
     # call the plotsr ordering functionality on a set of organisms described in the .tsv
     if argv[1] == 'order': # example call in the ampril dataset folder: pansyri pansr.tsv order 8
-        print(ordering.order(syns, alns))
+        print(ordering.order(syns, alns, argv[2] if len(argv) >= 3 else None))
     # compares the output of all four possible values of detect_crosssyn and SYNAL when calling find_multisyn, tabularizes by length
     elif argv[1] == 'comb':# example call in the ampril dataset folder: pansyri pansr.tsv order
         util.eval_combinations(syns, alns, cores=cores)
