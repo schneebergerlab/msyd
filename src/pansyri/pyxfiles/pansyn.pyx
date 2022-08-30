@@ -15,7 +15,7 @@ import pansyri.util as util
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range, Position
 
-MIN_SYN_THRESH = 20
+cdef int MIN_SYN_THRESH = 20
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ def find_overlaps(left, right, only_core=False):
     
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
-            # ensure that the chr matches
+            # ensure that the chr matches, reset the covered region
             if r.ref.chr > l.ref.chr:
                 cov = 0
                 l = next(lit)[0]
@@ -80,13 +80,16 @@ def find_overlaps(left, right, only_core=False):
             ending = l if l.ref.end > r.ref.end else r
 
             if ovend - ovstart >= MIN_SYN_THRESH: # there is valid overlap
-                if not only_core and  starting.ref.start - cov >= MIN_SYN_THRESH: # add the region up to the overlap if it is large enough
+                # add the region up to the overlap if it is large enough
+                if not only_core and  starting.ref.start - cov >= MIN_SYN_THRESH:
                     add_filtered(starting.drop(starting.ref.start - cov, starting.ref.end - ovend))
+
                 # add overlap region
                 add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
-                cov = ovend # everything up to the end of the overlap is covered now
+                # everything up to the end of the overlap is covered now
+                cov = ovend
 
-            # ratchet by dropping the segment with a smaller end
+            # ratchet by dropping the segment ending first
             # when dropping, include all of the segment that has not been covered by ret so far
             # includes the segment right of an overlap
             if l.ref.end > r.ref.end: # left is after right
@@ -94,17 +97,20 @@ def find_overlaps(left, right, only_core=False):
                     add_filtered(r.drop(max(0, cov - r.ref.start)))
                 cov = r.ref.end # probably not necessary to update here, but still cleaner
                 r = next(rit)[0]
+
             elif r.ref.end > l.ref.end: # right is after left
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(l.drop(max(0, cov - l.ref.start)))
                 cov = l.ref.end # probably not necessary to update here, but still cleaner
                 l = next(lit)[0]
+
                 # if they stop at the same position, drop the one starting further left
             elif l.ref.start > r.ref.start:
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(r.drop(max(0, cov - r.ref.start)))
                 cov = r.ref.end # probably not necessary to update here, but still cleaner
                 r = next(rit)[0]
+
             else: # do whatever
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(l.drop(max(0, cov - l.ref.start)))
