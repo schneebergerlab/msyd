@@ -39,7 +39,10 @@ def main(argv):
     elif argv[1] == 'len':# example call in the ampril dataset folder: pansyri pansr.tsv len 8
         util.length_compare(syns, alns, cores=cores)
     # just print the called cross synteny 
-    elif argv[1] == 'print':
+    elif argv[1] == 'crossprint':
         df = util.crosssyn_from_lists(syns, alns, cores=cores)
+        print(df.to_string())
+    elif argv[1] == 'coreprint':
+        df = util.coresyn_from_lists(syns, alns, cores=cores)
         print(df.to_string())
 

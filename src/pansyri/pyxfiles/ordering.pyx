@@ -78,8 +78,8 @@ def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     if orgs is None:
         logger.info("getting orgs from crossyn df as none were supplied")
         orgs = util.get_orgs_from_df(df)
-    if ref is True:
-        orgs.add('ref') # include reference
+    #if ref is True:
+    #    orgs.add('ref') # include reference
     orgs = sorted(set(orgs))
     n = len(orgs)
 
@@ -89,6 +89,8 @@ def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
         logger.debug(f"Distance matrix calculation {x}/{n}")
         for y in range(x+1, n):            
             distmat[x][y] = score_fn(orgs[x], orgs[y], df)
+
+    print(distmat)
 
     # make the scipy call
     Z = complete(distmat)
