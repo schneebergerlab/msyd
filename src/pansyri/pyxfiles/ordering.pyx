@@ -7,6 +7,7 @@ import math
 import logging
 
 import numpy as np
+import pandas as pd
 from scipy.cluster.hierarchy import complete, dendrogram, leaves_list
 
 import pansyri.util as util
@@ -28,7 +29,12 @@ def order(syns, alns, chr=None):
     """
     # disabled using SYNAL for now, runtime fairly slow on the dell nodes, not quite sure why
     # might even be the better idea, we want to capture large-scale synteny anyway
-    df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
+    #df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
+
+    # hack together union of coresyns, not elegant or fast but should get the job done. Runtime in Θ(n^2)!!
+    import itertools
+    df = pd.concat([util.coresyn_from_lists(list(synpair), list(alnpair), SYNAL=False) for synpair, alnpair in zip(itertools.product(syns, syns), itertools.product(alns, alns)) if synpair[0] != synpair[1]])
+
     #logger.debug(df.head(100).to_string())
     logger.info("got crossyn df")
 
