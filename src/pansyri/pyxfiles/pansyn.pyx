@@ -57,7 +57,7 @@ def find_overlaps(left, right, only_core=False):
         if only_core:
             if pansyn.get_degree() < l.get_degree() + r.get_degree(): # filter non-core-syntenic regions in case that's relevant
                 return
-        ret.add(pansyn)
+        ret.append(pansyn)
     
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
@@ -81,8 +81,9 @@ def find_overlaps(left, right, only_core=False):
 
             if ovend - ovstart >= MIN_SYN_THRESH: # there is valid overlap
                 # add the region up to the overlap if it is large enough
-                if not only_core and  starting.ref.start - cov >= MIN_SYN_THRESH:
-                    add_filtered(starting.drop(starting.ref.start - cov, starting.ref.end - ovend))
+                intstart = max(starting.ref.start, cov) # start of the non-overlapping region of interest
+                if not only_core and ovstart - intstart >= MIN_SYN_THRESH:
+                    add_filtered(starting.drop(intstart - starting.ref.start, starting.ref.end - ovstart))
 
                 # add overlap region
                 add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
@@ -94,26 +95,26 @@ def find_overlaps(left, right, only_core=False):
             # includes the segment right of an overlap
             if l.ref.end > r.ref.end: # left is after right
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(r.drop(max(0, cov - r.ref.start)))
+                    add_filtered(r.drop(max(0, cov - r.ref.start), 0))
                 cov = r.ref.end # probably not necessary to update here, but still cleaner
                 r = next(rit)[1][0]
 
             elif r.ref.end > l.ref.end: # right is after left
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(l.drop(max(0, cov - l.ref.start)))
+                    add_filtered(l.drop(max(0, cov - l.ref.start), 0))
                 cov = l.ref.end # probably not necessary to update here, but still cleaner
                 l = next(lit)[1][0]
 
                 # if they stop at the same position, drop the one starting further left
             elif l.ref.start > r.ref.start:
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(r.drop(max(0, cov - r.ref.start)))
+                    add_filtered(r.drop(max(0, cov - r.ref.start), 0))
                 cov = r.ref.end # probably not necessary to update here, but still cleaner
                 r = next(rit)[1][0]
 
             else: # do whatever
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(l.drop(max(0, cov - l.ref.start)))
+                    add_filtered(l.drop(max(0, cov - l.ref.start), 0))
                 cov = l.ref.end # probably not necessary to update here, but still cleaner
                 l = next(lit)[1][0]
 

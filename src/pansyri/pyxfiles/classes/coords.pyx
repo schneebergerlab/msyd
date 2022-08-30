@@ -245,7 +245,8 @@ class Pansyn:
         Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed, respecting cigar alignments if not `None`.
         """
         if start < 0 or end < 0 or start + end > len(self.ref):
-            raise ValueError("ERROR: tried to drop invalid start/end. Either negative or longer than this Pansyn on the reference!")
+            logger.error(f"Tried to drop invalid start ({start}) or end ({end}) on this Pansyn with length on the reference {len(self.ref)}")
+            raise ValueError("tried to drop invalid start/end!")
 
         ref = self.ref.drop(start, end)
         ranges_dict = dict()
