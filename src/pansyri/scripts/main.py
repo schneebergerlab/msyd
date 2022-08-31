@@ -9,6 +9,9 @@ from pansyri.classes.coords import Range
 import logging
 import logging.config
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 import pandas as pd
 
 #import argparse as ap
@@ -18,8 +21,6 @@ import sys
 This file serves as the main entrypoint for finding pansyntentic regions.
 Experimental and WIP.
 """
-
-logging.basicConfig(level=logging.INFO)
 
 def main(argv):
 
@@ -49,15 +50,30 @@ def main(argv):
         print(df.to_string())
     elif argv[1] == 'plot':
         df = util.crosssyn_from_lists(syns, alns, SYNAL=True)
-        orgs = ['ref'] + list(util.get_orgs_from_df(df))
+        cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 
         def pstolendf(x):
             ret = {k:len(v) for k, v in x.ranges_dict.items()}
             ret['ref'] = len(x.ref)
-            ret = pd.DataFrame(data=ret, columns=orgs, index=[0]).fillna(0)
+            ret['chr'] = x.ref.chr # they are all on the same chromosome, so this doesn't matter
+            ret = pd.DataFrame(data=ret, columns=cols, index=[0]).fillna(0)
             return ret
 
         lensdf = pd.concat([pstolendf(x[1][0]) for x in df.iterrows()])
+        for row in lensdf.loc[:, lensdf.columns != 'chr'].iterrows():
+            violates = False
+            lens = row[1]
+            minlen = lens[0]*0.9
+            maxlen = lens[0]*1.1
+            for l in lens:
+                if l > 0:
+                    if l < minlen or l > maxlen:
+                        violates = True
+
+            if violates:
+                logger.error(f"Violates condition: {lens}")
+        sys.exit()
         print(lensdf.to_string(index=False))
+
 
 
