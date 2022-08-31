@@ -8,6 +8,8 @@ lensdf <- read.table(args[1], header=TRUE)
 lensdf$index <- 1:nrow(lensdf)
 coredf <- lensdf[apply((lensdf > 0), 1, all), ]
 
+print(lensdf[lensdf$ref > 170000, ])
+
 
 
 ggplot(data=pivot_longer(lensdf, -c(index, chr), names_to='key', values_to='value'), aes(x = key, y=value, group=index, color=chr)) +

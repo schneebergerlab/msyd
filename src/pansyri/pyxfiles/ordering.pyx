@@ -11,6 +11,7 @@ import pandas as pd
 import scipy.cluster.hierarchy as spclhier
 
 import pansyri.util as util
+from pansyri.classes.coords import Range
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,11 @@ def order(syns, alns, chr=None):
     #logger.debug(df.head(100).to_string())
     logger.info("got crossyn df")
 
+    df = util.filter_multisyn_df(df, Range(None, 'Chr5', 'NaN', 1200000, 14000000))
+
     if chr is not None:
-        df = util.filter_multisyn_df_chr(df, chr)
+        #df = util.filter_multisyn_df_chr(df, chr)
         # if filtering to a range of interest, call filter_multisyn_df instead like this:
-        # df = util.filter_multisyn_df(df, Range(None, <chr>, 'NaN', <start>, <end>))
         logger.info("Filtered Crossyn DF")
 
     # optionally adjust the organism list
@@ -84,13 +86,17 @@ def order_hierarchical(df, orgs=None, score_fn=syn_score, maximize=True, ref=Tru
     n = len(orgs)
 
     # construct and fill the distance matrix
-    distmat = np.zeros([n, n])
+    distmat = []
     for x in range(n):
         logger.debug(f"Distance matrix calculation {x}/{n}")
         for y in range(x+1, n):            
-            distmat[x][y] = score_fn(orgs[x], orgs[y], df)
+            distmat = distmat + [-score_fn(orgs[x], orgs[y], df)]
 
-    Z = spclhier.complete(distmat)
+    distmat = np.array(distmat) - min(distmat)
+
+    print(distmat)
+    Z = spclhier.single(distmat)
+    print(Z)
     logger.debug(f"Clustering complete, reordering leaves")
     Z = spclhier.optimal_leaf_ordering(Z, distmat)
     order = [orgs[i] for i in spclhier.leaves_list(Z)]
