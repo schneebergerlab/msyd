@@ -9,6 +9,8 @@ from pansyri.classes.coords import Range
 import logging
 import logging.config
 
+import pandas as pd
+
 #import argparse as ap
 import sys
 
@@ -45,4 +47,17 @@ def main(argv):
     elif argv[1] == 'coreprint':
         df = util.coresyn_from_lists(syns, alns, cores=cores)
         print(df.to_string())
+    elif argv[1] == 'plot':
+        df = util.crosssyn_from_lists(syns, alns, SYNAL=True)
+        orgs = ['ref'] + list(util.get_orgs_from_df(df))
+
+        def pstolendf(x):
+            ret = {k:len(v) for k, v in x.ranges_dict.items()}
+            ret['ref'] = len(x.ref)
+            ret = pd.DataFrame(data=ret, columns=orgs, index=[0]).fillna(0)
+            return ret
+
+        lensdf = pd.concat([pstolendf(x[1][0]) for x in df.iterrows()])
+        print(lensdf.to_string(index=False))
+
 
