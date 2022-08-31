@@ -8,7 +8,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-from scipy.cluster.hierarchy import complete, dendrogram, leaves_list
+import scipy.cluster.hierarchy as spclhier
 
 import pansyri.util as util
 
@@ -47,7 +47,7 @@ def order(syns, alns, chr=None):
     # optionally adjust the organism list
     # orgs = util.get_orgs_from_df(df)[:4]
     # make the call to the optimizer, using the default/only scoring function right now:
-    return order_complete(df, orgs=None, score_fn=syn_score)
+    return order_hierarchical(df, orgs=None, score_fn=syn_score)
 
 def syn_score(cur, org, df):
     """Defines a similarity score from syri output.
@@ -74,7 +74,7 @@ def syn_score(cur, org, df):
 #    """
 #    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
 
-def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
+def order_hierarchical(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     if orgs is None:
         logger.info("getting orgs from crossyn df as none were supplied")
         orgs = util.get_orgs_from_df(df)
@@ -88,16 +88,13 @@ def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     for x in range(n):
         logger.debug(f"Distance matrix calculation {x}/{n}")
         for y in range(x+1, n):            
-            distmat[x][y] = 3e7 - score_fn(orgs[x], orgs[y], df)
+            distmat[x][y] = score_fn(orgs[x], orgs[y], df)
 
-    print(distmat)
-
-    # make the scipy call
-    Z = complete(distmat)
-    print(Z)
-    order = [orgs[i] for i in leaves_list(Z)]
+    Z = spclhier.complete(distmat)
+    logger.debug(f"Clustering complete, reordering leaves")
+    Z = spclhier.optimal_leaf_ordering(Z, distmat)
+    order = [orgs[i] for i in spclhier.leaves_list(Z)]
     return order
-    
 
 
 def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
