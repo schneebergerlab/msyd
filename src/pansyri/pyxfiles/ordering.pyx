@@ -29,11 +29,11 @@ def order(syns, alns, chr=None):
     """
     # disabled using SYNAL for now, runtime fairly slow on the dell nodes, not quite sure why
     # might even be the better idea, we want to capture large-scale synteny anyway
-    #df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
+    df = util.crosssyn_from_lists(syns, alns, SYNAL=False, cores=6)
 
     # hack together union of coresyns, not elegant or fast but should get the job done. Runtime in Θ(n^2)!!
-    import itertools
-    df = pd.concat([util.coresyn_from_lists(list(synpair), list(alnpair), SYNAL=False) for synpair, alnpair in zip(itertools.product(syns, syns), itertools.product(alns, alns)) if synpair[0] != synpair[1]])
+    #import itertools
+    #df = pd.concat([util.coresyn_from_lists(list(synpair), list(alnpair), SYNAL=False) for synpair, alnpair in zip(itertools.product(syns, syns), itertools.product(alns, alns)) if synpair[0] != synpair[1]])
 
     #logger.debug(df.head(100).to_string())
     logger.info("got crossyn df")
@@ -78,8 +78,8 @@ def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     if orgs is None:
         logger.info("getting orgs from crossyn df as none were supplied")
         orgs = util.get_orgs_from_df(df)
-    #if ref is True:
-    #    orgs.add('ref') # include reference
+    if ref is True:
+        orgs.add('ref') # include reference
     orgs = sorted(set(orgs))
     n = len(orgs)
 
@@ -88,12 +88,13 @@ def order_complete(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     for x in range(n):
         logger.debug(f"Distance matrix calculation {x}/{n}")
         for y in range(x+1, n):            
-            distmat[x][y] = score_fn(orgs[x], orgs[y], df)
+            distmat[x][y] = 3e7 - score_fn(orgs[x], orgs[y], df)
 
     print(distmat)
 
     # make the scipy call
     Z = complete(distmat)
+    print(Z)
     order = [orgs[i] for i in leaves_list(Z)]
     return order
     
