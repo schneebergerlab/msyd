@@ -60,6 +60,7 @@ def main(argv):
             return ret
 
         lensdf = pd.concat([pstolendf(x[1][0]) for x in df.iterrows()])
+        violating = 0
         for row in lensdf.loc[:, lensdf.columns != 'chr'].iterrows():
             violates = False
             lens = row[1]
@@ -71,6 +72,7 @@ def main(argv):
                         violates = True
 
             if violates:
+                violating += 1
                 logger.error(f"Violates condition: {lens}")
         sys.exit()
         print(lensdf.to_string(index=False))

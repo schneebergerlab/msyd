@@ -15,7 +15,7 @@ import pansyri.util as util
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range, Position
 
-cdef int MIN_SYN_THRESH = 20
+cdef int MIN_SYN_THRESH = 50
 
 logger = logging.getLogger(__name__)
 
