@@ -30,12 +30,11 @@ def main(argv):
 
     parser = argparse.ArgumentParser(description="Pansyri is a pansynteny and rearrangement identifier.")
     parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Defaults to 4.", type=int, default=4)
-    #argparse.FileType('r')
-    parser.add_argument("-i", dest='infile', required=True, type=str, help="The .tsv file to read SyRI output and alignment files in from. For more details, see the Readme.")
+    parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output and alignment files in from. For more details, see the Readme.")
 
     inputmode = parser.add_mutually_exclusive_group(required=True)
     inputmode.add_argument("--combinations", "--comb", "--combs", dest='call', action='store_const', const=combinations, help="evaluate all combinations of parameters for pansyn identification.")
-    inputmode.add_argument("--lengths", "--len", dest='call', action='store_const', const=lengths, help="Print a table containing the total combined lengths of all pansyntenic regions with a certain degree.")
+    inputmode.add_argument("--lengths", "--len", "--lens", dest='call', action='store_const', const=lengths, help="Print a table containing the total combined lengths of all pansyntenic regions with a certain degree.")
     inputmode.add_argument("--crossprint", dest='call', action='store_const', const=crossprint, help="Print a DataFrame containing all cross/pansyntenic regions")
     inputmode.add_argument("--coreprint", dest='call', action='store_const', const=coreprint, help="Print a DataFrame containing the core syntenic regions.")
     inputmode.add_argument("--plot", dest='call', action='store_const', const=plot, help="Plotting call, for debugging and validation purposes.")

@@ -35,7 +35,14 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
 
-def parse_input_tsv(path):
+def parse_input_tsv_path(path):
+    """
+    Convenience wrapper to call parse_input_tsv with a path.
+    """
+    with open(path, 'r') as fin:
+        return parse_input_tsv(fin)
+
+def parse_input_tsv(fin):
     """
     Takes a file containing the input alignments/syri files and processes it for find_multisyn.
     Anything after a # is ignored. Lines starting with # are skipped.
@@ -44,23 +51,22 @@ def parse_input_tsv(path):
     """
     syris = deque()     # Lists are too slow appending, using deque instead
     alns = deque()
-    with open(path, 'r') as fin:
-        for line in fin:
-            if line[0] == '#' or line.strip() == '':
-                continue
+    for line in fin:
+        if line[0] == '#' or line.strip() == '':
+            continue
 
-            val = line.strip().split('#')[0].split('\t')
-            if len(val) > 2:
-                logger.error(f"invalid entry in {path}. Skipping line: {line}")
-                continue
-            # Check that the files are accessible
-            if not os.path.isfile(val[0]):
-                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
-            if not os.path.isfile(val[1]):
-                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
+        val = line.strip().split('#')[0].split('\t')
+        if len(val) > 2:
+            logger.error(f"invalid entry in {fin.name}. Skipping line: {line}")
+            continue
+        # Check that the files are accessible
+        if not os.path.isfile(val[0]):
+            raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
+        if not os.path.isfile(val[1]):
+            raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
 
-            alns.append(val[0].strip())
-            syris.append(val[1].strip())
+        alns.append(val[0].strip())
+        syris.append(val[1].strip())
 
     return (syris, alns)
 
@@ -68,9 +74,9 @@ def parse_input_tsv(path):
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
 # For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
-    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
+    return pansyn.find_multisyn(*parse_input_tsv_path(path), only_core=True, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
+    return pansyn.find_multisyn(*parse_input_tsv_path(path), only_core=False, **kwargs)
 def coresyn_from_lists(syns, alns, **kwargs):
     return pansyn.find_multisyn(syns, alns, only_core=True, **kwargs)
 def crosssyn_from_lists(syns, alns, **kwargs):
