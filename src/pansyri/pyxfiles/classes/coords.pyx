@@ -240,7 +240,7 @@ class Pansyn:
 
         return Pansyn(self.ref, rngs, cgs)
 
-    def drop(self, start, end, prop=False):
+    def drop(self, start, end, prop=True):
         """
         Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed, respecting cigar alignments if not `None`.
         :param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Pansyn` without CIGAR strings.
@@ -260,10 +260,11 @@ class Pansyn:
             for org, rng in self.ranges_dict.items():
                 if prop:
                     l = len(rng)
-                    ranges_dict[org] = rng.drop(int(pstart*l), int(pend*l))
-                else:
-                    if start + end < len(rng): # TODO maybe handle this case to drop proportionally, i.e. if the drop is 10% of ref, drop 10% of qry instead of having absolute length the same
-                        ranges_dict[org] = rng.drop(start, end)
+                    start = int(pstart*l)
+                    end = int(pend*l)
+
+                if start + end < len(rng): # TODO maybe handle this case to drop proportionally, i.e. if the drop is 10% of ref, drop 10% of qry instead of having absolute length the same
+                    ranges_dict[org] = rng.drop(start, end)
         else:
             cigars_dict = dict()
             for org, rng in self.ranges_dict.items():
