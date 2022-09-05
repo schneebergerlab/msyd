@@ -4,6 +4,7 @@
 import pansyri.util as util
 import pansyri.ordering as ordering
 import pansyri.imputation as imputation
+import pansyri.pansyn as pansyn
 from pansyri.classes.coords import Range
 
 import logging
@@ -32,24 +33,28 @@ def main(argv):
     parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Defaults to 4.", type=int, default=4)
     parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output and alignment files in from. For more details, see the Readme.")
 
+    parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny")
+
+    parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL regions, yields more contiguous regions and faster runtime.")
+
+
     inputmode = parser.add_mutually_exclusive_group(required=True)
     inputmode.add_argument("--combinations", "--comb", "--combs", dest='call', action='store_const', const=combinations, help="evaluate all combinations of parameters for pansyn identification.")
     inputmode.add_argument("--lengths", "--len", "--lens", dest='call', action='store_const', const=lengths, help="Print a table containing the total combined lengths of all pansyntenic regions with a certain degree.")
-    inputmode.add_argument("--crossprint", dest='call', action='store_const', const=crossprint, help="Print a DataFrame containing all cross/pansyntenic regions")
-    inputmode.add_argument("--coreprint", dest='call', action='store_const', const=coreprint, help="Print a DataFrame containing the core syntenic regions.")
+    inputmode.add_argument("--print", "-p", dest='call', action='store_const', const=dfprint, help="Print a DataFrame containing all cross/pansyntenic regions")
+    inputmode.add_argument("--shortprint", "--sp", dest='call', action='store_const', const=shortprint, help="Print a DataFrame containing the core syntenic regions.")
     inputmode.add_argument("--plot", dest='call', action='store_const', const=plot, help="Plotting call, for debugging and validation purposes.")
     inputmode.add_argument("--order", dest='call', action='store_const', const=order, help="Determine the optimal ordering of the supplied genomes for plotting.") #TODO have this be a subparser, accept arguments like which score to use etc
-
-    #TODO separate this into more modular parsing, core vs cross and evaluation separate from that
 
 
     args = parser.parse_args(argv)
     args.syns, args.alns = util.parse_input_tsv(args.infile)
+    args.df = pansyn.find_multisyn(args.syns, args.alns, only_core=args.core, SYNAL=args.SYNAL)
     args.call(args)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
-def order(args):
-    print(ordering.order(args.syns, args.alns))
+def order(args): # TODO have subparsing for other ordering/scores/etc
+    print(ordering.order_hierarchical(args.df, orgs=None, score_fn=ordering.syn_score))
 
 # compares the output of all four possible values of detect_crosssyn and SYNAL when calling find_multisyn, tabularizes by length
 def combinations(args):
@@ -60,17 +65,14 @@ def lengths(args):
     util.length_compare(args.syns, args.alns, cores=args.cores)
 
 # just print the called cross synteny 
-def crossprint(args):
-    df = util.crosssyn_from_lists(args.syns, args.alns, cores=args.cores)
-    print(df.to_string())
+def dfprint(args):
+    print(args.df.to_string())
 
-# just print the called core synteny 
-def coreprint(args):
-    df = util.coresyn_from_lists(args.syns, args.alns, cores=args.cores)
-    print(df.to_string())
+def shortprint(args):
+    print(args.df)
 
 def plot(args):
-    df = util.crosssyn_from_lists(args.syns, args.alns, SYNAL=True)
+    df = args.df
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 
     def pstolendf(x):
