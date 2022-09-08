@@ -23,7 +23,6 @@ def find_overlaps(left, right, only_core=False):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
-    Calls `calc_overlap` to determine the actual overlaps to merge as output.
     """
     ret = deque()
 
@@ -77,7 +76,7 @@ def find_overlaps(left, right, only_core=False):
 
             # find which segment is the starting/ending one
             starting = l if l.ref.start < r.ref.start else r
-            ending = l if l.ref.end > r.ref.end else r
+            #ending = l if l.ref.end > r.ref.end else r
 
             if ovend - ovstart >= MIN_SYN_THRESH: # there is valid overlap
                 # add the region up to the overlap if it is large enough
