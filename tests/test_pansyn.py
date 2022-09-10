@@ -10,7 +10,7 @@ from pansyri.classes.coords import Range, Pansyn
 from pansyri.classes.cigar import Cigar
 
 
-### Tests for the `Pansyn` class
+### Tests for the `Pansyn` module
 
 @pytest.fixture
 def simple_pansyn_nocg():
