@@ -15,7 +15,7 @@ import pansyri.util as util
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range, Position
 
-cdef int MIN_SYN_THRESH = 50
+cdef int MIN_SYN_THRESH = 10
 
 logger = logging.getLogger(__name__)
 
@@ -70,13 +70,11 @@ def find_overlaps(left, right, only_core=False):
                 r = next(rit)[1][0]
                 continue
             
-            # determine if there is an overlap
             ovstart = max(r.ref.start, l.ref.start)
             ovend = min(r.ref.end, l.ref.end)
 
             # find which segment is the starting/ending one
             starting = l if l.ref.start < r.ref.start else r
-            #ending = l if l.ref.end > r.ref.end else r
 
             if ovend - ovstart >= MIN_SYN_THRESH: # there is valid overlap
                 # add the region up to the overlap if it is large enough
@@ -95,30 +93,41 @@ def find_overlaps(left, right, only_core=False):
             if l.ref.end > r.ref.end: # left is after right
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(r.drop(max(0, 1 + cov - r.ref.start), 0))
-                cov = r.ref.end # probably not necessary to update here, but still cleaner
+                cov = r.ref.end
                 r = next(rit)[1][0]
 
             elif r.ref.end > l.ref.end: # right is after left
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(l.drop(max(0, 1 + cov - l.ref.start), 0))
-                cov = l.ref.end # probably not necessary to update here, but still cleaner
+                cov = l.ref.end
                 l = next(lit)[1][0]
 
                 # if they stop at the same position, drop the one starting further left
             elif l.ref.start > r.ref.start:
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(r.drop(max(0, 1 + cov - r.ref.start), 0))
-                cov = r.ref.end # probably not necessary to update here, but still cleaner
+                cov = r.ref.end
                 r = next(rit)[1][0]
 
             else: # do whatever
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     add_filtered(l.drop(max(0, 1 + cov - l.ref.start), 0))
-                cov = l.ref.end # probably not necessary to update here, but still cleaner
+                cov = l.ref.end
                 l = next(lit)[1][0]
 
         except StopIteration: # nothing more to match
+            if not only_core and l.ref.chr == r.ref.chr: # the loop ended after an overlap call
+                # everything up to cov is covered, and starting is guaranteed to be fully covered
+                ending = l if l.ref.end > r.ref.end else r
+                add_filtered(ending.drop(max(0, 1 + cov - ending.ref.start), 0))
+
             break
+
+    if not only_core: # if calling crosssyn, also add remaining pansyn if there is any
+        for l in lit:
+            add_filtered(l)
+        for r in rit:
+            add_filtered(l)
 
     del rit
     del lit
