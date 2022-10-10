@@ -31,7 +31,7 @@ def read_fasta(f):
                 if key:
                     ret[key] = strbuf
                     strbuf = ''
-                key = line[1:]
+                key = line[1:].strip()
             else:
                 strbuf += line.strip()
 
@@ -52,7 +52,7 @@ def test_pansyn_int():
     refgen = read_fasta('./col.filtered.fa.gz')
     print([x for x in refgen.keys()])
     print([x for x in gens.keys()])
-    for gen in gens:
+    for gen in gens.values():
         print(x for x in gen.keys())
     
     # get pansyn df
