@@ -47,7 +47,7 @@ def test_pansyn_int():
     syns, alns = util.parse_input_tsv_path('./full.tsv')
     
     # read in genome files
-    genome_files = [syn.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for syn in syns]
+    genome_files = [aln.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for aln in alns]
     gens = {f.split('.')[0]:read_fasta(f) for f in genome_files} # key by org name
     refgen = read_fasta('./col.filtered.fa.gz')
     
