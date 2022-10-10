@@ -3,6 +3,7 @@
 import pandas as pd
 import pytest
 import os
+import gzip
 
 import pansyri.util as util
 
@@ -22,7 +23,7 @@ def read_fasta(f):
     """Helper function to read a fasta file given as a string path into a dictionary of chromosomes.
     """
     ret = {}
-    with fin as open(f, 'r'):
+    with fin as gzip.open(f, 'r'):
         key = ''
         strbuf = ''
         for line in fin:
@@ -42,13 +43,13 @@ def test_pansyn_int():
     Integration test testing the higher-order functionality of the pansyn module by validating the alignments.
     """
     ## init
-    os.chdir('../../ampril_reduced/') # hardcoded for now to local test dataset
+    os.chdir('../../ampril/') # hardcoded for now to local test dataset
     syns, alns = util.parse_input_tsv('./full.tsv')
     
     # read in genome files
-    genome_files = [syn.split('.')[0].split('_')[-1] + '.fasta.gz' for syn in syns]
+    genome_files = [syn.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for syn in syns]
     gens = {f.split('.')[0]:read_fasta(f) for f in genome_files} # key by org name
-    refgen = read_fasta('./col.fasta.gz')
+    refgen = read_fasta('./col.filtered.fa.gz')
     
     # get pansyn df
     df = util.crosssyn_from_lists(syns, alns)
