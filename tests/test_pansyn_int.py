@@ -43,7 +43,7 @@ def test_pansyn_int():
     Integration test testing the higher-order functionality of the pansyn module by validating the alignments.
     """
     ## init
-    os.chdir('../../ampril/') # hardcoded for now to local test dataset
+    os.chdir('../../data/ampril/') # hardcoded for now to local test dataset
     syns, alns = util.parse_input_tsv('./full.tsv')
     
     # read in genome files
