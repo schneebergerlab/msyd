@@ -8,6 +8,7 @@ import multiprocessing
 import pandas as pd
 from collections import deque
 import os
+import io
 import logging
 
 import pansyri.pansyn as pansyn
@@ -36,7 +37,7 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     return returnVal
 
 def parse_input_tsv_path(path):
-    """
+    """DEPRECATED
     Convenience wrapper to call parse_input_tsv with a path.
     """
     with open(path, 'r') as fin:
@@ -46,9 +47,15 @@ def parse_input_tsv(fin):
     """
     Takes a file containing the input alignments/syri files and processes it for find_multisyn.
     Anything after a # is ignored. Lines starting with # are skipped.
-    :params: path to a file containing the paths of the input alignment and syri files in tsv format
+    :params: `os.PathLike`, `str` or a TextIO object containing the paths of the input alignment and syri files in tsv format.
+    Will be consumed by this function!
     :returns: a tuple of two lists containing the paths of the alignment and syri files.
     """
+    if isinstance(fin, (str, os.PathLike)):
+        fin = open(fin, 'rt')
+    elif not isinstance(fin, io.TextIOBase):
+        raise ValueError(f"{fin} is not a path-like or file-like object!")
+
     syris = deque()     # Lists are too slow appending, using deque instead
     alns = deque()
     for line in fin:
@@ -68,15 +75,17 @@ def parse_input_tsv(fin):
         alns.append(val[0].strip())
         syris.append(val[1].strip())
 
+    del fin # maybe just close instead?
+
     return (syris, alns)
 
 
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
 # For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
-    return pansyn.find_multisyn(*parse_input_tsv_path(path), only_core=True, **kwargs)
+    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    return pansyn.find_multisyn(*parse_input_tsv_path(path), only_core=False, **kwargs)
+    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
 def coresyn_from_lists(syns, alns, **kwargs):
     return pansyn.find_multisyn(syns, alns, only_core=True, **kwargs)
 def crosssyn_from_lists(syns, alns, **kwargs):
