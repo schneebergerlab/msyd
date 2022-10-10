@@ -44,7 +44,7 @@ def test_pansyn_int():
     """
     ## init
     os.chdir('../../data/ampril/') # hardcoded for now to local test dataset
-    syns, alns = util.parse_input_tsv('./full.tsv')
+    syns, alns = util.parse_input_tsv_path('./full.tsv')
     
     # read in genome files
     genome_files = [syn.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for syn in syns]
