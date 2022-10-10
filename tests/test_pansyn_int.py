@@ -50,10 +50,10 @@ def test_pansyn_int():
     genome_files = [aln.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for aln in alns]
     gens = {f.split('.')[0]:read_fasta(f) for f in genome_files} # key by org name
     refgen = read_fasta('./col.filtered.fa.gz')
-    print([x for x in refgen.keys])
-    print([x for x in gens.keys])
+    print([x for x in refgen.keys()])
+    print([x for x in gens.keys()])
     for gen in gens:
-        print(x for x in gen.keys)
+        print(x for x in gen.keys())
     
     # get pansyn df
     df = util.crosssyn_from_lists(syns, alns)
