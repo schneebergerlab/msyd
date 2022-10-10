@@ -23,7 +23,7 @@ def read_fasta(f):
     """Helper function to read a fasta file given as a string path into a dictionary of chromosomes.
     """
     ret = {}
-    with gzip.open(f, 'r') as fin:
+    with gzip.open(f, 'rt') as fin:
         key = ''
         strbuf = ''
         for line in fin:
