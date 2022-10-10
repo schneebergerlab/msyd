@@ -10,25 +10,26 @@ from collections import defaultdict
 import logging
 
 from pansyri.pansyn import Range, Pansyn
+from pansyri.classes.vars import SNV
+import pansyri.util as util
 
 logger = logging.getLogger(__name__)
 
-def get_snps(syri, rngs):
+def get_range_snvs(snvs, rngs):
     """
     A function that finds all SNPs annotated within one of the input region, as a dictionary keyed by organism.
     :params:
-        `syri`: dataframe containing the information from a syri file, as parsed by `ingest.readsyriout`
+        `syri`: dataframe containing the output of `ingest.extract_syri_snvs`
         `rngs`: a List of `Range` objects to extract snps from.
     :returns:
         A dictionary mapping a `Pansyn` to a dictionary containing the corresponding SNPs identified on it for each organism that `Pansyn` has a position in.
     """
-    pass
-"""
     ret = defaultdict(lambda x: [])
-    snps = syri.loc[
-    Maybe move this to util or ingest?
-    => big filtering function that combines multiple features for reuse in other variant types
-"""
+    for _, snv in snvs.iterrows():
+        if any([snv in rng for rng in rngs]):
+            ret[snv.org] += [snv]
+
+    return ret
 
 
 #TODO implement

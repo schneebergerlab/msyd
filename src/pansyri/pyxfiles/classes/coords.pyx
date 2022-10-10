@@ -91,6 +91,21 @@ class Range:
     def __hash__(self):
         return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.start) + hash(self.end)
 
+    def __contains__(self, item):
+        #TODO expand to work with variation superclass, how to handle transpositions?
+        """Given a `Position` or `Range` object, outputs `True` if the position/region is fully contained by this `Range`. Ignores haplotype information.
+            :param item: a genomic feature that is checked for being inside this `Range`.
+            :type item: `Range` or `Position`
+            :returns: `True` if the supplied feature is within this `Range`.
+            :rtype: `Bool`
+        """
+        if isinstance(item, Position):
+            return self.org == item.org and self.chr == item.chr and self.start <= item.pos <= self.end
+        elif isinstance(item, Range):
+            return self.org == item.org and self.chr == item.chr and self.start <= item.start and item.end <= self.end
+        else:
+            return False
+
     def get_rightmost(self):
         return max(self.start, self.end)
 

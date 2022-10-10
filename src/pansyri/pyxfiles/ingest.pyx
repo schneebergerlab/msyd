@@ -33,6 +33,7 @@ cimport numpy as np
 cimport cython
 
 from pansyri.classes.coords import Range
+from pansyri.classes.vars import SNV
 
 np.random.seed(1)
 
@@ -638,7 +639,7 @@ def readsyriout(f):
     df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
     return df, chrid_dict
 
-def readsyrisnps(fin):
+def extract_syri_snvs(fin):
     syri_regs = deque()
     with open(f, 'r') as fin:
         for line in fin:
@@ -646,14 +647,12 @@ def readsyrisnps(fin):
             if l[10] == 'SNP':
                 #TODO maybe store annotation information from fields 8-10
                 snv = SNV(Position('a', 'NaN', l[0], int(l[1])), Position('b', 'NaN', l[5], int(l[6])), l[4], l[5])
-                syri_regs.append()
+                syri_regs.append(SNV)
 
     df = pd.DataFrame(list(syri_regs))#[[0, 1, 3, 4, 5, 6, 8, 9, 10]]
     #TODO maybe do chromosome mapping?
     return df
 
-
-#TODO maybe implement more fine-grained filtering? but can probably done with normal pandas calls
 def extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
