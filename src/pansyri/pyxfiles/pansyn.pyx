@@ -125,8 +125,10 @@ def find_overlaps(left, right, only_core=False):
 
     if not only_core: # if calling crosssyn, also add remaining pansyn if there is any
         for l in lit:
+            l = l[1][0]
             add_filtered(l)
         for r in rit:
+            r = r[1][0]
             add_filtered(l)
 
     del rit
