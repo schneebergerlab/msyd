@@ -56,6 +56,7 @@ def test_pansyn_int():
 
     ## do the validation
     for row in df:
+        print(row)
         pan = row[1][0]
         refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end]
         for org in pan.get_organisms():
