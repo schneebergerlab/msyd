@@ -74,8 +74,8 @@ def test_pansyn_int():
                 assert(t in cig_types) # should be a valid CIGAR
                 assert(t not in cig_clips)  # there shouldn't be any clipping
 
-                refcmp = refseq[prog:progr+l]
-                qrycmp = qryseq[prog:progq+l]
+                refcmp = refseq[progr:progr+l]
+                qrycmp = qryseq[progq:progq+l]
                 
                 # check concretely for matching types
                 if t == '=':
