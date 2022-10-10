@@ -17,6 +17,26 @@ cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
 cig_aln_types = set(['M', 'X', '='])
 cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
+
+def read_fasta(f):
+    """Helper function to read a fasta file given as a string path into a dictionary of chromosomes.
+    """
+    ret = {}
+    with fin as open(f, 'r'):
+        key = ''
+        strbuf = ''
+        for line in fin:
+            if line[0] == '>':
+                if key:
+                    ret[key] = strbuf
+                    strbuf = ''
+                key = line[1:]
+            else:
+                strbuf += line
+
+    return ret
+
+
 def test_pansyn_int():
     """
     Integration test testing the higher-order functionality of the pansyn module by validating the alignments.
