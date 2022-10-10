@@ -56,6 +56,7 @@ def parse_input_tsv(fin):
             continue
 
         val = line.strip().split('#')[0].split('\t')
+        print(val)
         if len(val) > 2:
             logger.error(f"invalid entry in {fin.name}. Skipping line: {line}")
             continue
