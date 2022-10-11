@@ -46,7 +46,7 @@ def test_pansyn_int():
     ## init
     # on the cluster, go into full ampril, locally go into ampril_reduced
     os.chdir('../../ampril_reduced' if platform.node() == 'matmobile' else '../../data/ampril/')
-    syns, alns = util.parse_input_tsv_path('./full.tsv')
+    syns, alns = util.parse_input_tsv_path('./two.tsv')
     
     # read in genome files
     genome_files = [aln.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for aln in alns]
@@ -59,12 +59,14 @@ def test_pansyn_int():
     ## do the validation
     for row in df.iterrows():
         pan = row[1][0]
-        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end]
+        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end]# +1]
+        print(pan)
         for org in pan.get_organisms():
             rng = pan.ranges_dict[org]
             cg = pan.cigars_dict[org]
+            print(org, rng, cg)
             
-            qryseq = gens[rng.org][rng.chr][rng.start:rng.end]
+            qryseq = gens[rng.org][rng.chr][rng.start:rng.end]# +1]
 
             progr = 0
             progq = 0
@@ -74,6 +76,8 @@ def test_pansyn_int():
 
                 refcmp = refseq[progr:progr+l]
                 qrycmp = qryseq[progq:progq+l]
+
+                print(progr, progq, l, t)
                 
                 # check concretely for matching types
                 if t == '=':
