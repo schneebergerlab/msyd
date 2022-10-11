@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 import os
 import gzip
+import platform
 
 import pansyri.util as util
 
@@ -43,7 +44,8 @@ def test_pansyn_int():
     Integration test testing the higher-order functionality of the pansyn module by validating the alignments.
     """
     ## init
-    os.chdir('../../data/ampril/') # hardcoded for now to local test dataset
+    # on the cluster, go into full ampril, locally go into ampril_reduced
+    os.chdir('../../ampril_reduced' if platform.node() == 'matmobile' else '../../data/ampril/')
     syns, alns = util.parse_input_tsv_path('./full.tsv')
     
     # read in genome files
