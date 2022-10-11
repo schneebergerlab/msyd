@@ -35,6 +35,7 @@ def read_fasta(f):
                 key = line[1:].strip()
             else:
                 strbuf += line.strip()
+        ret[key] = strbuf # add last chr
 
     return ret
 
