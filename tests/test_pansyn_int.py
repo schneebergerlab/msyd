@@ -47,7 +47,7 @@ def test_pansyn_int():
     ## init
     # on the cluster, go into full ampril, locally go into ampril_reduced
     os.chdir('../../ampril_reduced' if platform.node() == 'matmobile' else '../../data/ampril/')
-    syns, alns = util.parse_input_tsv_path('./full.tsv')
+    syns, alns = util.parse_input_tsv_path('./one.tsv')
     
     # read in genome files
     genome_files = [aln.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for aln in alns]
@@ -63,14 +63,14 @@ def test_pansyn_int():
     for row in df.iterrows():
         rowcnt = 0
         pan = row[1][0]
-        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end +1]
+        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end]
         #print(pan)
         for org in pan.get_organisms():
             rng = pan.ranges_dict[org]
             cg = pan.cigars_dict[org]
             #print(org, rng, cg)
             
-            qryseq = gens[rng.org][rng.chr][rng.start:rng.end +1]
+            qryseq = gens[rng.org][rng.chr][rng.start:rng.end]
 
             progr = 0
             progq = 0
@@ -96,9 +96,9 @@ def test_pansyn_int():
                 if t in qryfwd:
                     progq += l
 
-            # alignments should be total
-            assert(progr == len(refseq))
-            assert(progq == len(qryseq))
+            # alignments should be total, but progress is counted one-based
+            assert(progr -1 == len(refseq))
+            assert(progq -1 == len(qryseq))
 
         cnt += rowcnt
         totlen += len(pan.ref)
