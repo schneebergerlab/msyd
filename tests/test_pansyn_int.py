@@ -104,3 +104,4 @@ def test_pansyn_int():
         totlen += len(pan.ref)
         #print(cnt/len(pan.ref), cnt, len(pan.ref), pan)
     print(cnt/totlen, cnt, totlen)
+    raise ValueError()
