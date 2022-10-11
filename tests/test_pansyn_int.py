@@ -59,14 +59,14 @@ def test_pansyn_int():
     ## do the validation
     for row in df.iterrows():
         pan = row[1][0]
-        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end]# +1]
+        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end +1]
         print(pan)
         for org in pan.get_organisms():
             rng = pan.ranges_dict[org]
             cg = pan.cigars_dict[org]
             print(org, rng, cg)
             
-            qryseq = gens[rng.org][rng.chr][rng.start:rng.end]# +1]
+            qryseq = gens[rng.org][rng.chr][rng.start:rng.end +1]
 
             progr = 0
             progq = 0
