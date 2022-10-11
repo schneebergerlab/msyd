@@ -53,13 +53,15 @@ def test_pansyn_int():
     genome_files = [aln.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for aln in alns]
     gens = {f.split('.')[0]:read_fasta(f) for f in genome_files} # key by org name
     refgen = read_fasta('./col.filtered.fa.gz')
+    cnt = 0
+    totlen = 0
     
     # get pansyn df
     df = util.crosssyn_from_lists(syns, alns)
 
     ## do the validation
     for row in df.iterrows():
-        cnt = 0
+        rowcnt = 0
         pan = row[1][0]
         refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end +1]
         #print(pan)
@@ -83,10 +85,10 @@ def test_pansyn_int():
                 
                 # check concretely for matching types
                 if t == '=':
-                    cnt += sum(map(lambda x: 1 if x[0] != x[1] else 0, zip(refcmp, qrycmp)))
+                    rowcnt += sum(map(lambda x: 1 if x[0] != x[1] else 0, zip(refcmp, qrycmp)))
                     #assert(refcmp == qrycmp)
                 elif t == 'X':
-                    cnt += sum(map(lambda x: 1 if x[0] == x[1] else 0, zip(refcmp, qrycmp)))
+                    rowcnt += sum(map(lambda x: 1 if x[0] == x[1] else 0, zip(refcmp, qrycmp)))
                     #assert(refcmp != qrycmp)
 
                 if t in reffwd:
@@ -97,4 +99,8 @@ def test_pansyn_int():
             # alignments should be total
             assert(progr == len(refseq))
             assert(progq == len(qryseq))
+
+        cnt += rowcnt
+        totlen += len(pan.ref)
         #print(cnt/len(pan.ref), cnt, len(pan.ref), pan)
+    print(cnt/totlen, cnt, totlen)
