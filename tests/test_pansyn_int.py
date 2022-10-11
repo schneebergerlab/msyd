@@ -47,7 +47,7 @@ def test_pansyn_int():
     ## init
     # on the cluster, go into full ampril, locally go into ampril_reduced
     os.chdir('../../ampril_reduced' if platform.node() == 'matmobile' else '../../data/ampril/')
-    syns, alns = util.parse_input_tsv_path('./one.tsv')
+    syns, alns = util.parse_input_tsv_path('./full.tsv')
     
     # read in genome files
     genome_files = [aln.split('.')[0].split('_')[-1] + '.filtered.fa.gz' for aln in alns]
