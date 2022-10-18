@@ -86,6 +86,10 @@ def test_pansyn_int():
                 # check concretely for matching types
                 if t == '=':
                     rowcnt += sum(map(lambda x: 1 if x[0] != x[1] else 0, zip(refcmp, qrycmp)))
+                    ## uncomment to print out locations of mismatches to check for clustering
+                    #for ind, x in enumerate(zip(refcmp, qrycmp)):
+                    #    if x[0] != x[1]:
+                    #        print(ind)
                     #assert(refcmp == qrycmp)
                 elif t == 'X':
                     rowcnt += sum(map(lambda x: 1 if x[0] == x[1] else 0, zip(refcmp, qrycmp)))
