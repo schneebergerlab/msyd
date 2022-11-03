@@ -1,0 +1,176 @@
+#!/bin/python3
+
+import sys
+import gzip
+import argparse as ap
+import multiprocessing
+import random
+import copy
+
+## python script to generate a given number of chromosomes containing a specified number of inversions, translocations, SNPs etc.
+
+
+parser = ap.ArgumentParser(description="A tool to generate synthetic chromosome sequences containing defined SVs")
+parser.add_argument("-i", dest='infasta', required=True, type=ap.FileType('r'), help="A FASTA file used as base genome sequence.")
+parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Defaults to 4.", type=int, default=4)
+parser.add_argument("-n", dest='genomes', default=5, type=int, help="How many genomes to simulate. Default 5.")
+
+parser.add_argument("-s", dest='snp_rate', default=1, type=int, help="SNP rate to simulate, in SNPs/kbp. Default 1.")
+parser.add_argument("--indel", dest='indel_rate', default=10, type=int, help="Indel rate to simulate, in indels/Mbp. Default 10.")
+
+parser.add_argument("--max", dest=max, default=100000, type=int, help="Max size of SVs to simulate")
+parser.add_argument("--min", dest=min, default=50, type=int, help="Min size of SVs to simulate")
+
+parser.add_argument("--inv", dest='invs', default=20, type=int, help="No of inversions to simulate for each generated chromosome. Default 20.")
+parser.add_argument("--del", dest='dels', default=10, type=int, help="No of deletions to simulate for each generated chromosome. Default 10.")
+parser.add_argument("--ins", dest='inss', default=10, type=int, help="No of insertions to simulate for each generated chromosome. Default 10.")
+parser.add_argument("--hdrs", dest='hdrs', default=10, type=int, help="No of highly-diverged regions to simulate for each simulated chromosome. Default 10.")
+parser.add_argument("--dups", dest='dups', default=5, type=int, help="No of interspersed duplications to simulate  for each generated chromosome. Default 5.")
+parser.add_argument("--tands", dest='tands', default=10, type=int, help="No of tandem duplications to simulate  for each generated chromosome. Default 10.")
+parser.add_argument("--tposs", dest='tposs', default=10, type=int, help="No of transpositions within chromosomes to simulate for each generated chromosome. Default 10.")
+parser.add_argument("--tlocs", dest='tlocs', default=20, type=int, help="No of translocations across chromosomes to simulate for each generated genome. Default 20.")
+
+
+def read_fasta(f):
+    """Helper function to read a fasta file given as a string path into a dictionary of chromosomes.
+    """
+    ret = {}
+    with gzip.open(f, 'rt') as fin:
+        key = ''
+        strbuf = ''
+        for line in fin:
+            if line[0] == '>':
+                if key:
+                    ret[key] = strbuf
+                    strbuf = ''
+                key = line[1:].strip()
+            else:
+                strbuf += line.strip()
+        ret[key] = strbuf # add last chr
+
+    return ret
+
+args = parser.parse_args(sys.argv)
+pool = multiprocessing.Pool(args.cores)
+ref = read_fasta(args.infasta)
+
+ALPHABET={'A', 'C', 'T', 'G'}
+INDEL_MIN=10
+INDEL_MAX=50
+
+def rand_seq(n):
+    ## generates a random dna sequence of length n
+    ''.join(random.choices(ALPHABET, k=n))
+
+def genl(min=args.min, max=args.max):
+    l = random.randrange(min, max)
+
+def sim_chr(ch):
+    """
+    Receives a chromosome sequence, mutates it by simulating divergence on it.
+    Returns the expected synteny to reference on this sequence.
+    """
+    lch = len(ch)
+    syn = l # expected amount of synteny to reference on this chromosome.
+    # calculated assuming infinite sites, i.e. no overlapping variants
+
+    # generate snps, do not save as they should not affect synteny
+    for _ in range(int(l*args.snp_rate/1000)):
+        pos = random.randrange(lch)
+        ch[pos] = random.choice(ALPHABET) # randomly assign, may not always produce snps
+
+    # generate indels, do not save as they should not affect synteny?
+    for _ in range(int(l*args.indel_rate/1000000)):
+        l = genl(min=INDEL_MIN, max=INDEL_MAX)
+        #syn -= l
+        pos = random.randrange(lch-l) # ensure there is sufficient space
+        if random.choice([True, False]): # randomly choose whether to insert or delete
+            ch = ch[:pos] + rand_seq(l) + ch[pos:]
+        else:
+            ch = ch[:pos] + ch[pos+ll:]
+
+    for _ in range(args.invs):
+        l = genl()
+        syn -= l
+        pos = random.randrange(lch-l)
+        ch = ch[:pos] + ch[pos+l-1:pos-1:-1] + ch[pos+l:] # first is always inclusive
+
+    for _ in range(args.del):
+        l = genl()
+        syn -= l
+        pos = random.randrange(lch-l)
+        ch = ch[:pos] + ch[pos+l:]
+
+    for _ in range(args.ins):
+        l = genl()
+        pos = random.randrange(lch)
+        ch = ch[:pos] + rand_seq(l) + ch[pos:]
+
+    for _ in range(args.hdrs):
+        l = genl()
+        syn -= l
+        pos = random.randrange(lch-l)
+        ch = ch[:pos] + rand_seq(l) + ch[pos+l:]
+
+    for _ in range(args.dups):
+        l = genl()
+        pos_from = random.randrange(lch-l)
+        pos_to = random.randrange(lch-l)
+        ch = ch[:pos_to] + ch[pos_from:pos_from+l] + ch[pos_from+l:]
+
+    for _ in range(args.tands):
+        l = genl()
+        pos = random.randrange(lch-l)
+        ch = ch[:pos+l] + ch[pos:pos+l] + ch[pos+l:]
+
+    for _ in range(args.tposs):
+        l = genl()
+        syn -= 2*l
+        pos_from = random.randrange(lch-l)
+        pos_to = random.randrange(lch-2*l) # insertion happens after deletion
+        seq = ch[pos_from:pos_from+l]
+        ch = ch[:pos_from] + ch[pos_from+l:]
+        ch = ch[:pos_to] + seq + ch[pos_to:]
+
+    return syn
+
+
+
+def sim_genome(n):
+    ret = clone.deepcopy(ref)
+    chs = list(ref.keys())
+    syns_ch = {}
+    for id, ch in ref.items():
+        syns_ch[id] = sim_chr(ch)
+
+    # do translocations
+    for _ in range(args.tlocs):
+        ch_fr, ch_to = random.sample(chs, k=2)
+
+        l = genl()
+        syns_ch[ch_fr] -= l
+        ch_fr = ret[chr_fr]
+        ch_to = ret[chr_to]
+
+        pos_fr = random.randrange(len(ch_fr) - l)
+        pos_to = random.randrange(len(ch_to))
+
+        ch_to = ch_to[:pos_to] + chr_fr[pos_fr:pos_fr+l] + ch_to[pos_to:]
+        ch_fr = ch_fr[:pos_fr] + ch_fr[pos_fr+l:]
+
+    # save to files
+    with open(str(n)+'.fna', 'wt') as f:
+        for ch in chs:
+            # write chr header
+            f.write(f">{ch} {syns_ch[ch]}\n")
+            # write seq with width 80
+            seq = ret[ch]
+            cov = 0
+            while cov < len(seq)-80:
+                f.write(seq[cov:cov+80] + '\n')
+                cov += 80
+            f.write(seq[cov:] + '\n')
+            
+
+genomes = pool.map(sim_genome, range(args.genomes))
+
