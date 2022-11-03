@@ -92,6 +92,7 @@ def test_pansyn_int():
                     #        print(ind)
                     #assert(refcmp == qrycmp)
                 elif t == 'X':
+                    #pass
                     rowcnt += sum(map(lambda x: 1 if x[0] == x[1] else 0, zip(refcmp, qrycmp)))
                     #assert(refcmp != qrycmp)
 
