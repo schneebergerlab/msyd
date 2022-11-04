@@ -56,7 +56,6 @@ def read_fasta(f):
 
 args = parser.parse_args()
 
-#pool = multiprocessing.Pool(args.cores)
 ref = read_fasta(args.infasta)
 
 def rand_seq(n):
@@ -175,7 +174,8 @@ def sim_genome(n):
             f.write(seq[cov:] + '\n')
             
 
-for x in range(args.genomes):
-    sim_genome(x)
-#genomes = pool.map(sim_genome, range(args.genomes))
-#pool.close()
+#for x in range(args.genomes):
+#    sim_genome(x)
+pool = multiprocessing.Pool(args.cores)
+genomes = pool.map(sim_genome, range(args.genomes))
+pool.close()
