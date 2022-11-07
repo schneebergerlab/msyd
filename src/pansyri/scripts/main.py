@@ -41,10 +41,11 @@ def main(argv):
     inputmode = parser.add_mutually_exclusive_group(required=True)
     inputmode.add_argument("--combinations", "--comb", "--combs", dest='call', action='store_const', const=combinations, help="evaluate all combinations of parameters for pansyn identification.")
     inputmode.add_argument("--lengths", "--len", "--lens", dest='call', action='store_const', const=lengths, help="Print a table containing the total combined lengths of all pansyntenic regions with a certain degree.")
-    inputmode.add_argument("--print", "-p", dest='call', action='store_const', const=dfprint, help="Print a DataFrame containing all cross/pansyntenic regions")
-    inputmode.add_argument("--shortprint", "--sp", dest='call', action='store_const', const=shortprint, help="Print a DataFrame containing the core syntenic regions.")
     inputmode.add_argument("--plot", dest='call', action='store_const', const=plot, help="Plotting call, for debugging and validation purposes.")
     inputmode.add_argument("--order", dest='call', action='store_const', const=order, help="Determine the optimal ordering of the supplied genomes for plotting.") #TODO have this be a subparser, accept arguments like which score to use etc
+    inputmode.add_argument("--print", "-p", dest='call', action='store_const', const=dfprint, help="Print a DataFrame containing all cross/pansyntenic regions")
+    inputmode.add_argument("--shortprint", "--sp", dest='call', action='store_const', const=shortprint, help="Print a DataFrame containing the core syntenic regions.")
+    inputmode.add_argument("--discard", dest='call', action='store_const', const=lambda x: None, help="Discard the computed output. For benchmarking.")
 
 
     args = parser.parse_args(argv)
