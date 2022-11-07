@@ -5,10 +5,10 @@ os.chdir('./src')
 from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
-from pansyri import __version__
+#from pansyri import __version__
 
 setup(name="pansyri",
-      version='{}'.format(__version__),
+      version='0.1.0',
       description='Synteny and rearrangement identifier between multiple whole-genome assemblies',
       url='https://github.com/schneebergerlab/pansyri/',
       license='MIT License',
