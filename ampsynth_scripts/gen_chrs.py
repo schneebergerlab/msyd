@@ -18,8 +18,8 @@ parser.add_argument("-n", dest='genomes', default=5, type=int, help="How many ge
 parser.add_argument("-s", dest='snp_rate', default=1, type=int, help="SNP rate to simulate, in SNPs/kbp. Default 1.")
 parser.add_argument("--indel", dest='indel_rate', default=10, type=int, help="Indel rate to simulate, in indels/Mbp. Default 10.")
 
-parser.add_argument("--max", dest='max', default=100000, type=int, help="Max size of SVs to simulate")
-parser.add_argument("--min", dest='min', default=50, type=int, help="Min size of SVs to simulate")
+parser.add_argument("--max", dest='max', default=100000, type=int, help="Max size of SVs to simulate. Default 100 kbp.")
+parser.add_argument("--min", dest='min', default=50, type=int, help="Min size of SVs to simulate. Default 50 bp.")
 
 parser.add_argument("--invs", dest='invs', default=20, type=int, help="No of inversions to simulate for each generated chromosome. Default 20.")
 parser.add_argument("--dels", dest='dels', default=10, type=int, help="No of deletions to simulate for each generated chromosome. Default 10.")
