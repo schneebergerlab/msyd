@@ -266,7 +266,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
     if cores == 1:
         syns = [remove_overlap(syn) for syn in syns]
     else:
-        with multiprocessing.pool(cores) as pool:
+        with multiprocessing.Pool(cores) as pool:
             syns = pool.map(remove_overlap, syns)
 
     logger.info("overlap removed")
