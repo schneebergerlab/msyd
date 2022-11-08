@@ -9,6 +9,7 @@ import copy
 import functools
 from collections import deque
 import logging
+import multiprocessing
 
 import pansyri.ingest as ingest
 import pansyri.util as util

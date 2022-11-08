@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?
 def parallel_reduce(reduceFunc, l, numCPUs):
-    if numCPUs == 1:
+    if numCPUs == 1 or len(l) <= 2:
             returnVal = functools.reduce(reduceFunc, l[1:], l[0])
             return returnVal
 
