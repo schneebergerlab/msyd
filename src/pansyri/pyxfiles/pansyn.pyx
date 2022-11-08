@@ -188,7 +188,7 @@ def match_synal(syn, aln, ref='a'):
     return pd.DataFrame(list(ret))
 
 
-def remove_overlap(syn):
+cdef remove_overlap(syn):
     """
     part of the preprocessing of SYNAL regions for find_multisyn
     removes overlap from the first region if two overlapping regions are next to each other
