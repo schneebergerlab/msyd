@@ -222,6 +222,8 @@ cdef remove_overlap(syn):
 
         prev = cur
 
+    return syn
+
 
 def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwargs):
     """
@@ -261,8 +263,12 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, **kwarg
                         for row in s.iterrows()]) for s in syns]
 
     # remove overlap
-    for syn in syns:
-        remove_overlap(syn)
+    if cores == 1:
+        syns = [remove_overlap(syn) for syn in syns]
+    else:
+        with multiprocessing.pool(cores) as pool:
+            syns = pool.map(remove_overlap, syns)
+
     logger.info("overlap removed")
 
     pansyns = None
