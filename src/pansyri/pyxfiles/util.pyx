@@ -102,28 +102,43 @@ def get_orgs_from_df(df):
 
 #TODO implement function to direcly filter multisyn out for degrees
 
-maxdegree = 10
-len_getter = lambda df: sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
-len_tabularizer = lambda df: [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+def get_len(df):
+    return sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
+
+def tabularize_lens(df):
+    maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
+    return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+
+def get_stats(df):
+    """Utility function to output some stats for a df containing computed pansyn objects.
+    Calls get_len and tabularize_lens, prettyprints their output.
+    """
+    tot_len = get_len(df)
+    tablens = tabularize_lens(df)
+    ret = "Total length: " + str(tot_len) + f"({len(df)} Regions)" + "\nTotal length by degree:\t" +\
+            "\t".join([str(i) for i in range(len(tablens))]) +\
+            "\t".join([str(i) for i in tablens]) + "\n"
+    return ret
+
+def get_call_stats(syns, alns, **kwargs):
+    """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats
+    """
+    df = pansyn.find_multisyn(syns, alns, **kwargs)
+    return get_stats(df)
+
 
 def eval_combinations(syns, alns, cores=1):
-    cores_syn = pansyn.find_multisyn(syns, alns, only_core=True, sort=True, SYNAL=False, cores=cores)
-    cores_synal = pansyn.find_multisyn(syns, alns, only_core=True, sort=True, SYNAL=True, cores=cores)
+    """Perform get_call_stats for all possible combinations of only_core and SYNAL
+    """
+    ret = ""
+    for only_core, SYNAL in [(False, False), (False, True), (True, False), (True, True)]:
+        ret += "core" if only_core else "all"
+        ret += " pansynteny, "
+        ret += "exact" if SYNAL else "approximate"
+        ret += "\n"
+        ret += get_call_stats(syns, alns, only_core=only_core, SYNAL=SYNAL)
+    return ret
 
-    cross_syn = pansyn.find_multisyn(syns, alns, only_core=False, sort=True, SYNAL=False, cores=cores)
-    cross_synal = pansyn.find_multisyn(syns, alns, only_core=False, sort=True, SYNAL=True, cores=cores)
-
-    print("\nComparing", syns)
-    
-    print(f"cores_syn:\tRegions: {len(cores_syn)}\tTotal length:{len_getter(cores_syn)}")
-    print(f"cores_synal:\tRegions: {len(cores_synal)}\tTotal length:{len_getter(cores_synal)}")
-    print("")
-    print(f"cross_syn:\tRegions: {len(cross_syn)}\tTotal length:{len_getter(cross_syn)}")
-    print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
-    print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_syn)]), sep='\t')
-    print(f"cross_synal:\tRegions: {len(cross_synal)}\tTotal length:{len_getter(cross_synal)}")
-    print("degree:", '\t\t'.join([str(i) for i in range(maxdegree)]), sep='\t')
-    print("count:", '\t'.join([str(i) for i in len_tabularizer(cross_synal)]), sep='\t')
 
 def filter_multisyn_df(df, rng, only_contained=False):
     """Misc function for filtering a DF produced by find_multisyn for a certain range.
