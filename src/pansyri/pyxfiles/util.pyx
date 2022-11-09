@@ -115,7 +115,7 @@ def get_stats(df):
     """
     tot_len = get_len(df)
     tablens = tabularize_lens(df)
-    ret = "Total length: " + str(tot_len) + f"({len(df)} Regions)" + "\nTotal length by degree:\t" +\
+    ret = "Total length: " + str(tot_len) + f" ({len(df)} Regions)" + "\nTotal length by degree:\t" +\
             "\t".join([str(i) for i in range(len(tablens))]) +\
             "\t".join([str(i) for i in tablens]) + "\n"
     return ret
@@ -135,7 +135,7 @@ def eval_combinations(syns, alns, cores=1):
         ret += "core" if only_core else "all"
         ret += " pansynteny, "
         ret += "exact" if SYNAL else "approximate"
-        ret += "\n"
+        ret += ":\n"
         ret += get_call_stats(syns, alns, only_core=only_core, SYNAL=SYNAL)
     return ret
 
