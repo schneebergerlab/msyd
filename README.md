@@ -1,5 +1,9 @@
 # pansyri
 
+## Installation
+pansyri can be installed by a call to `setup.py` as `[sudo] python setup.py install`.
+Requirements for running pansyri are `Cython`, `pysam`, `scipy` and `pandas`.
+
 ## Usage
 
 Currently, only the pansynteny identification part of `pansyri` is working.
