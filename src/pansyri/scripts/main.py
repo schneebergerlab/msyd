@@ -104,7 +104,6 @@ def plot(args):
             violating_length += lens[0]
             logger.error(f"Violates condition: {lens}")
     logger.error(violating)
-    sys.exit()
     print(lensdf.to_string(index=False))
 
 
