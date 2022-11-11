@@ -646,7 +646,7 @@ def extract_syri_snvs(fin):
             l = line.strip().split()
             if l[10] == 'SNP':
                 #TODO maybe store annotation information from fields 8-10
-                snv = SNV(Position('a', 'NaN', l[0], int(l[1])), Position('b', 'NaN', l[5], int(l[6])), l[4], l[5])
+                snv = SNV(Position('a', 'x', l[0], int(l[1])), Position('b', 'x', l[5], int(l[6])), l[4], l[5])
                 syri_regs.append(SNV)
 
     df = pd.DataFrame(list(syri_regs))#[[0, 1, 3, 4, 5, 6, 8, 9, 10]]
@@ -659,13 +659,13 @@ def extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry')
     """
     # columns to look for as start/end positions
     refchr = ref + "chr"
-    refhaplo = "NaN"
+    refhaplo = "x"
     refstart = ref + "start"
     refend = ref + "end"
 
     qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
     qrychr = qry + "chr"
-    qryhaplo = "NaN"
+    qryhaplo = "x"
     qrystart = qry + "start"
     qryend = qry + "end"
 

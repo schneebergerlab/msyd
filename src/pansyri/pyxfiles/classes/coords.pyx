@@ -29,6 +29,11 @@ class Position:
     def __repr__(self):
         return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
 
+    def to_pff(self):
+        """Transform this `Position` into the format specified by pansyri
+        """
+        return f"{self.chr}:{self.haplo}:{self.pos}"
+
     def __eq__(l, r):
         if not isinstance(r, Position):
             return False
@@ -61,6 +66,11 @@ class Range:
 
     def __repr__(self):
         return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
+
+    def to_pff(self):
+        """Transform this `Range` into the format specified by pansyri
+        """
+        return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
     
     def __eq__(l, r):
         if not isinstance(r, Range):
