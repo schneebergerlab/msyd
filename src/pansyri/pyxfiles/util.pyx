@@ -107,7 +107,7 @@ def get_len(df):
 
 def tabularize_lens(df):
     maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
-    return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+    return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
 def get_stats(df):
     """Utility function to output some stats for a df containing computed pansyn objects.
