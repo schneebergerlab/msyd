@@ -115,8 +115,8 @@ def get_stats(df):
     """
     tot_len = get_len(df)
     tablens = tabularize_lens(df)
-    ret = "Total length: " + str(tot_len) + f" ({len(df)} Regions)" + "\nTotal length by degree:\t" +\
-            "\t".join([str(i) for i in range(len(tablens))]) +"\n" +\
+    ret = "Total length: " + str(tot_len) + f" ({len(df)} Regions)" + "\nDegree:\t" +\
+            "\t".join([str(i+1) for i in range(len(tablens))]) +"\nTot. length:\t" +\
             "\t".join([str(i) for i in tablens]) + "\n"
     return ret
 
