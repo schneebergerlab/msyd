@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for seq in seqs/*.fna.gz
+for seq in seqs/*.fna
 do
 	bs=$(basename -s .fna.gz $seq)
 	bsub -q multicore20 -n5 -R"span[hosts=1] rusage[mem=2000]" -M10000 \
