@@ -5,7 +5,7 @@ outpath="alns"
 
 for seq in seqs/*.fna
 do
-	bs=$(basename -s .fna.gz $seq)
+	bs=$(basename -s .fna $seq)
 	# do it locally for now, cluster is busy
 	#bsub -q multicore20 -n5 -R"span[hosts=1] rusage[mem=10000]" -M20000 \
 	#	-oo aln_$bs.log -eo aln_$bs.err \

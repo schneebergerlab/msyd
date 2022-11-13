@@ -2,7 +2,7 @@
 
 for seq in seqs/*.fna
 do
-	bs=$(basename -s .fna.gz $seq)
+	bs=$(basename -s .fna $seq)
 	# do it locally for now, cluster is busy
 	#bsub -q multicore20 -n5 -R"span[hosts=1] rusage[mem=2000]" -M10000 \
 	#-oo job_syri_${bs}.log -eo job_syri_${bs}.err \
