@@ -67,8 +67,7 @@ def genl(min=args.min, max=args.max):
 
 def sim_chr(ch):
     """
-    Receives a chromosome sequence, mutates it by simulating divergence on it.
-    Returns the expected synteny to reference on this sequence.
+    Receives a reference chromosome sequence, simulates variants in it, returns it containing the variants and the amount of expected synteny to the reference.
     """
     lch = len(ch)
     syn = lch # expected amount of synteny to reference on this chromosome.
@@ -134,7 +133,7 @@ def sim_chr(ch):
         ch = ch[:pos_from] + ch[pos_from+l:]
         ch = ch[:pos_to] + seq + ch[pos_to:]
 
-    return syn
+    return ch, syn
 
 
 
@@ -143,7 +142,9 @@ def sim_genome(n):
     chs = list(ref.keys())
     syns_ch = {}
     for id, ch in ref.items():
-        syns_ch[id] = sim_chr(ch)
+        seq, syn = sim_chr(ch)
+        ret[id] = seq
+        syns_ch[id] = syn
 
     # do translocations
     for _ in range(args.tlocs):
