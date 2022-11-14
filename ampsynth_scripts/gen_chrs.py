@@ -21,14 +21,14 @@ parser.add_argument("--indel", dest='indel_rate', default=10, type=int, help="In
 parser.add_argument("--max", dest='max', default=100000, type=int, help="Max size of SVs to simulate. Default 100 kbp.")
 parser.add_argument("--min", dest='min', default=50, type=int, help="Min size of SVs to simulate. Default 50 bp.")
 
-parser.add_argument("--invs", dest='invs', default=20, type=int, help="No of inversions to simulate for each generated chromosome. Default 20.")
-parser.add_argument("--dels", dest='dels', default=10, type=int, help="No of deletions to simulate for each generated chromosome. Default 10.")
-parser.add_argument("--inss", dest='inss', default=10, type=int, help="No of insertions to simulate for each generated chromosome. Default 10.")
-parser.add_argument("--hdrs", dest='hdrs', default=10, type=int, help="No of highly-diverged regions to simulate for each simulated chromosome. Default 10.")
+parser.add_argument("--invs", dest='invs', default=10, type=int, help="No of inversions to simulate for each generated chromosome. Default 10.")
+parser.add_argument("--dels", dest='dels', default=5, type=int, help="No of deletions to simulate for each generated chromosome. Default 5.")
+parser.add_argument("--inss", dest='inss', default=5, type=int, help="No of insertions to simulate for each generated chromosome. Default 5.")
+parser.add_argument("--hdrs", dest='hdrs', default=3, type=int, help="No of highly-diverged regions to simulate for each simulated chromosome. Default 3.")
 parser.add_argument("--dups", dest='dups', default=5, type=int, help="No of interspersed duplications to simulate  for each generated chromosome. Default 5.")
-parser.add_argument("--tands", dest='tands', default=10, type=int, help="No of tandem duplications to simulate  for each generated chromosome. Default 10.")
-parser.add_argument("--tposs", dest='tposs', default=10, type=int, help="No of transpositions within chromosomes to simulate for each generated chromosome. Default 10.")
-parser.add_argument("--tlocs", dest='tlocs', default=20, type=int, help="No of translocations across chromosomes to simulate for each generated genome. Default 20.")
+parser.add_argument("--tands", dest='tands', default=5, type=int, help="No of tandem duplications to simulate  for each generated chromosome. Default 5.")
+parser.add_argument("--tposs", dest='tposs', default=5, type=int, help="No of transpositions within chromosomes to simulate for each generated chromosome. Default 5.")
+parser.add_argument("--tlocs", dest='tlocs', default=10, type=int, help="No of translocations across chromosomes to simulate for each generated genome. Default 10.")
 
 
 ALPHABET=['A', 'C', 'G', 'T']
