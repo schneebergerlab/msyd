@@ -335,7 +335,7 @@ def readSAMBAM(fin, type='B'):
 
 def readPAF(paf):
     coords = deque()
-    logger = logging.getLogger('Reading BAM/SAM file')
+    logger = logging.getLogger('Reading PAF file')
     try:
         with open(paf, 'r') as fin:
             for line in fin:
@@ -687,7 +687,7 @@ def extract_syri_regions_to_list(fins, **kwargs):
     `extract_syri_regions`, but for processing a list of inputs
     """
     return [extract_syri_regions(fin, **kwargs,\
-            reforg=fin.split('/')[-1].split('_')[0],\
+            #reforg=fin.split('/')[-1].split('_')[0],\
             qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
             for fin in fins]
 
