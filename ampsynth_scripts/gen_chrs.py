@@ -133,7 +133,7 @@ def sim_chr(ch):
         ch = ch[:pos_from] + ch[pos_from+l:]
         ch = ch[:pos_to] + seq + ch[pos_to:]
 
-    return ''.join(ch), syn
+    return ch, syn
 
 
 
@@ -167,7 +167,7 @@ def sim_genome(n):
             # write chr header
             f.write(f">{ch} {syns_ch[ch]}\n")
             # write seq with width 80
-            seq = ret[ch]
+            seq = ''.join(ret[ch])
             cov = 0
             while cov < len(seq)-80:
                 f.write(seq[cov:cov+80] + '\n')
