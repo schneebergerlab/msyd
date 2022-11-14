@@ -42,6 +42,7 @@ class Position:
 
     def __lt__(l, r):
         if l.org != r.org:
+            logger.error(f"Comparison between different organisms: {l.org} != {r.org}")
             raise ValueError("Comparison between different organisms!")
         if l.chr < r.chr:
             return True
@@ -84,6 +85,7 @@ class Range:
     # shouldn't really matter as the regions are nonoverlapping, but...
     def __lt__(l, r):
         if l.org != r.org:
+            logger.error(f"Comparison between different organisms: {l.org} != {r.org}")
             raise ValueError("Comparison between different organisms!")
 
         if l.chr < r.chr:
@@ -184,6 +186,9 @@ class Pansyn:
         if not l.ref or not r.ref:
             logger.error(f"comparing {l} with {r}: both need to have a reference!")
             raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
+        if l.ref.org != r.ref.org:
+            logger.error(f"Comparison between different references trying to compare {l} and {r}")
+            raise ValueError("Comparison between different references!")
         return l.ref < r.ref
 
     def __hash__(self):
