@@ -78,7 +78,7 @@ def sim_chr(ch):
     for _ in range(int(lch*args.snp_rate/1000)):
         pos = random.randrange(lch)
         ch[pos] = random.choice(ALPHABET) # randomly assign, may not always produce snps
-    #ch = str(ch)
+    ch = str(ch)
 
     # generate indels, do not save as they should not affect synteny?
     for _ in range(int(lch*args.indel_rate/1000000)):
