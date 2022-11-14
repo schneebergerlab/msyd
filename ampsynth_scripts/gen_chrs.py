@@ -78,7 +78,7 @@ def sim_chr(ch):
     for _ in range(int(lch*args.snp_rate/1000)):
         pos = random.randrange(lch)
         ch[pos] = random.choice(ALPHABET) # randomly assign, may not always produce snps
-    ch = str(ch)
+    ch = ''.join(ch)
 
     # generate indels, do not save as they should not affect synteny?
     for _ in range(int(lch*args.indel_rate/1000000)):
@@ -167,7 +167,7 @@ def sim_genome(n):
             # write chr header
             f.write(f">{ch} {syns_ch[ch]}\n")
             # write seq with width 80
-            seq = ''.join(ret[ch])
+            seq = ret[ch]
             cov = 0
             while cov < len(seq)-80:
                 f.write(seq[cov:cov+80] + '\n')
