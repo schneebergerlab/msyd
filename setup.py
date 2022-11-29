@@ -6,6 +6,8 @@ from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
 #from pansyri import __version__
+from Cython.Compiler import Options
+
 
 setup(name="pansyri",
       version='0.1.0',

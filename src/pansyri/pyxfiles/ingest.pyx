@@ -682,12 +682,21 @@ def extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry')
 
     return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
 
-def extract_syri_regions_to_list(fins, **kwargs):
+def extract_syri_regions_to_list(fins, cores=1, **kwargs):
     """
     `extract_syri_regions`, but for processing a list of inputs
     """
-    return [extract_syri_regions(fin, **kwargs,\
-            #reforg=fin.split('/')[-1].split('_')[0],\
-            qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
-            for fin in fins]
+    partial = lambda x: extract_syri_regions(x, **kwargs)
+
+    if cores == 1:
+        syns = [partial(fin) for fin in fins]
+    else:
+        with Pool(cores) as pool:
+            syns = pool.map(partial, fins)
+
+    return syns
+    #return [extract_syri_regions(fin, **kwargs,\
+    #        #reforg=fin.split('/')[-1].split('_')[0],\
+    #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
+    #        for fin in fins]
 
