@@ -7,23 +7,23 @@ import pytest
 
 @pytest.fixture(params=["100=", "10=2X4=", "100=20I4X5D10I40=", "10=30D5=2X2=20I10="])
 def example_cigar(request):
-    return Cigar.from_string(request.param)
+    return cigar.cigar_from_string(request.param)
 
 # cigars guaranteed to have more than 100 bp on both ref and qry
 @pytest.fixture(params=["100=", "10=2X40=1X20=1X25=2X10=", "100=20I3=4X4=5D10I40=", "10=30D5=4X2=20I10="])
 def example_long_cigar(request):
-    return Cigar.from_string(request.param)
+    return cigar.cigar_from_string(request.param)
 
 # cigars guaranteed to have fewer than 10 bp on both ref and qry
 @pytest.fixture(params=["3=1X5=", "9=", "3=2I4D2=", "3D2=1X2="])
 def example_short_cigar(request):
-    return Cigar.from_string(request.param)
+    return cigar.cigar_from_string(request.param)
 
 def test_from_strings():
     tuplelists = [ [ [8, '='], [2, 'I'], [4, '='], [2, 'D']], [[100, '=']], [[100, '='], [2, 'X'], [20, '='], [4, 'I'], [40, '='], [1, 'X']] ]
     strings = ["8=2I4=2D", "100=", "100=2X20=4I40=1X"]
     for string, tplist in zip(strings, tuplelists):
-        cg = Cigar.from_string(string)
+        cg = cigar.cigar_from_string(string)
         assert cg.pairs == tplist
 
 
@@ -59,11 +59,11 @@ def test_equal(example_cigar):
 
 
 
-selectively_roll_cigar = lambda x, y: (x, Cigar.from_string(y))
+selectively_roll_cigar = lambda x, y: (x, cigar.cigar_from_string(y))
 def test_getrem():
     # always skip 10 from end/start
     skip = 10
-    cgs = [Cigar.from_string(x) for x in ["100=", "5D10=1X10=5I", "50=2I1X4D3="]]
+    cgs = [cigar.cigar_from_string(x) for x in ["100=", "5D10=1X10=5I", "50=2I1X4D3="]]
     startrems = [selectively_roll_cigar(*x) for x in [(10, "90="), (5, "5=1X10=5I"), (10, "40=2I1X4D3=")]]
     endrems = [selectively_roll_cigar(*x) for x in [(10, "90="), (15, "5D10=1X"), (8, "48=")]]
 

@@ -13,6 +13,7 @@ import multiprocessing
 
 import pansyri.ingest as ingest
 import pansyri.util as util
+import pansyri.classes as classes
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range, Position
 
@@ -169,7 +170,7 @@ def match_synal(syn, aln, ref='a'):
         try:
             org = synr[1].org
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                cg = Cigar.from_string(alnr['cg'])
+                cg = classes.cigar.cigar_from_string(alnr['cg'])
                 rng = synr[1]
                 pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1

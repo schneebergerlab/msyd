@@ -3,8 +3,13 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-from pansyri.classes.cigar import Cigar, cig_clips, cig_aln_types
+from pansyri.classes.cigar import Cigar#, cig_clips, cig_aln_types
+import pansyri.classes as classes
 
+# redeclare, as cdefs can apparently not be imported
+cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
+cdef cig_aln_types = set(['M', 'X', '='])
+cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,7 +32,7 @@ def impute_strings(strl: str, strr: str):
     :return: A CIGAR string containing an approximated alignment of `strr` to `strl`
     :rtype: str
     """
-    cgl, cgr = Cigar.from_string(strl), Cigar.from_string(strr)
+    cgl, cgr = classes.cigar.cigar_from_string(strl), Cigar.from_string(strr)
     return impute(cgl, cgr).to_string()
 
 

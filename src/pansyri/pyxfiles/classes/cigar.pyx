@@ -2,38 +2,61 @@
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
-import re
 import itertools
 import logging
+import re
+
+from cpython cimport array
+import array
+
 
 logger = logging.getLogger(__name__)
 
 ## constants
-reffwd = set(['M', 'D', 'N', '=', 'X'])
-qryfwd = set(['M', 'I', 'S', '=', 'X'])
-cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
-cig_aln_types = set(['M', 'X', '='])
-cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
-inttr = lambda x: [int(x[0]), x[1]]
+cdef reffwd = set(['M', 'D', 'N', '=', 'X'])
+cdef qryfwd = set(['M', 'I', 'S', '=', 'X'])
+cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
+cdef cig_aln_types = set(['M', 'X', '='])
+cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
-class Cigar:
+cdef relen = r"(\d+)[=XIDMNSHP]"
+cdef retype = r"\d+([=XIDMNSHP])"
+
+cdef inttr = lambda t: int(t[1])
+cdef chrtr = lambda t: ord(t[1])
+
+# declared outside of Cigar to be accessible from python, might move back later
+cpdef cigar_from_string(cg:str):
     """
-    A CIGAR string represented as a list of lists.
+    Takes a cigar string as input and returns a Cigar tuple
     """
+    #TODO more error handling
 
-    def __init__(self, pairs):
-        self.pairs = pairs
+    lens = array.array('H', [])
+    types = array.array('b', [])
 
-    ## copied from myUsefulFunctions.py
-    def from_string(cg):
-        """
-        Takes a cigar string as input and returns a Cigar tuple
-        """
-        #TODO more error handling
-        
-        for i in "MIDNSHPX=":
-            cg = cg.replace(i, ';'+i+',')
-        return Cigar([inttr(i.split(';')) for i in cg.split(',')[:-1]])
+    
+    # calling .extend should automatically preallocate when called by cython
+    lens.extend(map(inttr, re.finditer(relen, cg)))
+    types.extend(map(chrtr, re.finditer(retype, cg)))
+
+    return Cigar.__new__(Cigar, lens, types)
+    
+
+# idea for the future if performance is low:
+# define helper .hpp file instatiating a tuple type, and use c++ vectors instead
+# would be more type-local, but waaay more annoying
+
+
+cdef class Cigar:
+    cdef array.array lens # array storing the lengths of each cigar tuple
+    cdef array.array types # array storing the type of each cigar tuple
+
+    def __cinit__(self, lens, types):
+        self.lens = lens
+        self.types = types
+
+# TODO rewrite methods of Cigar to use the new storage situation
 
     def get_len(self, ref=True):
         """
@@ -98,14 +121,14 @@ class Cigar:
 
         self.pairs = self.pairs[i_start:i_end]
 
-    def unpad_all(self):
-        """Removes all padding from this `Cigar`, even from the middle of the alignment (however it got there...)
-        Mutates self!
-        :return: `None`
-        """
-        for pos, pair in enumerate(self.pairs):
-            if pair[1] in cig_clips:
-                del self.pairs[pos]
+#    def unpad_all(self):
+#        """Removes all padding from this `Cigar`, even from the middle of the alignment (however it got there...)
+#        Mutates self!
+#        :return: `None`
+#        """
+#        for pos, pair in enumerate(self.pairs):
+#            if pair[1] in cig_clips:
+#                del self.pairs[pos]
 
 
 
@@ -123,8 +146,8 @@ class Cigar:
             else:
                 return (0, self)
 
-        ind = 0 # position currently being evaluated for skipping
-        skip = 0 # bases skipped in the other sequence
+        cdef int ind = 0 # position currently being evaluated for skipping
+        cdef int skip = 0 # bases skipped in the other sequence
         # two sets containing the CIGAR codes incrementing one or the other strand
         fwd = reffwd if ref else qryfwd 
         altfwd = qryfwd if ref else reffwd
@@ -185,21 +208,22 @@ class Cigar:
 
 
 
-    def clean(self):
-        """
-        Misc function to remove empty annotations and combine neighbouring annotations of equal type from a Cigar.
-        Mutates self, but the represented alignment stays the same.
-        """
-        i = 1
-        while i < len(self.pairs):
-            if self.pairs[i-1][0] == 0:
-                del self.pairs[i-1]
-                continue
-            if self.pairs[i-1][1] == self.pairs[i][1]:
-                self.pairs[i-1][0] += self.pairs[i][0]
-                del self.pairs[i]
-            else:
-                i += 1
+#TODO rewrite with copying for cython
+#    def clean(self):
+#        """
+#        Misc function to remove empty annotations and combine neighbouring annotations of equal type from a Cigar.
+#        Mutates self, but the represented alignment stays the same.
+#        """
+#        i = 1
+#        while i < len(self.pairs):
+#            if self.pairs[i-1][0] == 0:
+#                del self.pairs[i-1]
+#                continue
+#            if self.pairs[i-1][1] == self.pairs[i][1]:
+#                self.pairs[i-1][0] += self.pairs[i][0]
+#                del self.pairs[i]
+#            else:
+#                i += 1
 
 #import copy
 #
