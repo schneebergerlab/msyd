@@ -9,6 +9,8 @@ import re
 from cpython cimport array
 import array
 
+from libcpp.vector cimport vector
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,51 +21,64 @@ cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
 cdef cig_aln_types = set(['M', 'X', '='])
 cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
-cdef relen = r"(\d+)[=XIDMNSHP]"
-cdef retype = r"\d+([=XIDMNSHP])"
+cdef c_reffwd = set([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
+cdef c_qryfwd = set([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
+cdef c_cig_types = set([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
+cdef c_cig_aln_types = set([ord('M'), ord('X'), ord('=')])
+cdef c_cig_clips = set([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
-cdef inttr = lambda t: int(t[1])
-cdef chrtr = lambda t: ord(t[1])
+cdef retup = r"(\d+)([=XIDMNSHP])"
 
 # declared outside of Cigar to be accessible from python, might move back later
-cpdef cigar_from_string(cg:str):
+cpdef cigar_from_string(str cg):
     """
     Takes a cigar string as input and returns a Cigar tuple
     """
-    #TODO more error handling
+    cdef vector[Cigt] tups
+    # preallocate assuming on average each tuple has two digit length
+    # maybe try being more optimistic and assuming three-digit length
+    tups.reserve(int(len(cg)/3))
 
-    lens = array.array('H', [])
-    types = array.array('b', [])
-
+    for match in re.findall(retup, cg):
+        if match[1] not in cig_types:
+            logger.error("Tried to construct a Cigar object with invalid type")
+            raise ValueError("Not a CIGAR type!")
+        tups.push_back(Cigt(int(match[0]), ord(match[1])))
+ 
+    return Cigar.__new__(Cigar, tups)
     
-    # calling .extend should automatically preallocate when called by cython
-    lens.extend(map(inttr, re.finditer(relen, cg)))
-    types.extend(map(chrtr, re.finditer(retype, cg)))
+# small struct to contain the length and type of a cigar tuple
+cdef packed struct Cigt:
+#cdef struct Cigt: # slower
+    unsigned short n
+    char t
 
-    return Cigar.__new__(Cigar, lens, types)
-    
-
-# idea for the future if performance is low:
-# define helper .hpp file instatiating a tuple type, and use c++ vectors instead
-# would be more type-local, but waaay more annoying
+# got it working to not work with two arrays
+# pretty sure this is faster, might try exact benchmark though
 
 
 cdef class Cigar:
-    cdef array.array lens # array storing the lengths of each cigar tuple
-    cdef array.array types # array storing the type of each cigar tuple
+    #cdef array.array lens # array storing the lengths of each cigar tuple
+    #cdef array.array types # array storing the type of each cigar tuple
+    cdef vector[Cigt] tuples
 
-    def __cinit__(self, lens, types):
-        self.lens = lens
-        self.types = types
+    def __cinit__(self, tup):
+        self.tuples = tup
 
 # TODO rewrite methods of Cigar to use the new storage situation
 
-    def get_len(self, ref=True):
+    def get_len(self, bint ref=True):
         """
         Returns the number of bases covered by this Cigar in the reference or query genome.
         """
-        s = reffwd if ref else qryfwd
-        return sum([i[0] for i in self.pairs if i[1] in s and not i[1] in cig_clips])
+        cdef s = c_reffwd if ref else c_qryfwd
+        cdef unsigned int buf = 0
+        for tup in self.tuples:
+            if tup.t in c_cig_clips:
+                continue
+            if tup.t in s:
+                buf += tup.n
+        return buf
 
     def __len__(self):
         return sum([i[0] for i in self.pairs])
