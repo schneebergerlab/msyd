@@ -56,7 +56,7 @@ cpdef cigar_from_string(str cg):
 # small struct to contain the length and type of a cigar tuple
 cdef packed struct Cigt:
 #cdef struct Cigt: # slower
-    unsigned short n
+    unsigned int n
     char t
 
 
