@@ -79,12 +79,13 @@ def test_getrem():
 @pytest.mark.parametrize("ref", [True, False])
 def test_getrem_inv(example_cigar, ref):
     # tests that reversing a cigar string and then skipping X is the same as getting X 
-    cg_rev = Cigar(example_cigar.pairs[::-1])
+    cg_rev = example_cigar.reverse()
 
-    invskip, invrem = cg_rev.get_removed(10, ref=ref)
-    skip, rem = example_cigar.get_removed(10, ref=ref, start=False)
+    invskip, invrem = cg_rev.get_removed(12, ref=ref)
+    skip, rem = example_cigar.get_removed(12, ref=ref, start=False)
     assert invskip == skip
-    assert invrem.pairs[::-1] == rem.pairs
+    assert invrem.reverse() == rem
+    assert invrem == rem.reverse()
 
 
 

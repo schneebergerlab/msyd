@@ -159,6 +159,16 @@ cdef class Cigar:
 
         self.tups.erase(self.tups.end()-i_end, self.tups.end())
 
+    def reverse(self):
+        """
+        Returns a Cigar representing a reversed version of the alignment represented by this Cigar.
+        """
+        cdef vector[Cigt] newtups = vector[Cigt]()
+        newtups.reserve(self.tups.size())
+        for i in range(self.tups.size()):
+            newtups.push_back(self.tups[self.tups.size() -i -1])
+
+        return Cigar(newtups)
 
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
