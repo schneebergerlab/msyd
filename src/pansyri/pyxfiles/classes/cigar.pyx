@@ -9,9 +9,6 @@ import re
 from cpython cimport array
 import array
 
-from libcpp.vector cimport vector
-
-
 logger = logging.getLogger(__name__)
 
 ## constants
@@ -29,49 +26,38 @@ cdef c_qryfwd = set([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
 cdef c_qryfwd_noclip = set([ord('M'), ord('I'), ord('='), ord('X')])
 cdef c_cig_types = set([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
 cdef c_cig_aln_types = set([ord('M'), ord('X'), ord('=')])
-cdef c_cig_clips = set([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+cdef c_cig_clips = set([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
-cdef retup = r"(\d+)([=XIDMNSHP])"
+cdef relen = r"(\d+)[=XIDMNSHP]"
+cdef retype = r"\d+([=XIDMNSHP])"
+
+cdef inttr = lambda t: int(t[1])
+cdef chrtr = lambda t: ord(t[1])
 
 # declared outside of Cigar to be accessible from python, might move back later
 cpdef cigar_from_string(str cg):
     """
     Takes a cigar string as input and returns a Cigar tuple
     """
-    cdef vector[Cigt] tups = vector[Cigt]()
-    # preallocate assuming on average each tuple has two digit length
-    # maybe try being more optimistic and assuming three-digit length
-    tups.reserve(int(len(cg)/3))
-
-    for match in re.findall(retup, cg):
-        if match[1] not in cig_types:
-            logger.error("Tried to construct a Cigar object with invalid type")
-            raise ValueError("Not a CIGAR type!")
-        tups.push_back(Cigt(int(match[0]), ord(match[1])))
- 
-    return Cigar.__new__(Cigar, tups)
+    lens = array.array('I', [])
+    types = array.array('b', [])
+    
+    # calling .extend should automatically preallocate when called by cython
+    lens.extend(map(inttr, re.finditer(relen, cg)))
+    types.extend(map(chrtr, re.finditer(retype, cg)))
+    return Cigar.__new__(Cigar, lens, types)
 
 # maybe implement cigar_from_full_string?
-    
-# small struct to contain the length and type of a cigar tuple
-cdef packed struct Cigt:
-#cdef struct Cigt: # slower
-    unsigned int n
-    char t
 
-
-
-# got it working to not work with two arrays
-# pretty sure this is faster, might try exact benchmark though
-
+# try with the two array-based strategy again, try out if it's faster
 
 cdef class Cigar:
-    #cdef array.array lens # array storing the lengths of each cigar tuple
-    #cdef array.array types # array storing the type of each cigar tuple
-    cdef vector[Cigt] tups
+    cdef array.array lens # array storing the lengths of each cigar tuple
+    cdef array.array types # array storing the type of each cigar tuple
 
-    def __cinit__(self, tup):
-        self.tups = tup
+    def __cinit__(self, lens, types):
+        self.lens = lens
+        self.types = types
 
     def get_len(self, bint ref=True):
         """
