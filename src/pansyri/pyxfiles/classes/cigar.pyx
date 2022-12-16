@@ -5,6 +5,7 @@
 import itertools
 import logging
 import re
+import copy
 
 from cpython cimport array
 import array
@@ -67,9 +68,9 @@ cdef class Cigar:
 
     def get_len_of_type(self, typeset):
         cdef unsigned int buf = 0
-        for tup in self.tups:
-            if tup.t in typeset:
-                buf += tup.n
+        for i in range(len(self.lens)):
+            if self.types[i] in typeset:
+                buf += self.lens[i]
         return buf
 
     def get_identity(self, bint ref=True):
@@ -79,32 +80,17 @@ cdef class Cigar:
         return self.get_len_of_type(set(ord('=')))/self.get_len(ref=ref)
 
     def __len__(self):
-        cdef unsigned int buf = 0
-        for tup in self.tups:
-            buf += tup.n
-        return buf
-
-    # internal cdef'd method to avoid exposing tups directly to python
-    cdef equals(self, Cigar other):
-        if self.tups.size() != other.tups.size():
-            return False
-        for i in range(self.tups.size()):
-            selft = self.tups.at(i)
-            othert = other.tups.at(i)
-            # apparently, structs cannot have associated methods or overloaded operators
-            if selft.t != othert.t or selft.n != othert.n:
-                return False
-        return True
+        return sum(self.lens)
 
     def __eq__(self, other):
         if isinstance(other, Cigar):
-            return self.equals(other)
+            return self.lens == other.lens and self.types == other.types
         else:
             return False
 
     def __ne__(self, other):
         if isinstance(other, Cigar):
-            return not self.equals(other)
+            return not(self.lens == other.lens and self.types == other.types)
         else:
             return True
 
@@ -118,10 +104,11 @@ cdef class Cigar:
         :return: `None`
         """
         if left > 0:
-            p = Cigt(left, ord(clip))
-            self.tups.insert(self.tups.begin(), p)
+            self.lens.insert(0, left)
+            self.types.insert(0, ord(clip))
         if right > 0:
-            self.tups.push_back(Cigt(right, ord(clip)))
+            self.lens.append(right)
+            self.types.append(0, ord(clip))
 
     def unpad(self):
         """Removes padding from the borders of this `Cigar`.
@@ -149,12 +136,11 @@ cdef class Cigar:
         """
         Returns a Cigar representing a reversed version of the alignment represented by this Cigar.
         """
-        cdef vector[Cigt] newtups = vector[Cigt]()
-        newtups.reserve(self.tups.size())
-        for i in range(self.tups.size()):
-            newtups.push_back(self.tups[self.tups.size() -i -1])
-
-        return Cigar(newtups)
+        newlens = copy.deepcopy(self.lens)
+        newtypes = copy.deepcopy(self.types)
+        newlens.reverse()
+        newtypes.reverse()
+        return Cigar(newlens, newtypes)
 
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
@@ -162,7 +148,7 @@ cdef class Cigar:
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
-        if self.tups.empty():
+        if len(self.lens) == 0:
             logger.error("Trying to remove from an empty Cigar!")
             raise ValueError("empty Cigar!")
 
@@ -179,44 +165,43 @@ cdef class Cigar:
             fwd = c_reffwd if ref else c_qryfwd 
             altfwd = c_qryfwd if ref else c_reffwd
             int rem = n # tally how much is still left to remove
-            Cigt cur = self.tups[ind] if start else self.tups[self.tups.size()-1]
+            curt = self.types[ind] if start else self.types[-1]
+            curn = self.lens[ind] if start else self.lens[-1]
 
         # loop and remove regions as long as the skip is more than one region
-        while rem > 0 and ind < self.tups.size():
-            cur = self.tups[ind] if start else self.tups[self.tups.size()-ind -1]
+        while rem > 0 and ind < len(self.types):
+            curt = self.types[ind] if start else self.types[-ind-1]
+            curn = self.lens[ind] if start else self.lens[-ind-1]
             # increment appropriate counters depending on which strand this cgi forwards
-            if cur.t in altfwd:
-                skip += cur.n
-            if cur.t in fwd:
-                rem -= cur.n
+            if curt in altfwd:
+                skip += curn
+            if curt in fwd:
+                rem -= curn
             ind += 1
 
         if rem > 0:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar length: {len(self)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
-        if cur.t in altfwd: # remove overadded value
+        if curt in altfwd: # remove overadded value
             skip += rem
 
         if only_pos:
             return skip
         
-        cdef vector[Cigt] newtups = vector[Cigt]()
-        newtups.reserve(self.tups.size() - ind + 1)
-        if start:
-            # if there is a remainder, add it to the front
-            if rem < 0:
-                newtups.push_back(Cigt(-rem, cur.t))
-            for i in range(ind, self.tups.size()):
-                newtups.push_back(self.tups[i])
-        else:
-            for i in range(self.tups.size()-ind):
-                newtups.push_back(self.tups[i])
-            # if there is a remainder, add it to the back
-            if rem < 0:
-                newtups.push_back(Cigt(-rem, cur.t))
+        newlens = self.lens[ind:] if start else self.lens[:-ind]
+        newtypes = self.types[ind:] if start else self.types[:-ind]
 
-        return (skip, Cigar(newtups))
+        # if there is a remainder, add it to the front
+        if rem < 0:
+            if start:
+                newlens.insert(0, -rem)
+                newtypes.insert(0, curt)
+            else:
+                newlens.append(-rem)
+                newtypes.append(curt)
+
+        return (skip, Cigar(newlens, newtypes))
 
 
     def __repr__(self):
