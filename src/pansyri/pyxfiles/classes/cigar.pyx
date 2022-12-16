@@ -159,7 +159,7 @@ cdef class Cigar:
                 return (0, self)
         
         cdef:
-            unsigned int ind = 0 # position currently being evaluated for skipping
+            int ind = 0 # position currently being evaluated for skipping
             unsigned int skip = 0 # bases skipped in the other sequence
             # two sets containing the CIGAR codes incrementing one or the other strand
             fwd = c_reffwd if ref else c_qryfwd 
