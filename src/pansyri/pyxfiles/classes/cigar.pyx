@@ -214,6 +214,7 @@ cdef class Cigar:
 
         if only_pos:
             return skip
+        # TODO try changing backing vector and only storing index
         
         cdef vector[Cigt] newtups = vector[Cigt]()
         newtups.reserve(self.tups.size() - ind + 1)
@@ -221,6 +222,7 @@ cdef class Cigar:
             # if there is a remainder, add it to the front
             if rem < 0:
                 newtups.push_back(Cigt(-rem, cur.t))
+            # TODO check if this is cythonized efficiently 
             for i in range(ind, self.tups.size()):
                 newtups.push_back(self.tups[i])
         else:

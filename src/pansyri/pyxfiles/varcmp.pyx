@@ -26,6 +26,7 @@ def get_range_snvs(snvs, rngs):
     """
     ret = defaultdict(lambda x: [])
     for _, snv in snvs.iterrows():
+        #snv = snv[0]
         if any([snv in rng for rng in rngs]):
             ret[snv.org] += [snv]
 
@@ -34,7 +35,6 @@ def get_range_snvs(snvs, rngs):
 
 #TODO implement
 # a function getting all snps that are syntenic to a region
-# how to deal with positions in synteny? maybe just count from start of SYNAL region according to cigar distance?
 def get_syntenic_snps(syri, rng):
     pass
 
