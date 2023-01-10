@@ -30,6 +30,12 @@ def main(argv):
     #    print(imputation.impute_strings(argv[1], argv[2]))
     #    sys.exit()
 
+    ## Argument parsing redo
+    # Idea:
+    # – different modes, selectablel by first positional argument
+    # – call, filter, statistics, order, lengths mode?
+    # – have subparsers for each, mb share common arguments like -c and -i/-o
+
     parser = argparse.ArgumentParser(description="Pansyri is a pansynteny and rearrangement identifier.")
     parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Defaults to 4.", type=int, default=4)
     parser.add_argument("--limit", dest="limit", help="Limits the number of lines that are output to an amount reasonable for printing. Defaults to 0 (no limit)!", type=int, default=0)
