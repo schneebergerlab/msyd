@@ -660,7 +660,7 @@ def extract_syntenic_from_vcf(syns, inpath, outpath, org='ref'):
     vcfout = VariantFile("outpath", 'w', header=vcfin.header)
 
     for syn in syns.iterrows():
-        syn = syri[1][0]
+        syn = syn[1][0]
         rng = syn.ref if org == 'ref' else syn.rngs[org]
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             vcfout.write(rec)
@@ -716,4 +716,37 @@ def extract_syri_regions_to_list(fins, cores=1, **kwargs):
     #        #reforg=fin.split('/')[-1].split('_')[0],\
     #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
     #        for fin in fins]
+
+HEADER="""
+##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
+##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
+##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
+##FORMAT=<ID=CHR,Number=1,Type=Integer,Description="Chromosome in this sample">
+##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
+##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
+##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">
+##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">
+"""
+
+def write_to_vcf(syns, outf, cores=1):
+    out = pysam.VariantFile(outf, w)
+    # prepare appropriate header file
+    for line in HEADER.splitlines():
+        out.header.add_line(line)
+    out.header.add_samples(util.get_orgs_from_df(syns))
+    
+    # add each pansyn object
+    for syn in syns.iterrows():
+        syn = syn[1][0]
+        # see which of these crashes =P
+        rec = pysam.VariantRecord()
+        rec = out.new_record()
+        # TODO figure out how to add records by new, maybe use pyxsam to access internals for performance?
+        # if this is too annoying, just write output myself
+
+
+        out.write(rec)
+    out.close()
+
+
 
