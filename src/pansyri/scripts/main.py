@@ -3,7 +3,7 @@
 
 import pansyri.util as util
 import pansyri.ordering as ordering
-import pansyri.ingest as ingest
+import pansyri.io as io
 import pansyri.imputation as imputation
 import pansyri.pansyn as pansyn
 from pansyri.classes.coords import Range
@@ -74,18 +74,18 @@ def call(args)
     syns, alns = util.parse_input_tsv(args.infile)
     df = pansyn.find_multisyn(syns, alns, only_core=args.core, SYNAL=args.SYNAL)
     if args.vcf:
-        ingest.save_to_vcf(df, args.outfile, cores=args.cores)
+        io.save_to_vcf(df, args.outfile, cores=args.cores)
     else:
-        ingest.save_to_pff(df, args.outfile, save_cigars=args.cigars)
+        io.save_to_pff(df, args.outfile, save_cigars=args.cigars)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args): # TODO have subparsing for other ordering/scores/etc
-    df = ingest.read_pff(args.infile)
+    df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
 
 # wrapper around the util fucntion
 def stats(args):
-    df = ingest.read_pff(args.infile)
+    df = io.read_pff(args.infile)
     print(util.get_stats(df))
 
 # compares the output of all four possible values of detect_crosssyn and SYNAL when calling find_multisyn, tabularizes by length
@@ -99,18 +99,18 @@ def lengths(args):
     util.length_compare(syns, alns, cores=args.cores)
 
 def filter_vcf(args):
-    df = ingest.read_pff(args.infile)
+    df = io.read_pff(args.infile)
     if not args.invcf:
         logger.error("No vcf to filter specified!")
         raise ValueError("No vcf to filter specified!")
     # close the incoming handles to avoid double-opening the files
     args.invcf.close()
     args.outfile.close()
-    ingest.extract_syntenic_from_vcf(df, args.invcf, args.outfile.name)
+    io.extract_syntenic_from_vcf(df, args.invcf, args.outfile.name)
 
 
 def plot(args):
-    df = ingest.read_pff(args.infile)
+    df = io.read_pff(args.infile)
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 
     def pstolendf(x):

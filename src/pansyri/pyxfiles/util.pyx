@@ -14,6 +14,7 @@ import logging
 import pansyri.pansyn as pansyn
 from pansyri.classes.cigar import Cigar
 from pansyri.classes.coords import Pansyn, Range
+import pansyri.io
 
 logger = logging.getLogger(__name__)
 
@@ -191,13 +192,13 @@ def pff_to_file(df, path):
     """Convenience wrapper for to_format to save to a file directly
     """
     with open(path, 'wt') as f:
-        to_pff(df, f)
+        pansyri.io.to_pff(df, f)
 
 def pff_to_string(df, save_cigars=False):
     """Convenience wrapper for to_format, saves to a stringbuffer, returns the string.
     Mainly meant for printing small-ish callsets.
     """
     with io.StringIO() as buf:
-        to_pff(df, buf, save_cigars=save_cigars)
+        pansyri.io.to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 

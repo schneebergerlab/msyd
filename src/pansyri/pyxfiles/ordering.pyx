@@ -20,7 +20,7 @@ def order(syns, alns, chr=None):
     Mostly meant to be called from main.py.
     It also demonstrates the way to compute an ordering using the new procedure:
     First, the crosssyntenic regions are extracted from the SyRI and alignment files, supplied e.g. by reading from a tsv file.
-    Then, the organism names are extracted from the Crosssynteny DF (this might be moved to the ingest module in the future).
+    Then, the organism names are extracted from the Crosssynteny DF.
     Finally, the optimizing algorithm is called with the appropriate scoring function, in this case the greedy algorithm with the default syn_score.
     :param syns, alns: list of syn/aln files, as output by parse_tsv in util
     :param chr: The chromosome to restrict the ordering to. If `None` (default), the ordering is performed across the entire genome. The filtering is performed according to chromosome on the reference.
@@ -74,7 +74,7 @@ def syn_score(cur, org, df):
 #def sv_score(cur, org, df):
 #    """Defines a dissimilarity score by summing up the length of all regions annotated to be a structural variant, excluding duplications.
 #    """
-#    return sum(map(lambda x: len(x[1][0]), ingest.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
+#    return sum(map(lambda x: len(x[1][0]), io.extract_syri_regions(syri, anns=['INV', 'TRANS', 'DEL', 'INS']).iterrows()))
 
 def order_hierarchical(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     if orgs is None:
@@ -157,8 +157,8 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
 #    """Higher-order function returning a length-corrected scoring function given an uncorrected score.
 #    """
 #    def corrected(syri):
-#        gen1_len = sum(map(lambda x: len(x), ingest.readfasta(gen1).values()))
-#        gen2_len = sum(map(lambda x: len(x), ingest.readfasta(gen2).values()))
+#        gen1_len = sum(map(lambda x: len(x), io.readfasta(gen1).values()))
+#        gen2_len = sum(map(lambda x: len(x), io.readfasta(gen2).values()))
 #        l_eff = (gen1_len + gen2_len)/2
 #        return score_fn(syri)/l_eff
 #    return corrected

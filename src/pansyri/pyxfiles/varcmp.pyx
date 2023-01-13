@@ -19,7 +19,7 @@ def get_range_snvs(snvs, rngs):
     """
     A function that finds all SNPs annotated within one of the input region, as a dictionary keyed by organism.
     :params:
-        `syri`: dataframe containing the output of `ingest.extract_syri_snvs`
+        `syri`: dataframe containing the output of `io.extract_syri_snvs`
         `rngs`: a List of `Range` objects to extract snps from.
     :returns:
         A dictionary mapping a `Pansyn` to a dictionary containing the corresponding SNPs identified on it for each organism that `Pansyn` has a position in.

@@ -11,7 +11,7 @@ from collections import deque
 import logging
 import multiprocessing
 
-import pansyri.ingest as ingest
+import pansyri.io as io
 import pansyri.util as util
 import pansyri.classes as classes
 from pansyri.classes.cigar import Cigar
@@ -239,14 +239,14 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, overlap
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syns = ingest.extract_syri_regions_to_list(syris, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
+    syns = io.extract_syri_regions_to_list(syris, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
     alnfilelookup = {
-            'sam': ingest.readSAMBAM,
-            'bam': ingest.readSAMBAM,
-            'paf': ingest.readPAF
+            'sam': io.readSAMBAM,
+            'bam': io.readSAMBAM,
+            'paf': io.readPAF
             }
 
     if alns and SYNAL:
