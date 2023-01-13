@@ -201,27 +201,3 @@ def pff_to_string(df, save_cigars=False):
         to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 
-
-def to_pff(df, buf, save_cigars=True):
-    """Takes a df containing `Pansyn` objects and writes them in pansyri file format to `buf`.
-    Can be used to print directly to a file, or to print or further process the output.
-    """
-    # output organisms in lexicalic ordering
-    orgs = sorted(get_orgs_from_df(df))
-    buf.write("#ANN\tref\t")
-    buf.write("\t".join(orgs))
-
-    for row in df.iterrows():
-        pansyn = row[1][0]
-        buf.write("\nSYN\t")
-        buf.write(pansyn.ref.to_pff())
-        for org in orgs:
-            buf.write("\t")
-            if org in pansyn.ranges_dict:
-                buf.write(pansyn.ranges_dict[org].to_pff())
-                if save_cigars and pansyn.cigars_dict:
-                    buf.write(", ")
-                    buf.write(pansyn.cigars_dict[org].to_string())
-
-    buf.write("\n")
-

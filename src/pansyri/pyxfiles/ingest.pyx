@@ -728,7 +728,7 @@ HEADER="""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">
 """
 
-def write_to_vcf(syns, outf, cores=1):
+def save_to_vcf(syns, outf, cores=1):
     out = pysam.VariantFile(outf, w)
     # prepare appropriate header file
     for line in HEADER.splitlines():
@@ -748,5 +748,32 @@ def write_to_vcf(syns, outf, cores=1):
         out.write(rec)
     out.close()
 
+def save_to_pff(df, buf, save_cigars=True):
+    """Takes a df containing `Pansyn` objects and writes them in pansyri file format to `buf`.
+    Can be used to print directly to a file, or to print or further process the output.
+    """
+    # output organisms in lexicalic ordering
+    orgs = sorted(get_orgs_from_df(df))
+    buf.write("#ANN\tref\t")
+    buf.write("\t".join(orgs))
 
+    for row in df.iterrows():
+        pansyn = row[1][0]
+        buf.write("\nSYN\t")
+        buf.write(pansyn.ref.to_pff())
+        for org in orgs:
+            buf.write("\t")
+            if org in pansyn.ranges_dict:
+                buf.write(pansyn.ranges_dict[org].to_pff())
+                if save_cigars and pansyn.cigars_dict:
+                    buf.write(", ")
+                    buf.write(pansyn.cigars_dict[org].to_string())
+
+    buf.write("\n")
+
+def read_pff(file):
+    """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
+    """
+    with open(file, 'r') as f:
+        pass
 
