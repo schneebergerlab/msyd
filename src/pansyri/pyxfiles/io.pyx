@@ -730,7 +730,7 @@ HEADER="""
 """
 
 def save_to_vcf(syns, outf, cores=1):
-    out = pysam.VariantFile(outf, w)
+    out = pysam.VariantFile(outf, 'w')
     # prepare appropriate header file
     for line in HEADER.splitlines():
         out.header.add_line(line)
