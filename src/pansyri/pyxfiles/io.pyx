@@ -34,6 +34,7 @@ cimport cython
 
 from pansyri.classes.coords import Range
 from pansyri.classes.vars import SNV
+import pansyri.util as util
 
 np.random.seed(1)
 
@@ -753,7 +754,7 @@ def save_to_pff(df, buf, save_cigars=True):
     Can be used to print directly to a file, or to print or further process the output.
     """
     # output organisms in lexicalic ordering
-    orgs = sorted(get_orgs_from_df(df))
+    orgs = sorted(util.get_orgs_from_df(df))
     buf.write("#ANN\tref\t")
     buf.write("\t".join(orgs))
 

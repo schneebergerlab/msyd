@@ -74,8 +74,7 @@ def main(argv):
     filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF file. Defaults to stdout (specified with \"-\").")
 
     args = parser.parse_args(argv)
-    print(args)
-    args.call(args)
+    args.func(args)
 
 def call(args):
     syns, alns = util.parse_input_tsv(args.infile)
