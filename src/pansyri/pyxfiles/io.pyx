@@ -23,6 +23,7 @@ import os
 import logging
 import psutil
 import pysam
+import re
 from gc import collect
 
 from cython.operator cimport dereference as deref, preincrement as inc
@@ -728,24 +729,50 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">"""
 
 cpdef save_to_vcf(syns, outf, cores=1):
-    out = pysam.VariantFile(outf, 'w')
+    cdef:
+        out = pysam.VariantFile(outf, 'w')
+        int corecounter = 1 # 1-based region indexing
+        int crosscounter = 1
+        # ensure consistent, alphabetical sorting of organisms
+        orgs_ind = {org:i for i, org in enumerate(sorted(util.get_orgs_from_df(syns)))}
+        int orgsc = len(orgs_ind)
+
     # prepare appropriate header file
     for line in HEADER.splitlines():
         out.header.add_line(line)
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
-    for org in util.get_orgs_from_df(syns):
+    for org in sorted(orgs_ind.keys()):
         out.header.add_sample(org)
     
     # add each pansyn object
     for syn in syns.iterrows():
         syn = syn[1][0]
-        # see which of these crashes =P
-        rec = pysam.VariantRecord()
+
         rec = out.new_record()
+        # instantiate empty, then fill later
+        # instantiating with keyword arguments is unstable according to the documentation
+        rec.start = syn.ref.start
+        rec.pos = syn.ref.start
+        # Chr needs to be a number, format it:
+        match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
+        if not match:
+            logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
+        else:
+            rec.contig = match[1] # WTF pysam??? why does this throw a cryptic error?
 
-        # pysam really doesn't like adding new records
-        # question: use pysamx to interface directly with the c code or just write vcf manually
+        rec.stop = syn.ref.stop # apparently this exists? what does it do?
+        if ref.get_degree() == orgsc:
+            rec.id = "CORESYN" + corecounter
+            corecounter += 1
+        else:
+            rec.id = "CROSSSYN" + crosscounter
+            crosscounter += 1
 
+        for org in syn.get_orgs():
+            rng = syn.ranges_dict[org]
+            #org = orgs_ind[org] # try if it works without, else paste in below
+            rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+            #TODO check if correctly putting . in all non-accessed records
 
         out.write(rec)
     out.close()
