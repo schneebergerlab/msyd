@@ -606,7 +606,7 @@ def readCoords(coordsfin, chrmatch, cwdpath, prefix, args, cigar = False):
 
 # pasted from plotsr, parsing syri output
 VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
-def readsyriout(f):
+cpdef readsyriout(f):
     # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
     logger = logging.getLogger("readsyriout")
     syri_regs = deque()
@@ -640,7 +640,7 @@ def readsyriout(f):
     df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
     return df, chrid_dict
 
-def extract_syri_snvs(fin):
+cpdef extract_syri_snvs(fin):
     syri_regs = deque()
     with open(f, 'r') as fin:
         for line in fin:
@@ -654,7 +654,7 @@ def extract_syri_snvs(fin):
     #TODO maybe do chromosome mapping?
     return df
 
-def extract_syntenic_from_vcf(syns, inpath, outpath, org='ref'):
+cpdef extract_syntenic_from_vcf(syns, inpath, outpath, org='ref'):
     """
     """
     vcfin = VariantFile("inpath")
@@ -671,7 +671,7 @@ def extract_syntenic_from_vcf(syns, inpath, outpath, org='ref'):
 
 
 
-def extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
     """
@@ -718,23 +718,23 @@ def extract_syri_regions_to_list(fins, cores=1, **kwargs):
     #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
     #        for fin in fins]
 
-HEADER="""
-##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
+HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
 ##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
 ##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
 ##FORMAT=<ID=CHR,Number=1,Type=Integer,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">
-##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">
-"""
+##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">"""
 
-def save_to_vcf(syns, outf, cores=1):
+cpdef save_to_vcf(syns, outf, cores=1):
     out = pysam.VariantFile(outf, 'w')
     # prepare appropriate header file
     for line in HEADER.splitlines():
         out.header.add_line(line)
-    out.header.add_samples(util.get_orgs_from_df(syns))
+    #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
+    for org in util.get_orgs_from_df(syns):
+        out.header.add_sample(org)
     
     # add each pansyn object
     for syn in syns.iterrows():
@@ -742,14 +742,15 @@ def save_to_vcf(syns, outf, cores=1):
         # see which of these crashes =P
         rec = pysam.VariantRecord()
         rec = out.new_record()
-        # TODO figure out how to add records by new, maybe use pyxsam to access internals for performance?
-        # if this is too annoying, just write output myself
+
+        # pysam really doesn't like adding new records
+        # question: use pysamx to interface directly with the c code or just write vcf manually
 
 
         out.write(rec)
     out.close()
 
-def save_to_pff(df, buf, save_cigars=True):
+cpdef save_to_pff(df, buf, save_cigars=True):
     """Takes a df containing `Pansyn` objects and writes them in pansyri file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
@@ -772,7 +773,7 @@ def save_to_pff(df, buf, save_cigars=True):
 
     buf.write("\n")
 
-def read_pff(file):
+cpdef read_pff(file):
     """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
     """
     with open(file, 'r') as f:
