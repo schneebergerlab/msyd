@@ -758,7 +758,13 @@ cpdef save_to_vcf(syns, outf, cores=1):
         if not match:
             logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
         else:
-            rec.contig = match[1] # WTF pysam??? why does this throw a cryptic error?
+            pass
+            # pysam is being weird, don't save chr information for now
+            #rec.contig = match[1] # WTF pysam??? why does this throw a cryptic error?
+            #rec.contig = b'1'
+            #rec.contig = '1'
+            #rec.contig = chr('1')
+            #rec.contig = 1
 
         rec.stop = syn.ref.stop # apparently this exists? what does it do?
         if ref.get_degree() == orgsc:
