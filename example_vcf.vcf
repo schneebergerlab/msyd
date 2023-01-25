@@ -9,6 +9,7 @@
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">
+##contig=<ID=1>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	Q1	Q2
-1	10	CORESYN1	CORESYN	CORESYN	.	.	END=50	SYN:CHR:START:END	1:1:10:50	1:1:20:60
-1	100	CROSSSYN1	CROSSSYN	CROSSSYN	.	.	END=150	SYN:CHR:START:END	1:1:100:150	0:.:.:.
+1	10	CORESYN1	.	<CORESYN>	.	.	END=50	SYN:CHR:START:END	1:1:10:50	1:1:20:60
+1	100	CROSSSYN1	AACT	<CROSSSYN>	.	.	END=150	SYN:CHR:START:END	1:1:100:150	0:.:.:.
