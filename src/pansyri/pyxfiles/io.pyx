@@ -736,6 +736,7 @@ cpdef save_to_vcf(syns, outf, cores=1):
         # ensure consistent, alphabetical sorting of organisms
         orgs_ind = {org:i for i, org in enumerate(sorted(util.get_orgs_from_df(syns)))}
         int orgsc = len(orgs_ind)
+        header_chrs = set() # do dynamically in python, hopefully more efficiently than looping twice
 
     # prepare appropriate header file
     for line in HEADER.splitlines():
@@ -743,7 +744,7 @@ cpdef save_to_vcf(syns, outf, cores=1):
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
     for org in sorted(orgs_ind.keys()):
         out.header.add_sample(org)
-    
+
     # add each pansyn object
     for syn in syns.iterrows():
         syn = syn[1][0]
@@ -758,27 +759,42 @@ cpdef save_to_vcf(syns, outf, cores=1):
         if not match:
             logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
         else:
-            pass
-            # pysam is being weird, don't save chr information for now
-            #rec.contig = match[1] # WTF pysam??? why does this throw a cryptic error?
-            #rec.contig = b'1'
-            #rec.contig = '1'
-            #rec.contig = chr('1')
-            #rec.contig = 1
+            chrom = match[1]
+            # check if contig for chrom has been added to header, if not add it
+            if chrom not in header_chrs:
+                out.header.add_line("##contig=<ID={}>".format(chrom))
+                # think about maybe adding chr length if called with reference genome
 
-        rec.stop = syn.ref.stop # apparently this exists? what does it do?
-        if ref.get_degree() == orgsc:
-            rec.id = "CORESYN" + corecounter
+            rec.chrom = chrom
+
+        rec.stop = syn.ref.end # apparently this exists? what does it do?
+        if syn.get_degree() == orgsc:
+            rec.alleles = "<SYN>"
+            rec.id = "CORESYN{}".format(corecounter)
             corecounter += 1
         else:
-            rec.id = "CROSSSYN" + crosscounter
+            rec.alleles = "<SYN>, <DYS>" # DYS or NONSYN?
+            rec.id = "CROSSSYN{}".format(crosscounter)
             crosscounter += 1
 
-        for org in syn.get_orgs():
-            rng = syn.ranges_dict[org]
-            #org = orgs_ind[org] # try if it works without, else paste in below
-            rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
-            #TODO check if correctly putting . in all non-accessed records
+        # input the values for every organism
+        for org in orgs_ind.keys():
+            if org in syn.get_orgs():
+                rng = syn.ranges_dict[org]
+                # Chr needs to be a number, format it:
+                match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
+                chrom = 1
+                if not match:
+                    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
+                    rec.samples[org].update({'SYN':1, 'START': rng.start, 'END': rng.end})
+                    continue
+                else:
+                    chrom = int(match[1])
+                #org = orgs_ind[org] # try if it works without, else paste in below
+                rec.samples[org].update({'SYN':1, 'CHR':chrom, 'START': rng.start, 'END': rng.end})
+            else:
+                rec.samples[org].update({'SYN': 0})
+                #TODO check if correctly putting . in all non-accessed records
 
         out.write(rec)
     out.close()

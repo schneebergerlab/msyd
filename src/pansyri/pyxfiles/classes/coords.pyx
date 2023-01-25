@@ -205,6 +205,8 @@ class Pansyn:
     def get_degree(self):
         return len(self.ranges_dict)
 
+    def get_orgs(self):
+        return self.ranges_dict.keys()
     def get_organisms(self):
         return self.ranges_dict.keys()
 
