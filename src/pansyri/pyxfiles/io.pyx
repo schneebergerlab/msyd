@@ -729,6 +729,7 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">"""
 
 cpdef save_to_vcf(syns, outf, cores=1):
+    #TODO add functionality to incorporate reference information as optional argument
     cdef:
         out = pysam.VariantFile(outf, 'w')
         int corecounter = 1 # 1-based region indexing
@@ -769,11 +770,11 @@ cpdef save_to_vcf(syns, outf, cores=1):
 
         rec.stop = syn.ref.end # apparently this exists? what does it do?
         if syn.get_degree() == orgsc:
-            rec.alleles = "<SYN>"
+            rec.alleles = ["<SYN>", "<*>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
             rec.id = "CORESYN{}".format(corecounter)
             corecounter += 1
         else:
-            rec.alleles = "<SYN>, <DYS>" # DYS or NONSYN?
+            rec.alleles = ["<SYN>", "<DYS>"] # DYS or NONSYN?
             rec.id = "CROSSSYN{}".format(crosscounter)
             crosscounter += 1
 
