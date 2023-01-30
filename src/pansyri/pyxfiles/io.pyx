@@ -732,7 +732,7 @@ def extract_syri_regions_to_list(fins, cores=1, **kwargs):
 HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
 ##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
 ##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
-##FORMAT=<ID=CHR,Number=1,Type=Integer,Description="Chromosome in this sample">
+##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">
@@ -765,18 +765,23 @@ cpdef save_to_vcf(syns, outf, cores=1):
         # instantiating with keyword arguments is unstable according to the documentation
         rec.start = syn.ref.start
         rec.pos = syn.ref.start
-        # Chr needs to be a number, format it:
-        match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
-        if not match:
-            logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
-        else:
-            chrom = match[1]
-            # check if contig for chrom has been added to header, if not add it
-            if chrom not in header_chrs:
-                out.header.add_line("##contig=<ID={}>".format(chrom))
-                # think about maybe adding chr length if called with reference genome
-
-            rec.chrom = chrom
+        ## Chr needs to be a number, format it:
+        #match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
+        #if not match:
+        #    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
+        #else:
+        #    chrom = match[1]
+        #    # check if contig for chrom has been added to header, if not add it
+        #    if chrom not in header_chrs:
+        #        out.header.add_line("##contig=<ID={}>".format(chrom))
+        #        # think about maybe adding chr length if called with reference genome
+        #    rec.chrom = chrom
+        ## store Chr as string for now, maybe change later
+        chrom = syn.ref.chr
+        if chrom not in header_chrs:
+            out.header.add_line("##contig=<ID={}>".format(chrom))
+            # think about maybe adding chr length if called with reference genome
+        rec.chrom = chrom
 
         rec.stop = syn.ref.end # apparently this exists? what does it do?
         if syn.get_degree() == orgsc:
@@ -792,17 +797,18 @@ cpdef save_to_vcf(syns, outf, cores=1):
         for org in orgs_ind.keys():
             if org in syn.get_orgs():
                 rng = syn.ranges_dict[org]
+                ## comment out chr to int conversion for now
                 # Chr needs to be a number, format it:
-                match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
-                chrom = 1
-                if not match:
-                    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
-                    rec.samples[org].update({'SYN':1, 'START': rng.start, 'END': rng.end})
-                    continue
-                else:
-                    chrom = int(match[1])
+                #match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
+                #chrom = 1
+                #if not match:
+                #    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
+                #    rec.samples[org].update({'SYN':1, 'START': rng.start, 'END': rng.end})
+                #    continue
+                #else:
+                #    chrom = int(match[1])
                 #org = orgs_ind[org] # try if it works without, else paste in below
-                rec.samples[org].update({'SYN':1, 'CHR':chrom, 'START': rng.start, 'END': rng.end})
+                rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
             else:
                 rec.samples[org].update({'SYN': 0})
                 #TODO check if correctly putting . in all non-accessed records
