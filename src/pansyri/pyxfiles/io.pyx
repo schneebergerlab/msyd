@@ -675,7 +675,7 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
         syn = syn[1][0]
         rng = syn.ref if org == 'ref' else syn.rngs[org]
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
-            vcfout.write(rec)
+            vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
     vcfout.close()
     vcfin.close()
