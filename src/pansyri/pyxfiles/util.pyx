@@ -46,11 +46,11 @@ def parse_input_tsv_path(path):
 
 def parse_input_tsv(fin):
     """
-    Takes a file containing the input alignments/syri files and processes it for find_multisyn.
+    Takes a tsv file containing the input names/alignments/syri files and processes it for find_multisyn.
     Anything after a # is ignored. Lines starting with # are skipped.
     :params: `os.PathLike`, `str` or a TextIO object containing the paths of the input alignment and syri files in tsv format.
     Will be consumed by this function!
-    :returns: a tuple of two lists containing the paths of the alignment and syri files.
+    :returns: a tuple of three lists containing the organism names, paths of the syri and alignment files, respectively.
     """
     if isinstance(fin, (str, os.PathLike)):
         fin = open(fin, 'rt')
@@ -59,26 +59,44 @@ def parse_input_tsv(fin):
 
     syris = deque()     # Lists are too slow appending, using deque instead
     alns = deque()
+    qrynames = deque()
     for line in fin:
         if line[0] == '#' or line.strip() == '':
             continue
 
         val = line.strip().split('#')[0].split('\t')
-        if len(val) > 2:
+        if len(val) < 2:
             logger.error(f"invalid entry in {fin.name}. Skipping line: {line}")
             continue
+        elif len(val) < 3:
+            logger.warning(f"No organism name specified in {fin.name}, using filename. Offending line: {line}")
+            qrynames.append(val[0].strip())
+            alns.append(val[0].strip())
+            syris.append(val[1].strip())
+            # Check that the files are accessible
+            if not os.path.isfile(val[0]):
+                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
+            if not os.path.isfile(val[1]):
+                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
+            continue
+        elif len(val) > 3:
+            logger.warning(f"More than three columnis in {fin.name}, ignoring anything after third column")
+
         # Check that the files are accessible
-        if not os.path.isfile(val[0]):
-            raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
         if not os.path.isfile(val[1]):
+            raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
+        if not os.path.isfile(val[2]):
             raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
 
-        alns.append(val[0].strip())
-        syris.append(val[1].strip())
+        qrynames.append(val[0].strip())
+        alns.append(val[1].strip())
+        syris.append(val[2].strip())
 
-    del fin # maybe just close instead?
+    if len(set(qrynames)) != len(qrynames):
+        logger.error(f"Non-unique names in {fin.name}. This will most likely cause issues, proceed with caution!")
 
-    return (syris, alns)
+    fin.close()
+    return (qrynames, syris, alns)
 
 
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information

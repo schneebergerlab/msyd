@@ -711,14 +711,16 @@ cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry
 
     return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
 
-def extract_syri_regions_to_list(fins, cores=1, **kwargs):
+def extract_syri_regions_to_list(fins, qrynames, cores=1, **kwargs):
     """
     `extract_syri_regions`, but for processing a list of inputs
     """
-    partial = lambda x: extract_syri_regions(x, **kwargs)
+    if len(fins) != len(qrynames):
+        logger.error(f"Infiles and qrynames lists lengths not matching. Offending lists: {fins} and {qrynames}")
+    partial = lambda x, qryname: extract_syri_regions(x, qryorg=qryname, **kwargs)
 
     if cores == 1:
-        syns = [partial(fin) for fin in fins]
+        syns = [partial(fin, qryname) for fin, qryname in zip(fins, qrynames)]
     else:
         with Pool(cores) as pool:
             syns = pool.map(partial, fins)

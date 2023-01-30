@@ -226,7 +226,7 @@ cdef remove_overlap(syn):
     return syn
 
 
-def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
+def find_multisyn(qrynames, syris, alns, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
     """
     Finds core and cross-syntenic regions in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -239,7 +239,7 @@ def find_multisyn(syris, alns, sort=False, ref='a', cores=1, SYNAL=True, overlap
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syns = io.extract_syri_regions_to_list(syris, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
+    syns = io.extract_syri_regions_to_list(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
 

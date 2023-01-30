@@ -82,8 +82,8 @@ def main(argv):
         parser.print_help()
 
 def call(args):
-    syns, alns = util.parse_input_tsv(args.infile)
-    df = pansyn.find_multisyn(syns, alns, only_core=args.core, SYNAL=args.SYNAL)
+    qrynames, syns, alns = util.parse_input_tsv(args.infile)
+    df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL)
     if args.print:
         print(df.head())
     if args.vcf:

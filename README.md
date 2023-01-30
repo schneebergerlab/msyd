@@ -40,15 +40,15 @@ Parameter | Description
 This example shows how to run `pansyri` on the Ampril dataset using Col as a reference.
 
 For this example, the working directory contains all of the required alignment and `syri` files, as well as this tab-separated table in a file called `all.tsv`:
-\#alns	| syri
---- 	| 	---
-`col_an1.bam`	|	`col_an1syri.out`
-`col_c24.bam` 	|	`col_c24syri.out`
-`col_eri.bam` 	|	`col_erisyri.out`
-`col_cvi.bam` 	|	`col_cvisyri.out`
-`col_kyo.bam` 	|	`col_kyosyri.out`
-`col_ler.bam` 	|	`col_lersyri.out`
-`col_sha.bam` 	| 	`col_shasyri.out`
+\# name | alns	| syri
+--- | --- 	| 	---
+`an1` | `col_an1.bam`	|	`col_an1syri.out`
+`c24` | `col_c24.bam` 	|	`col_c24syri.out`
+`eri` | `col_eri.bam` 	|	`col_erisyri.out`
+`cvi` | `col_cvi.bam` 	|	`col_cvisyri.out`
+`kyo` | `col_kyo.bam` 	|	`col_kyosyri.out`
+`ler` | `col_ler.bam` 	|	`col_lersyri.out`
+`sha` | `col_sha.bam` 	| 	`col_shasyri.out`
 
 Running the following command will start identifying core synteny in a single-threaded way with pansyri:
 
