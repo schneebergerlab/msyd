@@ -77,8 +77,8 @@ def main(argv):
     if args.func:
         args.func(args)
     else:
-        logger.error("No subcommand specified, see pansyri -h! Quitting.")
-        sys.exit()
+        logger.error("No subcommand specified, priting help message.")
+        parser.print_help()
 
 def call(args):
     syns, alns = util.parse_input_tsv(args.infile)
