@@ -56,6 +56,7 @@ def main(argv):
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL regions, yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified")
     call_parser.add_argument("-v", "--vcf", dest='vcf', action='store_true', default=False, help="Export to CF instead of saving to PFF. PansyRI cannot (currently) read in pansynteny information that is not in PFF format!")
+    call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
 
     # Conversion parser
     convert_parser = subparsers.add_parser("convert", description="Convert between different pansynteny information file formats")
@@ -83,6 +84,8 @@ def main(argv):
 def call(args):
     syns, alns = util.parse_input_tsv(args.infile)
     df = pansyn.find_multisyn(syns, alns, only_core=args.core, SYNAL=args.SYNAL)
+    if args.print:
+        print(df.head())
     if args.vcf:
         io.save_to_vcf(df, args.outfile, cores=args.cores)
     else:
