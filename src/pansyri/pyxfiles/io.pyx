@@ -18,6 +18,7 @@ from collections import deque, defaultdict, OrderedDict
 from gzip import open as gzopen
 from gzip import BadGzipFile
 
+from collections import deque
 import sys
 import os
 import logging
@@ -34,8 +35,10 @@ cimport numpy as np
 cimport cython
 
 from pansyri.classes.coords import Range
+from pansyri.classes.coords import Pansyn
 from pansyri.classes.vars import SNV
 import pansyri.util as util
+import pansyri.classes.cigar as cigar
 
 np.random.seed(1)
 
@@ -655,11 +658,18 @@ cpdef extract_syri_snvs(fin):
     #TODO maybe do chromosome mapping?
     return df
 
-cpdef extract_syntenic_from_vcf(syns, inpath, outpath, org='ref'):
+cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref'):
     """
+    Extract syntenic annotations from a given VCF.
+    If force_index is set to `True`, will call `pysam.tabix_index` on the file first if it has no index, gzipping it in the process (sorry, there seems to be no way to turn this off in pysam).
     """
-    vcfin = VariantFile("inpath")
-    vcfout = VariantFile("outpath", 'w', header=vcfin.header)
+    vcfin = pysam.VariantFile(inpath)
+    vcfout = pysam.VariantFile(outpath, 'w', header=vcfin.header)
+    if force_index and not vcfin.index_filename:
+        vcfin.close()
+        pysam.tabix_index(inpath, force=True, preset='vcf', keep_original=True)
+        inpath += ".gz" # no way to turn off automatic compression, apparently
+        vcfin = pysam.VariantFile(inpath)
 
     for syn in syns.iterrows():
         syn = syn[1][0]
@@ -823,9 +833,28 @@ cpdef save_to_pff(df, buf, save_cigars=True):
 
     buf.write("\n")
 
-cpdef read_pff(file):
+cpdef read_pff(f):
     """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
     """
-    with open(file, 'r') as f:
-        pass
+    syns = deque()
+    orgs = f.readline()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
+    for l in f:
+        l = l.split('\t')
+        if l[0] == 'SYN': # line contains a pansyn region
+            syn = Pansyn(pffcell_to_range("ref", l[1]), # extract reference range
+                {orgs[i]:pffcell_to_range(orgs[i], cell.split(",")[0]) for i, cell in enumerate(l[2:])}, # extract ranges dict
+                {orgs[i]:cigar.cigar_from_string(cell.split(',')[1]) for i, cell in enumerate(l[2:]) if len(cell.split(',')) > 1} # extract cigars dict
+            )
+            syns.append(syn)
+
+
+    return pd.DataFrame(data=list(syns)) # shouldn't require sorting
+
+cdef pffcell_to_range(org:str, cell: str):
+    """Helper function to transform a pff cell to a Range object"""
+    cellarr = cell.split(':')
+    start = int(cellarr[2].split('-')[0])
+    end = int(cellarr[2].split('-')[1])
+    # should chr be int'ed as well?
+    return Range(org, cellarr[0], cellarr[1], start, end)
 

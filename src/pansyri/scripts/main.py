@@ -68,7 +68,7 @@ def main(argv):
 
     # VCF filtering subparser
     filter_parser = subparsers.add_parser("filter", description="")
-    filter_parser.set_defaults(func=filter)
+    filter_parser.set_defaults(func=filter_vcf)
     filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
     filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
     filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF file. Defaults to stdout (specified with \"-\").")
@@ -126,9 +126,9 @@ def filter_vcf(args):
         logger.error("No vcf to filter specified!")
         raise ValueError("No vcf to filter specified!")
     # close the incoming handles to avoid double-opening the files
-    args.invcf.close()
-    args.outfile.close()
-    io.extract_syntenic_from_vcf(df, args.invcf, args.outfile.name)
+    #args.invcf.close()
+    #args.outfile.close()
+    io.extract_syntenic_from_vcf(df, args.invcf.name, args.outfile.name)
 
 
 def plot(args):
