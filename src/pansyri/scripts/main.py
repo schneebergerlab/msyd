@@ -94,9 +94,9 @@ def call(args):
         sys.exit(-1)
 
     if args.pff:
-        io.save_to_pff(df, args.outfile, save_cigars=args.cigars)
+        io.save_to_pff(df, args.pff, save_cigars=args.cigars)
     if args.vcf:
-        io.save_to_vcf(df, args.outfile, cores=args.cores)
+        io.save_to_vcf(df, args.vcf, cores=args.cores)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
