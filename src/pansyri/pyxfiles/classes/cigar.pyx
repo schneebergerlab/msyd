@@ -124,6 +124,9 @@ cdef class Cigar:
         else:
             return True
 
+    def is_empty(self):
+        return self.tups.empty()
+
     def pad(self, unsigned int left, unsigned int right, clip='S'):
         """Small function that adds padding to one or both sides of this `Cigar`.
         Mutates self!
