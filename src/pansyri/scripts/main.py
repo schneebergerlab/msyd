@@ -38,24 +38,21 @@ def main(argv):
     #combinations_parser.set_defaults(func=combinations)
     #combinations_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
 
-    # stats and plotting subparsers
-    stats_parser = subparsers.add_parser("stats", description="Print some statistics of the called pansynteny.")
-    stats_parser.set_defaults(func=stats)
-    stats_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-    plot_parser = subparsers.add_parser("plot", description="Prints a lengths df for plotting to stdout. Can be piped to a file and plotted with tests/plot.R .")
-    plot_parser.set_defaults(func=plot)
-    plot_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF or VCF file to read pansynteny information from.")
+    ## plotting subparser
+    #plot_parser = subparsers.add_parser("plot", description="Prints a lengths df for plotting to stdout. Can be piped to a file and plotted with tests/plot.R .")
+    #plot_parser.set_defaults(func=plot)
+    #plot_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF or VCF file to read pansynteny information from.")
 
     # Pansyn calling argparser
-    call_parser = subparsers.add_parser("call", description="Call Pansynteny and write to disk in VCF or PFF format.")
+    call_parser = subparsers.add_parser("call", help="test", description="Call Pansynteny and write to disk in VCF or PFF format.")
     call_parser.set_defaults(func=call)
     call_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output and alignment files in from. For more details, see the Readme.")
-    call_parser.add_argument("-o", dest='outfile', default='-', type=argparse.FileType('wt'), help="Where to store disk output. Defaults to stdout (specified with \"-\").")
+    call_parser.add_argument("-o", dest='pff', type=argparse.FileType('wt'), help="Where to save the output in PFF format (see format.md). At least one of -o and -v must be specified!")
+    call_parser.add_argument("-v", "--vcf", dest='vcf', type=argparse.FileType('wt'), help="Where to save the output in VCF format. At least one of -o and -v must be specified!")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Defaults to 4.", type=int, default=4)
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL regions, yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified")
-    call_parser.add_argument("-v", "--vcf", dest='vcf', action='store_true', default=False, help="Export to CF instead of saving to PFF. PansyRI cannot (currently) read in pansynteny information that is not in PFF format!")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
 
     # Conversion parser
@@ -68,38 +65,43 @@ def main(argv):
 
 
     # VCF filtering subparser
-    filter_parser = subparsers.add_parser("filter", description="")
-    filter_parser.set_defaults(func=filter_vcf)
-    filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
-    filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-    filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF file. Defaults to stdout (specified with \"-\").")
+    view_parser = subparsers.add_parser("view", help="", description="")
+    view_parser.set_defaults(func=view)
+    view_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
+    view_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
+    view_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF file. Defaults to stdout (specified with \"-\").")
 
     args = parser.parse_args(argv)
     if args.func:
         args.func(args)
     else:
-        logger.error("No subcommand specified, priting help message.")
+        #logger.info("No subcommand specified, priting help message.")
         parser.print_help()
 
 def call(args):
     qrynames, syns, alns = util.parse_input_tsv(args.infile)
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL)
     if args.print:
+        logger.info("Printing sample head to STDOUT")
         print(df.head())
+
+    print(util.get_stats(df))
+
+    # save output
+    logger.info("Saving pansyn calls to file(s)")
+    if not ( args.vcf or args.pff):
+        logger.error("At least one output file should be specified! Quitting!")
+        sys.exit(-1)
+
+    if args.pff:
+        io.save_to_pff(df, args.outfile, save_cigars=args.cigars)
     if args.vcf:
         io.save_to_vcf(df, args.outfile, cores=args.cores)
-    else:
-        io.save_to_pff(df, args.outfile, save_cigars=args.cigars)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
     df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
-
-# wrapper around the util fucntion
-def stats(args):
-    df = io.read_pff(args.infile)
-    print(util.get_stats(df))
 
 # compares the output of all four possible values of detect_crosssyn and SYNAL when calling find_multisyn, tabularizes by length
 def combinations(args):
@@ -123,7 +125,7 @@ def convert(args):
     else:
         io.save_to_vcf(df, args.outfile, cores=args.cores)
 
-def filter_vcf(args):
+def view(args):
     df = io.read_pff(args.infile)
     if not args.invcf:
         logger.error("No vcf to filter specified!")
@@ -135,6 +137,10 @@ def filter_vcf(args):
 
 
 def plot(args):
+    """Deprecated/internal, DO NOT USE
+
+
+    """
     df = io.read_pff(args.infile)
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 
