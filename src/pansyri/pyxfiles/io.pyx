@@ -829,15 +829,17 @@ cpdef save_to_pff(df, buf, save_cigars=True):
 
     for row in df.iterrows():
         pansyn = row[1][0]
-        buf.write("\nSYN\t")
+        buf.write("\nSYN\t") # only handle SYNs for now
         buf.write(pansyn.ref.to_pff())
         for org in orgs:
             buf.write("\t")
             if org in pansyn.ranges_dict:
                 buf.write(pansyn.ranges_dict[org].to_pff())
                 if save_cigars and pansyn.cigars_dict:
-                    buf.write(", ")
+                    buf.write(",")
                     buf.write(pansyn.cigars_dict[org].to_string())
+            else:
+                buf.write(".")
 
     buf.write("\n")
 
