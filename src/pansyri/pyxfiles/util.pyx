@@ -11,12 +11,45 @@ import os
 import io
 import logging
 
-import pansyri.pansyn as pansyn
-from pansyri.classes.cigar import Cigar
-from pansyri.classes.coords import Pansyn, Range
-import pansyri.io
+class CustomFormatter(logging.Formatter):
+    '''
+    Copied from https://github.com/mnshgl0110/hometools/blob/master/hometools/classes.py
+    who copied from
+    https://betterstack.com/community/questions/how-to-color-python-logging-output/
+    '''
 
-logger = logging.getLogger(__name__)
+    grey = "\x1b[0;49;90m"
+    green = "\x1b[0;49;32m"
+    yellow = "\x1b[0;49;93m"
+    red = "\x1b[0;49;31m"
+    bold_red = "\x1b[0;49;31;21m"
+    reset = "\x1b[0m"
+    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
+    FORMATS = {
+        logging.DEBUG: grey + format + reset,
+        logging.INFO: green + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+    
+
+    def getlogger(name):
+        logger = logging.getLogger(name)
+        handler = logging.StreamHandler()
+        handler.setFormatter(CustomFormatter())
+        logger.addHandler(handler)
+        logging.basicConfig(level=logging.INFO)
+        logger.propagate = False
+        return logger
+
+logger = CustomFormatter.getlogger(__name__)
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?
@@ -36,6 +69,15 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     p2.join()
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
+
+# everything above this doesn't depend on pansyri
+
+import pansyri.pansyn as pansyn
+from pansyri.classes.cigar import Cigar
+from pansyri.classes.coords import Pansyn, Range
+import pansyri.io
+
+
 
 def parse_input_tsv_path(path):
     """DEPRECATED

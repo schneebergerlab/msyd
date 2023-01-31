@@ -5,14 +5,14 @@
 
 from pansyri.classes.cigar import Cigar#, cig_clips, cig_aln_types
 import pansyri.classes as classes
+import pansyri.util as util
 
 # redeclare, as cdefs can apparently not be imported
 cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
 cdef cig_aln_types = set(['M', 'X', '='])
 cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
-import logging
 
-logger = logging.getLogger(__name__)
+logger = util.CustomFormatter.getlogger(__name__)
 
 
 """

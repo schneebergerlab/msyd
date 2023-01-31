@@ -4,8 +4,6 @@
 # cython: language_level = 3
 import math
 
-import logging
-
 import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as spclhier
@@ -13,7 +11,7 @@ import scipy.cluster.hierarchy as spclhier
 import pansyri.util as util
 from pansyri.classes.coords import Range
 
-logger = logging.getLogger(__name__)
+logger = util.CustomFormatter.getlogger(__name__)
 
 def order(syns, alns, chr=None):
     """Convenience function performing a full ordering imputation given syns/alns extracted from a.tsv

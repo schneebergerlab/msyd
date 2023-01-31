@@ -8,11 +8,7 @@ import pansyri.imputation as imputation
 import pansyri.pansyn as pansyn
 from pansyri.classes.coords import Range
 
-import logging
-import logging.config
-
-logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
+logger = util.CustomFormatter.getlogger(__name__)
 
 import pandas as pd
 

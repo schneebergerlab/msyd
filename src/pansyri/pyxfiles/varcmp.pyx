@@ -7,13 +7,12 @@
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-import logging
 
 from pansyri.pansyn import Range, Pansyn
 from pansyri.classes.vars import SNV
 import pansyri.util as util
 
-logger = logging.getLogger(__name__)
+logger = util.CustomFormatter.getlogger(__name__)
 
 def get_range_snvs(snvs, rngs):
     """

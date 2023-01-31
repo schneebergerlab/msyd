@@ -8,7 +8,6 @@ import pandas as pd
 import copy
 import functools
 from collections import deque
-import logging
 import multiprocessing
 
 import pansyri.io as io
@@ -19,7 +18,7 @@ from pansyri.classes.coords import Pansyn, Range, Position
 
 cdef int MIN_SYN_THRESH = 10
 
-logger = logging.getLogger(__name__)
+logger = util.CustomFormatter.getlogger(__name__)
 
 def find_overlaps(left, right, only_core=False):
     """

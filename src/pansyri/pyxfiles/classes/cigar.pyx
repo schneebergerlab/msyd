@@ -11,8 +11,10 @@ import array
 
 from libcpp.vector cimport vector
 
+import pansyri.util as util
 
-logger = logging.getLogger(__name__)
+
+logger = util.CustomFormatter.getlogger(__name__)
 
 ## constants
 

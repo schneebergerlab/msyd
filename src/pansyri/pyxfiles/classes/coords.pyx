@@ -9,8 +9,9 @@ import functools
 import logging
 
 from pansyri.classes.cigar import Cigar
+import pansyri.util as util
 
-logger = logging.getLogger(__name__)
+logger = util.CustomFormatter.getlogger(__name__)
 
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
@@ -306,7 +307,7 @@ class Pansyn:
                     start_dropped, cg = cg.get_removed(start, start=True, ref=True)
                     end_dropped, cg = cg.get_removed(end, start=False, ref=True)
                 except ValueError:
-                    logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}).")
+                    logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
                     continue
                 ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 cigars_dict[org] = cg

@@ -3,9 +3,9 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-import logging
+import pansyri.util as util
 
-logger = logging.getLogger(__name__)
+logger = util.CustomFormatter.getlogger(__name__)
 
 class SNV:
     """A class storing a SNV.
