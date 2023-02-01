@@ -21,12 +21,22 @@ This file serves as the main entrypoint for the pansyri CLI.
 
 def main(argv):
 
-    parser = argparse.ArgumentParser(description="Pansyri is a pansynteny and rearrangement identifier.")
+    parser = argparse.ArgumentParser(description="""
+    Pansyn is a pansynteny identifier.
+    Pansyn consists of a Cython library and a CLI interface.\n
+    The CLI interface consists of multiple subcommands, described briefly below.\n
+    For more information, see the documentation and subparser help messages accessed by calling pansyn [subparser] -h.
+    """)
     parser.set_defaults(func=None, cores=1)
 
-    subparsers = parser.add_subparsers(description="See also pansyri [subparser] -h:") # title/description?
+    subparsers = parser.add_subparsers()#description="See also pansyri [subparser] -h:") # title/description?
     # ordering parser
-    order_parser = subparsers.add_parser("order", description="Determine the optimal ordering of the supplied genomes for plotting.")
+    order_parser = subparsers.add_parser("order",
+        help="Determine a suitable ordering for plotting from a pansyn callset.",
+        description="""
+        Determine the optimal ordering of the supplied genomes for plotting using a clustering-based algorithm.
+        The ordering is determined such that adjacent organisms share as many basepairs of pansynteny  as possible.
+        """)
     order_parser.set_defaults(func=order)
     order_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
 
@@ -40,19 +50,32 @@ def main(argv):
     #plot_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF or VCF file to read pansynteny information from.")
 
     # Pansyn calling argparser
-    call_parser = subparsers.add_parser("call", help="test", description="Call Pansynteny and write to disk in VCF or PFF format.")
+    call_parser = subparsers.add_parser("call",
+        help="Identify pansynteny from a set of alignments and syri calls to reference.",
+        description="""
+        Call Pansynteny in a set of genomes that have been aligned to a reference and processed with syri.\n
+        Requires a tab-separated file listing for each organism the name that should be used, the path to the alignment and syri output files.\n
+        Output can be saved either in Pansyri File Format (PFF) or VCF. VCF output does not preserve alignment information and cannot be used for some of the further processing!\n
+        By default, Pansyn runs an exact pansynteny calling algorithm respecting the alignment information; for preliminary analyses, it might be suitable to use a faster, approximate algorithm.
+        This can be done using some of the flags described below:
+        """)
     call_parser.set_defaults(func=call)
     call_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output and alignment files in from. For more details, see the Readme.")
     call_parser.add_argument("-o", dest='pff', type=argparse.FileType('wt'), help="Where to save the output in PFF format (see format.md). At least one of -o and -v must be specified!")
     call_parser.add_argument("-v", "--vcf", dest='vcf', type=argparse.FileType('wt'), help="Where to save the output in VCF format. At least one of -o and -v must be specified!")
-    call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Defaults to 4.", type=int, default=4)
+    call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Pansyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 4.", type=int, default=4)
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
-    call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL regions, yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
-    call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified")
+    call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
+    call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
 
     # Conversion parser
-    convert_parser = subparsers.add_parser("convert", description="Convert between different pansynteny information file formats")
+    convert_parser = subparsers.add_parser("convert",
+        help="Convert PFF to VCF files.",
+        description="""
+        Convert between different Pansynteny annotations file formats.
+        Additional formats may be supported in the future.
+        """)
     convert_parser.set_defaults(func=convert)
     convert_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
     convert_parser.add_argument("-t", dest='filetype', required=False, type=str, help="File format to convert to.")
@@ -61,7 +84,12 @@ def main(argv):
 
 
     # VCF filtering subparser
-    view_parser = subparsers.add_parser("view", help="", description="")
+    view_parser = subparsers.add_parser("view",
+        help="Filter, convert or analyze existing PFF and VCF Files",
+        description="""
+        Used for filtering VCF files to only contain calls in pansyntenic regions for now.
+        Additional functionality will be implemented later.
+        """)
     view_parser.set_defaults(func=view)
     view_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
     view_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
@@ -99,16 +127,6 @@ def order(args):
     df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
 
-# compares the output of all four possible values of detect_crosssyn and SYNAL when calling find_multisyn, tabularizes by length
-def combinations(args):
-    syns, alns = util.parse_input_tsv(args.infile)
-    print(util.eval_combinations(syns, alns, cores=args.cores))
-
-# do what is done in eval_combinations for every syn/aln file list produced by removing from the end
-def lengths(args):
-    syns, alns = util.parse_input_tsv(args.infile)
-    util.length_compare(syns, alns, cores=args.cores)
-
 def convert(args):
     df = io.read_pff(args.infile)
     # mb refactor into common output function
@@ -134,8 +152,6 @@ def view(args):
 
 def plot(args):
     """Deprecated/internal, DO NOT USE
-
-
     """
     df = io.read_pff(args.infile)
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
