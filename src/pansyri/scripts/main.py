@@ -136,7 +136,7 @@ def order(args):
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
 
 def view(args):
-    logger.info(f"reading pansyn output from {args.infile}")
+    logger.info(f"reading pansyn output from {args.infile.name}")
     df = io.read_pff(args.infile)
     if not args.filetype: # determine filetype if not present
         args.filetype = args.outfile.name.split(".")[-1]
