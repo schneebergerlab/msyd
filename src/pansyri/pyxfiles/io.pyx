@@ -30,7 +30,6 @@ from gc import collect
 from cython.operator cimport dereference as deref, preincrement as inc
 from libcpp.map cimport map as cpp_map
 from libcpp.deque cimport deque as cpp_deq
-from function cimport getmeblocks, getOverlapWithSynBlocks
 cimport numpy as np
 cimport cython
 
@@ -45,42 +44,6 @@ np.random.seed(1)
 
 ### BEGIN func SECTION
 ## copied over from func
-from os import remove
-
-def fileRemove(fName):
-    try:
-        remove(fName)
-    except OSError as e:
-        if e.errno != 2:    # 2 is the error number when no such file or directory is present https://docs.python.org/2/library/errno.html
-            raise
-
-def mergeRanges(ranges):
-    """
-    Take a 2D numpy array, with each row as a range and return merged ranges i.e. ranges which are overlapping would be
-    combined as well.
-    :param ranges:
-    :return:
-    """
-    if len(ranges) < 2:
-        return ranges
-    ranges = ranges[ranges[:, 0].argsort()]
-    for i in ranges:
-        if i[0] > i[1]:
-            garb = i[0]
-            i[0] = i[1]
-            i[1] = garb
-    min_value = ranges[0, 0]
-    max_value = ranges[0, 1]
-    out_range = deque()
-    for i in ranges[1:]:
-        if i[0] > max_value:
-            out_range.append([min_value, max_value])
-            min_value = i[0]
-            max_value = i[1]
-        elif i[1] > max_value:
-            max_value = i[1]
-    out_range.append([min_value, max_value])
-    return np.array(out_range)
 
 def cgtpl(cg):
     """
@@ -89,14 +52,6 @@ def cgtpl(cg):
     for i in "MIDNSHPX=":
         cg = cg.replace(i, ';'+i+',')
     return [i.split(';') for i in cg.split(',')[:-1]]
-
-def revcomp(seq):
-    assert type(seq) == str
-    old = 'ACGTRYKMBDHVacgtrykmbdhv'
-    rev = 'TGCAYRMKVHDBtgcayrmkvhdb'
-    tab = str.maketrans(old, rev)
-    return seq.translate(tab)[::-1]
-
 
 def readfasta(f):
     out = {}
@@ -123,7 +78,8 @@ def readfasta(f):
                         else:
                             chrid = line.strip().split(b'>')[1].split(b' ')[0].decode()
                         if chrid in out.keys():
-                            sys.exit(" Duplicate chromosome IDs are not accepted. Chromosome ID {} is duplicated. Provided chromosome with unique IDs".format(chrid))
+                            logger.error(" Duplicate chromosome IDs are not accepted. Chromosome ID {} is duplicated. Provided chromosome with unique IDs".format(chrid))
+                            raise ValueError()
                     else:
                         chrseq.append(line.strip().decode())
         else:
@@ -137,7 +93,8 @@ def readfasta(f):
                         else:
                             chrid = line.strip().split('>')[1].split(' ')[0]
                         if chrid in out.keys():
-                            sys.exit(" Duplicate chromosome IDs are not accepted. Chromosome ID {} is duplicated. Provided chromosome with unique IDs".format(chrid))
+                            logger.error(" Duplicate chromosome IDs are not accepted. Chromosome ID {} is duplicated. Provided chromosome with unique IDs".format(chrid))
+                            raise ValueError()
                     else:
                         chrseq.append(line.strip())
     except Exception as e:
@@ -384,229 +341,6 @@ def readPAF(paf):
         logger.error("Error in reading PAF: {}. Exiting".format(e))
         sys.exit()
 # END
-
-def readCoords(coordsfin, chrmatch, cwdpath, prefix, args, cigar = False):
-    logger = logging.getLogger('Reading Coords')
-    logger.debug(args.ftype)
-    chrlink = {}
-    if args.ftype == 'T':
-        logger.info("Reading input from .tsv file")
-        try:
-            coords = pd.read_table(coordsfin, header = None)
-        except pd.errors.ParserError:
-            coords = pd.read_table(coordsfin, header = None, engine = "python")
-        except Exception as e:
-            logger.error("Error in reading the alignment file. " + e)
-            sys.exit()
-    elif args.ftype == 'S':
-        logger.info("Reading input from SAM file")
-        try:
-            coords = readSAMBAM(coordsfin, type='S')
-        except Exception as e:
-            logger.error("Error in reading the alignment file. " + e)
-            sys.exit()
-    elif args.ftype == 'B':
-        logger.info("Reading input from BAM file")
-        try:
-            coords = readSAMBAM(coordsfin, type='B')
-        except Exception as e:
-            logger.error("Error in reading the alignment file" + e)
-            sys.exit()
-    elif args.ftype == 'P':
-        logger.info("Reading input from PAF file")
-        try:
-            coords = readPAF(coordsfin)
-        except Exception as e:
-            logger.error("Error in reading the alignment file" + e)
-            sys.exit()
-    else:
-        logger.error("Incorrect alignment file type specified.")
-        sys.exit()
-
-    if not cigar:
-        if coords.shape[1] >= 12:
-            coords = coords.iloc[:, 0:11]
-        coords.columns = ["aStart","aEnd","bStart","bEnd","aLen","bLen","iden","aDir","bDir","aChr","bChr"]
-    else:
-        if coords.shape[1] > 12:
-            coords = coords.iloc[:, 0:12]
-        coords.columns = ["aStart","aEnd","bStart","bEnd","aLen","bLen","iden","aDir","bDir","aChr","bChr", 'cigar']
-
-    # Sanity check input file
-    try:
-        coords.aStart = coords.aStart.astype('int')
-    except ValueError:
-        logger.error('astart is not int')
-        sys.exit()
-
-    try:
-        coords.aEnd = coords.aEnd.astype('int')
-    except ValueError:
-        logger.error('aend is not int')
-        sys.exit()
-
-    try:
-        coords.bStart = coords.bStart.astype('int')
-    except ValueError:
-        logger.error('bstart is not int')
-        sys.exit()
-
-    try:
-        coords.bEnd = coords.bEnd.astype('int')
-    except ValueError:
-        logger.error('abend is not int')
-        sys.exit()
-
-    try:
-        coords.aLen = coords.aLen.astype('int')
-    except ValueError:
-        logger.error('alen is not int')
-        sys.exit()
-
-    try:
-        coords.bLen = coords.bLen.astype('int')
-    except ValueError:
-        logger.error('blen is not int')
-        sys.exit()
-
-    try:
-        coords.iden = coords.iden.astype('float')
-    except ValueError:
-        logger.error('iden is not float')
-        sys.exit()
-
-    try:
-        coords.aDir = coords.aDir.astype('int')
-    except ValueError:
-        logger.error('aDir is not int')
-        sys.exit()
-
-    if any(coords.aDir != 1):
-        logger.error('aDir can only have values 1')
-        sys.exit()
-
-    try:
-        coords.bDir = coords.bDir.astype('int')
-    except ValueError:
-        logger.error('bDir is not int')
-        sys.exit()
-
-    for i in coords.bDir:
-        if i not in [1,-1]:
-            logger.error('bDir can only have values 1/-1')
-            sys.exit()
-
-    try:
-        coords.aChr = coords.aChr.astype(str)
-    except:
-        logger.error('aChr is not string')
-        sys.exit()
-
-    try:
-        coords.bChr = coords.bChr.astype(str)
-    except:
-        logger.error('bChr is not string')
-        sys.exit()
-
-    # Filter small alignments
-    if args.f:
-        coords = coords.loc[coords.iden > 90]
-        coords = coords.loc[(coords.aLen>100) & (coords.bLen>100)]
-
-    ## check for bstart > bend when bdir is -1
-    check = np.unique(coords.loc[coords.bDir == -1, 'bStart'] > coords.loc[coords.bDir == -1, 'bEnd'])
-    if len(check) > 1:
-        logger.error('Inconsistent start and end position for inverted alignment in query genome. For inverted alignments, either all bstart < bend or all bend > bstart')
-        sys.exit()
-    elif len(check) == 0:
-        logger.info('No Inverted alignments present.')
-    elif check[0] == True:
-        pass
-    else:
-        logger.info('For inverted alignments, bstart was less than bend. Swapping them.')
-        coords.loc[coords.bDir == -1, 'bStart'] = coords.loc[coords.bDir == -1, 'bStart'] + coords.loc[coords.bDir == -1, 'bEnd']
-        coords.loc[coords.bDir == -1, 'bEnd'] = coords.loc[coords.bDir == -1, 'bStart'] - coords.loc[coords.bDir == -1, 'bEnd']
-        coords.loc[coords.bDir == -1, 'bStart'] = coords.loc[coords.bDir == -1, 'bStart'] - coords.loc[coords.bDir == -1, 'bEnd']
-
-    coords.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-
-    ## Ensure that chromosome IDs are same for the two genomes.
-    ## Either find best query match for every reference genome.
-    ## Or if --no-chrmatch is set then remove non-matching chromosomes.
-    if np.unique(coords.aChr).tolist() != np.unique(coords.bChr).tolist():
-        logger.warning('Chromosomes IDs do not match.')
-        if not chrmatch:
-            if len(np.unique(coords.aChr)) != len(np.unique(coords.bChr)):
-                logger.error("Unequal number of chromosomes in the genomes. Exiting")
-                sys.exit()
-            else:
-                logger.warning("Matching them automatically. For each reference genome, most similar query genome will be selected. Check mapids.txt for mapping used.")
-                chromMaps = defaultdict(dict)
-                for i in np.unique(coords.bChr):
-                    for j in np.unique(coords.aChr):
-                        a = np.array(coords.loc[(coords.bChr == i) & (coords.aChr == j), ["aStart", "aEnd"]])
-                        a = mergeRanges(a)
-                        chromMaps[j][i] = len(a) + (a[:, 1] - a[:, 0]).sum()
-
-                assigned = []
-                fout = open(cwdpath+prefix+"mapids.txt", "w")
-                for chrom in np.unique(coords.aChr):
-                    maxid = max(chromMaps[chrom].items(), key=lambda x: x[1])[0]
-                    if maxid in assigned:
-                        logger.error("{} in genome B is best match for two chromosomes in genome A. Cannot assign chromosomes automatically.".format(maxid))
-                        fout.close()
-                        fileRemove(cwdpath+prefix+"mapids.txt")
-                        sys.exit()
-                    assigned.append(maxid)
-                    fout.write(chrom+"\t"+maxid+"\n")
-                    logger.info("setting {} as {}".format(maxid, chrom))
-                    coords.loc[coords.bChr == maxid, "bChr"] = chrom
-                    chrlink[maxid] = chrom
-                fout.close()
-        else:
-            logger.warning("--no-chrmatch is set. Not matching chromosomes automatically.")
-            aChromo = set(coords["aChr"])
-            bChromo = set(coords["bChr"])
-            badChromo = list(aChromo - bChromo) + list(bChromo - aChromo)
-            if len(badChromo) > 0:
-                logger.warning(", ".join(badChromo) + " present in only one genome. Removing corresponding alignments")
-            coords = coords.loc[~coords.aChr.isin(badChromo) & ~coords.bChr.isin(badChromo)]
-
-    ## Check for presence of directed alignments
-    achrs = np.unique(coords.aChr).tolist()
-    for achr in achrs:
-        if coords.loc[(coords.aChr==achr) & (coords.bChr==achr) & (coords.bDir == 1),].shape[0] == 0:
-            hombchr = [k for k,v in chrlink.items() if v==achr]
-            if len(hombchr) == 1:
-                hombchr = hombchr[0]
-            elif len(hombchr) == 0:
-                hombchr = achr
-            else:
-                logger.error('Homologous chromosomes were not identified correctly. Try assigning the chromosome ids manually.')
-                sys.exit()
-            logger.warning('Reference chromosome ' + achr + ' do not have any directed alignments with its homologous chromosome in the query genome (' + hombchr + '). Filtering out all corresponding alignments.')
-            coords = coords.loc[~(coords.aChr == achr)]
-            coords = coords.loc[~(coords.bChr == achr)]
-
-    ## Check for presence of too many inverted alignments
-    for achr in achrs:
-        dir_range = mergeRanges(np.array(coords.loc[(coords.aChr==achr) & (coords.bChr==achr) & (coords.bDir==1), ["aStart", "aEnd"]]))
-        dir_len = len(dir_range) + (dir_range[:, 1] - dir_range[:, 0]).sum()
-        inv_range = mergeRanges(np.array(coords.loc[(coords.aChr==achr) & (coords.bChr==achr) & (coords.bDir==-1), ["aStart", "aEnd"]]))
-        inv_len = len(inv_range) + (inv_range[:, 1] - inv_range[:, 0]).sum()
-        if inv_len > dir_len:
-            hombchr = [k for k,v in chrlink.items() if v==achr]
-            if len(hombchr) == 1:
-                hombchr = hombchr[0]
-            elif len(hombchr) == 0:
-                hombchr = achr
-            else:
-                logger.error('Homologous chromosomes were not identified correctly. Try assigning the chromosome ids manually.')
-                sys.exit()
-            logger.warning('Reference chromosome ' + achr + ' has high fraction of inverted alignments with its homologous chromosome in the query genome (' + hombchr + '). Ensure that same chromosome-strands are being compared in the two genomes, as different strand can result in unexpected errors.')
-    return coords, chrlink
-
-
 
 # pasted from plotsr, parsing syri output
 VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
