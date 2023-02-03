@@ -40,10 +40,6 @@ def main(argv):
     order_parser.set_defaults(func=order)
     order_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
 
-    #combinations_parser = subparsers.add_parser("combinations", description="Evaluate all combinations of --syn and --core in the same manner as the --stats parameter.")
-    #combinations_parser.set_defaults(func=combinations)
-    #combinations_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-
     ## plotting subparser
     #plot_parser = subparsers.add_parser("plot", description="Prints a lengths df for plotting to stdout. Can be piped to a file and plotted with tests/plot.R .")
     #plot_parser.set_defaults(func=plot)
@@ -69,31 +65,43 @@ def main(argv):
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
 
-    # Conversion parser
-    convert_parser = subparsers.add_parser("convert",
-        help="Convert PFF to VCF files.",
+    ## Conversion parser
+    #convert_parser = subparsers.add_parser("convert",
+    #    help="Convert PFF to VCF files.",
+    #    description="""
+    #    Convert between different Pansynteny annotations file formats.
+    #    Additional formats may be supported in the future.
+    #    """)
+    #convert_parser.set_defaults(func=convert)
+    #convert_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
+    #convert_parser.add_argument("-t", dest='filetype', required=False, type=str, help="File format to convert to.")
+    #convert_parser.add_argument("-o", dest='outfile', default='-', type=argparse.FileType('wt'), help="Where to store disk output. Defaults to stdout (specified with \"-\").")
+
+    # Filter subparser
+    filter_parser = subparsers.add_parser("filter",
+        help="Filter a VCF file to only contain annotations in pansyntenic regions",
         description="""
-        Convert between different Pansynteny annotations file formats.
-        Additional formats may be supported in the future.
+        Used for filtering VCF files to only contain calls in pansyntenic regions.
+        Can be run on pff files processed with pansyn view.
         """)
-    convert_parser.set_defaults(func=convert)
-    convert_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-    convert_parser.add_argument("-t", dest='filetype', required=False, type=str, help="File format to convert to.")
-    convert_parser.add_argument("-o", dest='outfile', default='-', type=argparse.FileType('wt'), help="Where to store disk output. Defaults to stdout (specified with \"-\").")
+    filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
+    filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
+    filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF.")
 
 
-
-    # VCF filtering subparser
+    # view subparser
     view_parser = subparsers.add_parser("view",
-        help="Filter, convert or analyze existing PFF and VCF Files",
+        help="Filter, convert or analyze existing PFF Files",
         description="""
         Used for filtering VCF files to only contain calls in pansyntenic regions for now.
         Additional functionality will be implemented later.
         """)
     view_parser.set_defaults(func=view)
-    view_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
     view_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-    view_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF file. Defaults to stdout (specified with \"-\").")
+    view_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the output. File format is determined automatically from the extension, but can be overridden by supplying any of the --o flags.")
+    view_parser.add_argument("--opff", dest='filetype', action='store_const', const='pff', help="store output in PFF format")
+    view_parser.add_argument("--opff-nocg", dest='filetype', action='store_const', const='pff-nocg', help="store output in PFF format, discarding cigar strings")
+    view_parser.add_argument("--ovcf", dest='filetype', action='store_const', const='vcf', help="store output in VCF format, discarding cigar strings")
 
     args = parser.parse_args(argv)
     if args.func:
@@ -127,19 +135,27 @@ def order(args):
     df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
 
-def convert(args):
+def view(args):
+    logger.info(f"reading pansyn output from {args.infile}")
     df = io.read_pff(args.infile)
-    # mb refactor into common output function
-    if not args.filetype:
+    if not args.filetype: # determine filetype if not present
         args.filetype = args.outfile.name.split(".")[-1]
-    if args.filetype not in {'vcf', 'pff'}: # add bcf
-        logger.error("invalid output file format selected!")
+
+    # do further processing here
+
+    print(util.get_stats(df))
+    # save
+    logger.info(f"saving to {args.outfile.name} in {args.filetype} format")
     if args.filetype == 'pff':
         io.save_to_pff(df, args.outfile)
+    elif args.filetype == 'vcf':
+        io.save_to_vcf(df, args.outfile)
+    elif args.filetype == 'pff-nocg' or args.filetype == 'pff-nocigar':
+        io.save_to_pff(df, args.outfile, save_cigars=False)
     else:
-        io.save_to_vcf(df, args.outfile, cores=args.cores)
+        logger.error(f"Invalid filetype: {args.filetype}")
 
-def view(args):
+def filter(args):
     df = io.read_pff(args.infile)
     if not args.invcf:
         logger.error("No vcf to filter specified!")
