@@ -849,11 +849,13 @@ cpdef read_pff(f):
     syns = deque()
     orgs = f.readline()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
     for l in f:
-        l = l.split('\t')
+        l = l.strip().split('\t')
         if l[0] == 'SYN': # line contains a pansyn region
             syn = Pansyn(pffcell_to_range("ref", l[1]), # extract reference range
-                {orgs[i]:pffcell_to_range(orgs[i], cell.split(",")[0]) for i, cell in enumerate(l[2:])}, # extract ranges dict
-                {orgs[i]:cigar.cigar_from_string(cell.split(',')[1]) for i, cell in enumerate(l[2:]) if len(cell.split(',')) > 1} # extract cigars dict
+                {orgs[i]:pffcell_to_range(orgs[i], cell.split(",")[0]) # extract ranges dict
+                        for i, cell in enumerate(l[2:]) if cell != '.'},
+                {orgs[i]:cigar.cigar_from_string(cell.split(',')[1])
+                 for i, cell in enumerate(l[2:]) if cell != '.' and len(cell.split(',')) > 1} # extract cigars dict
             )
             syns.append(syn)
 
