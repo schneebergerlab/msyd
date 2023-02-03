@@ -73,6 +73,15 @@ class Range:
         """Transform this `Range` into the format specified by pansyri
         """
         return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
+
+    def read_pff(org:str, cell: str):
+        """Parse a Range in PFF format"""
+        cellarr = cell.split(':')
+        start = int(cellarr[2].split('-')[0])
+        end = int(cellarr[2].split('-')[1])
+        # should chr be int'ed as well?
+        return Range(org, cellarr[0], cellarr[1], start, end)
+
     
     def __eq__(l, r):
         if not isinstance(r, Range):
@@ -113,9 +122,9 @@ class Range:
             :rtype: `Bool`
         """
         if isinstance(item, Position):
-            return self.org == item.org and self.chr == item.chr and self.start <= item.pos <= self.end
+            return self.chr == item.chr and self.start <= item.pos <= self.end
         elif isinstance(item, Range):
-            return self.org == item.org and self.chr == item.chr and self.start <= item.start and item.end <= self.end
+            return self.chr == item.chr and self.start <= item.start and item.end <= self.end
         else:
             return False
 

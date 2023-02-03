@@ -585,8 +585,8 @@ cpdef read_pff(f):
     for l in f:
         l = l.strip().split('\t')
         if l[0] == 'SYN': # line contains a pansyn region
-            syn = Pansyn(pffcell_to_range("ref", l[1]), # extract reference range
-                {orgs[i]:pffcell_to_range(orgs[i], cell.split(",")[0]) # extract ranges dict
+            syn = Pansyn(Range.read_pff("ref", l[1]), # extract reference range
+                {orgs[i]:Range.read_pff(orgs[i], cell.split(",")[0]) # extract ranges dict
                         for i, cell in enumerate(l[2:]) if cell != '.'},
                 {orgs[i]:cigar.cigar_from_string(cell.split(',')[1])
                  for i, cell in enumerate(l[2:]) if cell != '.' and len(cell.split(',')) > 1} # extract cigars dict
@@ -595,12 +595,3 @@ cpdef read_pff(f):
 
 
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
-
-cdef pffcell_to_range(org:str, cell: str):
-    """Helper function to transform a pff cell to a Range object"""
-    cellarr = cell.split(':')
-    start = int(cellarr[2].split('-')[0])
-    end = int(cellarr[2].split('-')[1])
-    # should chr be int'ed as well?
-    return Range(org, cellarr[0], cellarr[1], start, end)
-
