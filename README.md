@@ -41,7 +41,7 @@ The algorithm may not produce suitable output if used on regions with little syn
 
 ## Example pansyn workflow
 
-![Diagram illustrating an example workflow for using pansyn](./controllers_brief.svg)
+![Diagram illustrating an example workflow for using pansyn](https://github.com/schneebergerlab/pansyri/blob/leon/workflow.svg)
 
 The first step in using `pansyn` is to assemble a number of query genomes and choose a reference.
 Assemblies should be of high quality and be chromosome-scale; they may need to be scaffolded (using e.g. RagTag) before further processing.
