@@ -230,6 +230,81 @@ def filter_multisyn_df(df, rng, only_contained=False):
     #print(inds)
     return df.loc[inds]
 
+import re
+
+cdef compile_filter(exp: str):
+    """
+    Higher-Order function for compiling a filtering expression into a single, fast predicate.
+    Returns a cdef lambda, check if this works properly from python, otherwise call in cpdef method.
+
+    # Ideas for DSL for filtering:
+    # primitives: Range, degree >= number, len, chr, maybe alignment quality?
+    # have preprocessor turn is pansyn into degree >= number of seqs
+    # connections: and, or, xor, not
+
+    """
+    # de-bracket expressions
+    if exp[0] == '(' and exp[-1] == ')': # no regex required!
+        return compile_filter(exp[1:-1])
+
+    # handle negation
+    match = re.fullmatch("(\!|not)\s?(.*)", exp)
+    if match:
+        return lambda x: not compile_filter(match[2])(x)
+
+    # handle and clauses
+    match = re.fullmatch("\((.*)\)\s?(&|and)\s?\((.*)\)", exp)
+    if match:
+        return lambda x: compile_filter(match[1])(x) and compile_filter(match[3])(x)
+
+    # handle or clauses
+    match = re.fullmatch("\((.*)\)\s?(\||or)\s?\((.*)\)", exp)
+    if match:
+        return lambda x: compile_filter(match[1])(x) or compile_filter(match[3])(x)
+
+    # handle xor clauses
+    match = re.fullmatch("\((.*)\)\s?(\^|xor)\s?\((.*)\)", exp)
+    if match:
+        return lambda x: compile_filter(match[1])(x) ^ compile_filter(match[3])(x)
+
+    ## handle primitives
+    # degree filters
+    match = re.fullmatch("(deg|degree)\s?>=\s?(\d)+", exp)
+    if match:
+        num = int(match[2])
+        return lambda x: x.get_degree() >= num
+    match = re.fullmatch("(deg|degree)\s?<=\s?(\d)+", exp)
+    if match:
+        num = int(match[2])
+        return lambda x: x.get_degree() <= num
+    # maybe also implement > < etc
+
+    # organism filters
+    match = re.fullmatch("(cont|contains)\s(.*)", exp)
+    if match:
+        org = match[2]
+        return lambda x: org in x.get_orgs()
+
+    match = re.fullmatch("(cont|contains)\sall\s(.*)", exp)
+    if match:
+        orgs = match[2].split(',')
+        return lambda x: all([org in x.get_orgs() for org in orgs])
+
+    match = re.fullmatch("(cont|contains)\sany\s(.*)", exp)
+    if match:
+        orgs = match[2].split(',')
+        return lambda x: any([org in x.get_orgs() for org in orgs])
+
+    # handle position on reference, TODO maybe also do this for organism?
+    match = re.fullmatch("(in)\s(.*)", exp)
+    if match:
+        rng = Range.read_pff(match[2])
+        return lambda x: x in rng
+    
+
+    return lambda x: True # the empty condition is always satisfied
+    
+
 def filter_multisyn_df_chr(df, chr):
     """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
     Does essentially the same thing as `filter_multsyn_df`, but only uses chromosome information
