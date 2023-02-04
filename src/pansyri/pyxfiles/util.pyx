@@ -243,10 +243,6 @@ cdef compile_filter(exp: str):
     # connections: and, or, xor, not
 
     """
-    # de-bracket expressions
-    if exp[0] == '(' and exp[-1] == ')': # no regex required!
-        return compile_filter(exp[1:-1])
-
     # handle negation
     match = re.fullmatch("(\!|not)\s?(.*)", exp)
     if match:
@@ -301,6 +297,10 @@ cdef compile_filter(exp: str):
         rng = Range.read_pff(match[2])
         return lambda x: x in rng
     
+    # de-bracket expressions
+    if exp[0] == '(' and exp[-1] == ')': # no regex required!
+        return compile_filter(exp[1:-1])
+
 
     return lambda x: True # the empty condition is always satisfied
     
