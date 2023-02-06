@@ -175,11 +175,19 @@ def get_stats(df):
     Calls get_len and tabularize_lens, prettyprints their output.
     """
     tot_len = get_len(df)
-    tablens = tabularize_lens(df)
-    ret = "Total length: " + str(tot_len) + f" ({len(df)} Regions)" + "\nDegree:\t" +\
-            "\t".join([str(i+1) for i in range(len(tablens))]) +"\nTot. len:\t" +\
-            "\t".join([str(i) for i in tablens]) + "\n"
+    lens = tabularize_lens(df)
+    ret = f"Total length: {siprefix(tot_len)}\nDeg.\tLength\n" + "\n".join([str(i + 1) + "\t" + siprefix(l) for i, l in enumerate(lens)])
     return ret
+
+def siprefix(x: int):
+    if x >= 1E9:
+        return f"{x/1E9:.2f} Gbp"
+    elif x >= 1E6:
+        return f"{x/1E6:.2f} Mbp"
+    elif x >= 1E3:
+        return f"{x/1E3:.2f} kbp"
+    else:
+        return f"{x} bp"
 
 def get_call_stats(syns, alns, **kwargs):
     """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats
