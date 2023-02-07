@@ -10,6 +10,8 @@ from collections import deque
 import os
 import io
 import logging
+import re
+
 
 class CustomFormatter(logging.Formatter):
     '''
@@ -208,9 +210,18 @@ def eval_combinations(syns, alns, cores=1):
         ret += get_call_stats(syns, alns, only_core=only_core, SYNAL=SYNAL)
     return ret
 
+def filter_pansyns(df, predicate):
+    #TODO refactor to use Cpp vectors later
+    # remember appropriate preallocation
+    inds = df[0].apply(predicate)
+    return df.loc[inds]
+
+def apply_filtering(df, exp):
+    return filter_pansyns(df, compile_filter(exp))
 
 def filter_multisyn_df(df, rng, only_contained=False):
-    """Misc function for filtering a DF produced by find_multisyn for a certain range.
+    """DEPRECATED, use filter_pansyns or apply_filtering instead
+    Misc function for filtering a DF produced by find_multisyn for a certain range.
     Only the position on the reference is taken into account.
     Only the chromosome, start and end of the supplied `Range` are used, org and chromosome information is discarded.
 
@@ -237,8 +248,6 @@ def filter_multisyn_df(df, rng, only_contained=False):
     inds = df[0].apply(filter_fn)
     #print(inds)
     return df.loc[inds]
-
-import re
 
 cdef compile_filter(exp: str):
     """
