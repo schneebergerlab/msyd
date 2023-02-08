@@ -168,6 +168,8 @@ def get_orgs_from_df(df):
 def get_len(df):
     return sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
 
+# the warnings in the two functions below are spurious, see
+# https://github.com/cython/cython/issues/1699
 def tabularize_lens(df):
     maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
     return [sum(len(x[1][0].ref) for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
