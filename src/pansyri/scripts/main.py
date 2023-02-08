@@ -141,6 +141,7 @@ def view(args):
     logger.info(f"reading pansyn output from {args.infile.name}")
     df = io.read_pff(args.infile)
     if not args.filetype: # determine filetype if not present
+        logger.info("No output filetype specified - guessing from OUTFILE extension")
         args.filetype = args.outfile.name.split(".")[-1]
 
     # do further processing here
