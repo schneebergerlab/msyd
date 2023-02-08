@@ -260,6 +260,11 @@ cdef compile_filter(exp: str):
     # connections: and, or, xor, not
 
     """
+
+    if len(exp) < 1:
+        logger.warning("compile_filter called with empty string. This expression will match everything!")
+        return lambda x: True
+
     # handle negation
     match = re.fullmatch("(\!|not)\s?(.*)", exp)
     if match:
@@ -318,8 +323,9 @@ cdef compile_filter(exp: str):
     if exp[0] == '(' and exp[-1] == ')': # no regex required!
         return compile_filter(exp[1:-1])
 
+    logger.error(f"compile_filter called with invalid expression: {exp}")
+    raise ValueError(f"compile_filter called with invalid expression: {exp}")
 
-    return lambda x: True # the empty condition is always satisfied
     
 
 def filter_multisyn_df_chr(df, chr):
