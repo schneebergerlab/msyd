@@ -76,6 +76,7 @@ class Range:
 
     def read_pff(org:str, cell: str):
         """Parse a Range in PFF format"""
+        #TODO error handling in here
         cellarr = cell.split(':')
         start = int(cellarr[2].split('-')[0])
         end = int(cellarr[2].split('-')[1])

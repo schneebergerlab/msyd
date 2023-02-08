@@ -324,8 +324,13 @@ cdef compile_filter(exp: str):
     # handle position on reference, TODO maybe also do this for organism?
     match = re.fullmatch("(in)\s(.*)", exp)
     if match:
-        rng = Range.read_pff(match[2])
-        return lambda x: x in rng
+        rng = Range.read_pff(None, match[2])
+        return lambda x: x.ref in rng
+
+    # chr filter
+    match = re.fullmatch("(on)\s(.*)", exp)
+    if match:
+        return lambda x: x.ref.chr == match[2]
     
     # de-bracket expressions
     if exp[0] == '(' and exp[-1] == ')': # no regex required!
