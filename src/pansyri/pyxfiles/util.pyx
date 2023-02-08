@@ -170,7 +170,12 @@ def get_len(df):
 
 def tabularize_lens(df):
     maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
-    return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+    return [sum(len(x[1][0].ref) for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
+    #return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
+
+def tabularize_nos(df):
+    maxdegree = max(x[1][0].get_degree() for x in df.iterrows())
+    return [sum(1 for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
 
 def get_stats(df):
     """Utility function to output some stats for a df containing computed pansyn objects.
@@ -178,7 +183,8 @@ def get_stats(df):
     """
     tot_len = get_len(df)
     lens = tabularize_lens(df)
-    ret = f"Total length: {siprefix(tot_len)}\nDeg.\tLength\n" + "\n".join([str(i + 1) + "\t" + siprefix(l) for i, l in enumerate(lens)])
+    nos = tabularize_nos(df)
+    ret = f"Total length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\n" + "\n".join([str(i + 1) + "\t" + siprefix(l) + "\t" + str(nos[i]) for i, l in enumerate(lens)])
     return ret
 
 def siprefix(x: int):
