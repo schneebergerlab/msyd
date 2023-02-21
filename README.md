@@ -1,7 +1,7 @@
 # pansyn
 
 ## Installation
-pansyri can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
+pansyn can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
 Requirements for running pansyn are `Cython`, `pysam`, `pandas` and `scipy` for the plotsr ordering functionality.
 
 ## Usage
