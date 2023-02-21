@@ -29,6 +29,24 @@ eri	col_eri.bam	col_erisyri.out
 
 ### `pansyn view`
 
+The `view` subparser is used for operating on PFF files.
+This command can also be used to convert output to VCF format (losing alignment information in the process); this requires a file containing the reference genomes.
+`pansyn view` uses a custom expression language to allow complex filtering operations on PFF files.
+Filtering expressions are constructed from two main building blocks: primitive and derived terms.
+Primitive terms include e.g. filtering for the degree of a pansyn region (`deg >= 5`), for whether it exists in a query sequence (`contains sample01`) or its position on the reference (`in Chr1:x:200-500`).
+There are two primitive terms that take multiple arguments (`contains all` and `contains any`).
+In this case, the arguments are separated by a `,`. Any whitespace near the `,` is ignored.
+Example: `contains any sample01, sample02,sample05`.
+Derived terms alter or combine multiple other terms (these can in turn be primitive or derived).
+If a derived term consists of multiple terms, these need to be put in brackets.
+Example derived terms include `(deg >= 5) and (contains sample02)` or `not on Chr2`.
+
+Internally, the expression is first parsed recursively into a lambda expression by `util.compile_filter`.
+`util.filter_pansyns` then evaluates this for every pansyn region object, keeping only those for which the expression evaluates to `True`.
+For users of the python API, `filter_pansyns` can also be called with any custom lambda expression.
+
+For a complete reference of the filtering language, see `view_reference.md`
+
 ### `pansyn order`
 
 `pansyn` can try to determine a suitable ordering for plotting a set of genomes once pansynteny has been called in that set.

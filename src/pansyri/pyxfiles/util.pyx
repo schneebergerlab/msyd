@@ -319,7 +319,7 @@ cdef compile_filter(exp: str):
     match = re.fullmatch("(cont|contains)\sany\s(.*)", exp)
     if match:
         orgs = match[2].split(',')
-        return lambda x: any([org in x.get_orgs() for org in orgs])
+        return lambda x: any([org.strip() in x.get_orgs() for org in orgs])
 
     # handle position on reference, TODO maybe also do this for organism?
     match = re.fullmatch("(in)\s(.*)", exp)
