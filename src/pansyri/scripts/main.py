@@ -59,6 +59,7 @@ def main(argv):
     call_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output and alignment files in from. For more details, see the Readme.")
     call_parser.add_argument("-o", dest='pff', type=argparse.FileType('wt'), help="Where to save the output in PFF format (see format.md). At least one of -o and -v must be specified!")
     call_parser.add_argument("-v", "--vcf", dest='vcf', type=argparse.FileType('wt'), help="Where to save the output in VCF format. At least one of -o and -v must be specified!")
+    call_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="If saving to VCF, the reference to use can be specified with this flag")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Pansyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 4.", type=int, default=4)
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
@@ -101,6 +102,7 @@ def main(argv):
     view_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the output. File format is determined automatically from the extension, but can be overridden by supplying any of the --o flags.")
     view_parser.add_argument("-e", dest='expr', action='store', type=str, help="Expression to use for filtering the pansyntenic regions")
     view_parser.add_argument("-p", dest='print', action='store_const', const=10, help="Print the first 10 regions after filtering, mainly for debugging")
+    view_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="If saving to VCF, the reference to use can be specified with this flag")
     view_parser.add_argument("--opff", dest='filetype', action='store_const', const='pff', help="store output in PFF format")
     view_parser.add_argument("--opff-nocg", dest='filetype', action='store_const', const='pff-nocg', help="store output in PFF format, discarding cigar strings")
     view_parser.add_argument("--ovcf", dest='filetype', action='store_const', const='vcf', help="store output in VCF format, discarding cigar strings")
@@ -130,7 +132,7 @@ def call(args):
     if args.pff:
         io.save_to_pff(df, args.pff, save_cigars=args.cigars)
     if args.vcf:
-        io.save_to_vcf(df, args.vcf, cores=args.cores)
+        io.save_to_vcf(df, args.vcf, args.ref.name, cores=args.cores)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
@@ -155,7 +157,7 @@ def view(args):
     if args.filetype == 'pff':
         io.save_to_pff(df, args.outfile)
     elif args.filetype == 'vcf':
-        io.save_to_vcf(df, args.outfile)
+        io.save_to_vcf(df, args.outfile, args.ref.name)
     elif args.filetype == 'pff-nocg' or args.filetype == 'pff-nocigar':
         io.save_to_pff(df, args.outfile, save_cigars=False)
     else:

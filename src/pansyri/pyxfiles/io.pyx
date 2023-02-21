@@ -2,11 +2,6 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-"""
-reads various fileformats and converts to a coordinate representation.
-Copied & adapted from SyRI 1.
-"""
-
 import numpy as np
 import pandas as pd
 from scipy.stats import *
@@ -39,6 +34,7 @@ from pansyri.classes.vars import SNV
 import pansyri.util as util
 import pansyri.classes.cigar as cigar
 
+logger = util.CustomFormatter.getlogger(__name__)
 np.random.seed(1)
 
 
@@ -53,6 +49,7 @@ def cgtpl(cg):
         cg = cg.replace(i, ';'+i+',')
     return [i.split(';') for i in cg.split(',')[:-1]]
 
+# TODO maybe use https://pypi.org/project/pyfasta/ instead
 def readfasta(f):
     out = {}
     chrid = ''
@@ -472,9 +469,9 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">
-##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Haplotype in this sample">"""
+##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef save_to_vcf(syns, outf, cores=1):
+cpdef save_to_vcf(syns, outf, ref=None, cores=1):
     #TODO add functionality to incorporate reference information as optional argument
     cdef:
         out = pysam.VariantFile(outf, 'w')
@@ -488,6 +485,11 @@ cpdef save_to_vcf(syns, outf, cores=1):
     # prepare appropriate header file
     for line in HEADER.splitlines():
         out.header.add_line(line)
+
+    if type(ref) != dict:
+        logger.info("Reading in Reference Fasta")
+        ref = readfasta(ref)
+
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
     for org in sorted(orgs_ind.keys()):
         out.header.add_sample(org)
@@ -512,6 +514,7 @@ cpdef save_to_vcf(syns, outf, cores=1):
         #        out.header.add_line("##contig=<ID={}>".format(chrom))
         #        # think about maybe adding chr length if called with reference genome
         #    rec.chrom = chrom
+
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
         if chrom not in header_chrs:
@@ -521,11 +524,17 @@ cpdef save_to_vcf(syns, outf, cores=1):
 
         rec.stop = syn.ref.end # apparently this exists? what does it do?
         if syn.get_degree() == orgsc:
-            rec.alleles = ["<SYN>", "<*>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
+            if ref:
+                rec.alleles = [ref[rec.chrom][rec.start], "<*>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
+            else:
+                rec.alleles = ["<SYN>", "<*>"]
             rec.id = "CORESYN{}".format(corecounter)
             corecounter += 1
         else:
-            rec.alleles = ["<SYN>", "<DYS>"] # DYS or NONSYN?
+            if ref:
+                rec.alleles = [ref[rec.chrom][rec.start], "<*>", "<NON_REF>"]
+            else:
+                rec.alleles = ["<SYN>", "<*>", "<NON_REF>"]
             rec.id = "CROSSSYN{}".format(crosscounter)
             crosscounter += 1
 
