@@ -18,4 +18,4 @@ avgs=$(echo "rawout='$rawout'.split(';')[:-1];print('time:', ' s, mem: '.join([s
 # in case of not doing avgs:
 #avgs=$(/usr/bin/time -f "time: %e s, mem: %K Kb" pansyri call -i full.tsv -v /dev/null -c $cores 2>&1 > /dev/null | tail -n 1)
 
-echo $curtime – $commit: $avgs on $cores cores >> /home/lrauschning/pansyri/pansyri/benchmarks.txt
+echo $curtime – $commit: $avgs on $cores cores at $(hostname) >> /home/lrauschning/pansyri/pansyri/benchmarks.txt
