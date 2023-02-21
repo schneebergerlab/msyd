@@ -1,7 +1,7 @@
 #!/bin/sh
 # small script that 
 cd /home/lrauschning/pansyri/pansyri
-git pull && python setup.py install
+#git pull && python setup.py install
 curtime=$(date --rfc-3339=seconds)
 commit=$(git show --oneline -s) 
 cores=16
