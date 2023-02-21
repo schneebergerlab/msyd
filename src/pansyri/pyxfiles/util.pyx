@@ -260,13 +260,13 @@ def filter_multisyn_df(df, rng, only_contained=False):
 cdef compile_filter(exp: str):
     """
     Higher-Order function for compiling a filtering expression into a single, fast predicate.
-    Returns a cdef lambda, check if this works properly from python, otherwise call in cpdef method.
+    Returns a cdef lambda, check if this works properly when importing into python code, otherwise call in cpdef method.
+    Runtime is in n*log(n) with n being len(exp) -- this could be made faster by using a proper parser, but I don't think this step is performance-limiting.
 
     # Ideas for DSL for filtering:
     # primitives: Range, degree >= number, len, chr, maybe alignment quality?
     # have preprocessor turn is pansyn into degree >= number of seqs
     # connections: and, or, xor, not
-
     """
 
     if len(exp) < 1:
