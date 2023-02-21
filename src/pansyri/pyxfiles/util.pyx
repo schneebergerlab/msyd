@@ -257,6 +257,9 @@ def filter_multisyn_df(df, rng, only_contained=False):
     #print(inds)
     return df.loc[inds]
 
+cpdef compile_filter_py(exp: str):
+    return compile_filter(exp)
+
 cdef compile_filter(exp: str):
     """
     Higher-Order function for compiling a filtering expression into a single, fast predicate.
@@ -314,7 +317,7 @@ cdef compile_filter(exp: str):
     match = re.fullmatch("(cont|contains)\sall\s(.*)", exp)
     if match:
         orgs = match[2].split(',')
-        return lambda x: all([org in x.get_orgs() for org in orgs])
+        return lambda x: all([org.strip() in x.get_orgs() for org in orgs])
 
     match = re.fullmatch("(cont|contains)\sany\s(.*)", exp)
     if match:
@@ -324,6 +327,7 @@ cdef compile_filter(exp: str):
     # handle position on reference, TODO maybe also do this for organism?
     match = re.fullmatch("(in)\s(.*)", exp)
     if match:
+        #TODO error handling?
         rng = Range.read_pff(None, match[2])
         return lambda x: x.ref in rng
 
