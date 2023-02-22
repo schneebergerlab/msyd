@@ -404,10 +404,15 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
     If the supplied VCF already has a tabix index, `force_index` may be set to false.
     """
-    vcfin = pysam.VariantFile(inpath)
-    vcfout = pysam.VariantFile(outpath, 'w', header=vcfin.header)
-    orgs = util.get_orgs_from_df(syns)
-    if not vcfin.header.samples.issubset(orgs):
+    cdef:
+        vcfin = pysam.VariantFile(inpath)
+        vcfout = pysam.VariantFile(outpath, 'w', header=vcfin.header)
+        orgs = util.get_orgs_from_df(syns)
+        header_chrs = set(vcfin.header.contigs)
+        int crosscounter = 0
+        int corecounter = 0
+
+    if not set(vcfin.header.samples).issubset(orgs):
         logger.warning("Input VCF contains organisms not in PFF file! Double-Check names used in .tsv. Truncating VCF.")
         vcfin.subset_samples(orgs)
 
@@ -417,7 +422,7 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
         ref = readfasta(ref)
 
 
-    orgs = list(vcfin.header.samples) # select only 
+    orgsvcf = list(vcfin.header.samples) # select only 
 
     # force indexing to allow for calling fetch later.
     if force_index and not vcfin.index_filename:
@@ -434,11 +439,20 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
     for syn in syns.iterrows():
         syn = syn[1][0]
         rng = syn.ref if org == 'ref' else syn.rngs[org]
-        rec = out.new_record()
+        rec = vcfout.new_record()
         rec.start = rng.start
         rec.pos = rec.start
         rec.stop = rng.end
-        rec.chrom = rng.chr
+        chrom = rng.chr
+
+        if chrom not in header_chrs:
+            if ref:
+                # add length if it is known from the reference
+                vcfout.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
+            else:
+                vcfout.header.add_line("##contig=<ID={}>".format(chrom))
+
+        rec.chrom = chrom
         if syn.get_degree() == len(orgs):
             if ref:
                 rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
@@ -455,7 +469,7 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
             crosscounter += 1
 
         # write the pansyn annotation
-        for org in orgs:
+        for org in orgsvcf:
             if org in syn.get_orgs():
                 rng = syn.ranges_dict[org]
                 rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
@@ -464,8 +478,11 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
         vcfout.write(rec)
 
         # write the small variants in the pansyn region
-        # TODO add missing data for nonsyntenic organisms
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
+            # iterate through organisms, remove any data that is not syntenic
+            for org in orgsvcf:
+                if org not in syn.get_orgs():
+                    del rec[org]
             vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
     #vcfout.close()
@@ -575,7 +592,7 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
         rec.stop = syn.ref.end # apparently this exists? what does it do?
         if syn.get_degree() == orgsc:
             if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
+                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
             else:
                 rec.alleles = ["<SYN>", "<CORESYN>"]
             rec.id = "CORESYN{}".format(corecounter)

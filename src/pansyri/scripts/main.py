@@ -85,9 +85,11 @@ def main(argv):
         Used for filtering VCF files to only contain calls in pansyntenic regions.
         Can be run on pff files processed with pansyn view.
         """)
+    filter_parser.set_defaults(func=filter)
     filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
     filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
     filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF.")
+    filter_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="The reference to use for the synteny annotated in the output VCF")
 
 
     # view subparser
@@ -111,7 +113,7 @@ def main(argv):
     if args.func:
         args.func(args)
     else:
-        #logger.info("No subcommand specified, priting help message.")
+        logger.info("No subcommand specified, priting help message.")
         parser.print_help()
 
 def call(args):
@@ -132,7 +134,7 @@ def call(args):
     if args.pff:
         io.save_to_pff(df, args.pff, save_cigars=args.cigars)
     if args.vcf:
-        io.save_to_vcf(df, args.vcf, args.ref.name, cores=args.cores)
+        io.save_to_vcf(df, args.vcf, args.ref.name if args.ref else None, cores=args.cores)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
@@ -143,11 +145,12 @@ def view(args):
     logger.info(f"reading pansyn output from {args.infile.name}")
     df = io.read_pff(args.infile)
     if not args.filetype: # determine filetype if not present
-        logger.info("No output filetype specified - guessing from OUTFILE extension")
         args.filetype = args.outfile.name.split(".")[-1]
+        logger.info(f"No output filetype specified - guessing from OUTFILE extension")
 
     # do further processing here
-    df = util.apply_filtering(df, args.expr)
+    if args.expr:
+        df = util.apply_filtering(df, args.expr)
 
     if args.print:
         print(df.head(args.print))
@@ -157,7 +160,7 @@ def view(args):
     if args.filetype == 'pff':
         io.save_to_pff(df, args.outfile)
     elif args.filetype == 'vcf':
-        io.save_to_vcf(df, args.outfile, args.ref.name)
+        io.save_to_vcf(df, args.outfile, args.ref.name if args.ref else None)
     elif args.filetype == 'pff-nocg' or args.filetype == 'pff-nocigar':
         io.save_to_pff(df, args.outfile, save_cigars=False)
     else:
@@ -171,7 +174,7 @@ def filter(args):
     # close the incoming handles to avoid double-opening the files
     #args.invcf.close()
     #args.outfile.close()
-    io.extract_syntenic_from_vcf(df, args.invcf.name, args.outfile.name)
+    io.extract_syntenic_from_vcf(df, args.invcf.name, args.outfile.name, ref=args.ref.name)
 
 
 def plot(args):
