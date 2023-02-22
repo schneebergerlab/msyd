@@ -119,7 +119,7 @@ def call(args):
     # if specified, merge the VCFs
     if args.vcf:
         logger.info("Pre-filtering VCFs to syntenic regions")
-        vcfs_filtered = io.prefilter(df, vcfs)
+        vcfs_filtered = io.prefilter(df, vcfs, args.ref.name)
         logger.info("Merging VCFs, saving to {args.vcf.name}")
         io.reduce_vcfs(vcfs_filtered, args.vcf.name)
 

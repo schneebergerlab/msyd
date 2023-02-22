@@ -399,7 +399,7 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]]):
+cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike]):
     tmpfiles = [tempfile.NamedTemporaryFile().name for vcf in vcfs]
 
     for i in range(len(vcfs)):
@@ -426,9 +426,11 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         vcfin.subset_samples(orgs)
 
     # read reference if it hasn't been read already
-    if type(ref) != dict:
+    if ref and type(ref) != dict:
         logger.info("Reading in Reference Fasta")
         ref = readfasta(ref)
+    else:
+        logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
 
     orgsvcf = list(vcfin.header.samples) # select only 
@@ -642,9 +644,11 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
     for line in HEADER.splitlines():
         out.header.add_line(line)
 
-    if type(ref) != dict:
+    if ref and type(ref) != dict:
         logger.info("Reading in Reference Fasta")
         ref = readfasta(ref)
+    else:
+        logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
     for org in orgs:
