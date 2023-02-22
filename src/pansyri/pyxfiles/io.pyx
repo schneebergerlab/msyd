@@ -400,8 +400,7 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
 cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]]):
-    tmpdir = tempfile.TemporaryDirectory()
-    tmpfiles = [tempfile.NamedTemporaryFile(dir=tmpdir).name for vcf in vcfs]
+    tmpfiles = [tempfile.NamedTemporaryFile().name for vcf in vcfs]
 
     for i in range(len(vcfs)):
         extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i])
@@ -506,8 +505,7 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
         merge_vcfs(vcfs[0], vcfs[1], opath)
         return
 
-    tmpdir = tempfile.TemporaryDirectory()
-    tmpfiles = [tempfile.NamedTemporaryFile(dir=tmpdir).name for i in range(1, len(vcfs))]
+    tmpfiles = [tempfile.NamedTemporaryFile().name for i in range(1, len(vcfs))]
     merge_vcfs(vcfs[0], vcfs[1], tmpfiles[0])
     for i in range(1, len(vcfs)-1):
         merge_vcfs(tmpfiles[i-1], vcfs[i], tmpfiles[i])
