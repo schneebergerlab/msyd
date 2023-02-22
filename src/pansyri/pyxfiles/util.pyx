@@ -186,7 +186,7 @@ def get_stats(df):
     tot_len = get_len(df)
     lens = tabularize_lens(df)
     nos = tabularize_nos(df)
-    ret = f"Total length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\n" + "\n".join([str(i + 1) + "\t" + siprefix(l) + "\t" + str(nos[i]) for i, l in enumerate(lens)])
+    ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\n" + "\n".join([str(i + 1) + "\t" + siprefix(l) + "\t" + str(nos[i]) for i, l in enumerate(lens)])
     return ret
 
 def siprefix(x: int):
