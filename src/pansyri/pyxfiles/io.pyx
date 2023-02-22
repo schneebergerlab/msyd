@@ -389,6 +389,15 @@ cpdef extract_syri_snvs(fin):
     #TODO maybe do chromosome mapping?
     return df
 
+HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
+##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
+##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
+##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
+##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
+##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
+##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
+##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
+
 cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref'):
     """
     Extract syntenic annotations from a given VCF.
@@ -462,15 +471,6 @@ def extract_syri_regions_to_list(fins, qrynames, cores=1, **kwargs):
     #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
     #        for fin in fins]
 
-HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
-##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
-##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
-##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
-##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
-##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
-##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">
-##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
-
 cpdef save_to_vcf(syns, outf, ref=None, cores=1):
     #TODO add functionality to incorporate reference information as optional argument
     cdef:
@@ -525,16 +525,16 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
         rec.stop = syn.ref.end # apparently this exists? what does it do?
         if syn.get_degree() == orgsc:
             if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<*>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
+                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
             else:
-                rec.alleles = ["<SYN>", "<*>"]
+                rec.alleles = ["<SYN>", "<CORESYN>"]
             rec.id = "CORESYN{}".format(corecounter)
             corecounter += 1
         else:
             if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<*>", "<NON_REF>"]
+                rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
             else:
-                rec.alleles = ["<SYN>", "<*>", "<NON_REF>"]
+                rec.alleles = ["<SYN>", "<CROSSSYN>"]
             rec.id = "CROSSSYN{}".format(crosscounter)
             crosscounter += 1
 
