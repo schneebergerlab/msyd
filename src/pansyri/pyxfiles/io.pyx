@@ -398,22 +398,73 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref'):
+cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref', ref=None):
     """
     Extract syntenic annotations from a given VCF.
-    If force_index is set to `True`, will call `pysam.tabix_index` on the file first if it has no index, gzipping it in the process (sorry, there seems to be no way to turn this off in pysam).
+    A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
+    If the supplied VCF already has a tabix index, `force_index` may be set to false.
     """
     vcfin = pysam.VariantFile(inpath)
     vcfout = pysam.VariantFile(outpath, 'w', header=vcfin.header)
+    orgs = util.get_orgs_from_df(syns)
+    if not vcfin.header.samples.issubset(orgs):
+        logger.warning("Input VCF contains organisms not in PFF file! Double-Check names used in .tsv. Truncating VCF.")
+        vcfin.subset_samples(orgs)
+
+    # read reference if it hasn't been read already
+    if type(ref) != dict:
+        logger.info("Reading in Reference Fasta")
+        ref = readfasta(ref)
+
+
+    orgs = list(vcfin.header.samples) # select only 
+
+    # force indexing to allow for calling fetch later.
     if force_index and not vcfin.index_filename:
         vcfin.close()
         pysam.tabix_index(inpath, force=True, preset='vcf', keep_original=True)
         inpath += ".gz" # no way to turn off automatic compression, apparently
         vcfin = pysam.VariantFile(inpath)
 
+    # add header required for storing PANSYN annotations
+    for line in HEADER.splitlines():
+        vcfout.header.add_line(line)
+
+    # add pansyn regions and all variation therein
     for syn in syns.iterrows():
         syn = syn[1][0]
         rng = syn.ref if org == 'ref' else syn.rngs[org]
+        rec = out.new_record()
+        rec.start = rng.start
+        rec.pos = rec.start
+        rec.stop = rng.end
+        rec.chrom = rng.chr
+        if syn.get_degree() == len(orgs):
+            if ref:
+                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
+            else:
+                rec.alleles = ["<SYN>", "<CORESYN>"]
+            rec.id = "CORESYN{}".format(corecounter)
+            corecounter += 1
+        else:
+            if ref:
+                rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
+            else:
+                rec.alleles = ["<SYN>", "<CROSSSYN>"]
+            rec.id = "CROSSSYN{}".format(crosscounter)
+            crosscounter += 1
+
+        # write the pansyn annotation
+        for org in orgs:
+            if org in syn.get_orgs():
+                rng = syn.ranges_dict[org]
+                rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+            else:
+                rec.samples[org].update({'SYN': 0})
+        vcfout.write(rec)
+
+        # write the small variants in the pansyn region
+        # TODO add missing data for nonsyntenic organisms
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
@@ -478,8 +529,8 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
         int corecounter = 1 # 1-based region indexing
         int crosscounter = 1
         # ensure consistent, alphabetical sorting of organisms
-        orgs_ind = {org:i for i, org in enumerate(sorted(util.get_orgs_from_df(syns)))}
-        int orgsc = len(orgs_ind)
+        orgs = sorted(util.get_orgs_from_df(syns))
+        int orgsc = len(orgs)
         header_chrs = set() # do dynamically in python, hopefully more efficiently than looping twice
 
     # prepare appropriate header file
@@ -491,7 +542,7 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
         ref = readfasta(ref)
 
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
-    for org in sorted(orgs_ind.keys()):
+    for org in orgs:
         out.header.add_sample(org)
 
     # add each pansyn object
@@ -509,17 +560,16 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
         #    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
         #else:
         #    chrom = match[1]
-        #    # check if contig for chrom has been added to header, if not add it
-        #    if chrom not in header_chrs:
-        #        out.header.add_line("##contig=<ID={}>".format(chrom))
-        #        # think about maybe adding chr length if called with reference genome
-        #    rec.chrom = chrom
 
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
         if chrom not in header_chrs:
-            out.header.add_line("##contig=<ID={}>".format(chrom))
-            # think about maybe adding chr length if called with reference genome
+            if ref:
+                # add length if it is known from the reference
+                out.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
+            else:
+                out.header.add_line("##contig=<ID={}>".format(chrom))
+
         rec.chrom = chrom
 
         rec.stop = syn.ref.end # apparently this exists? what does it do?
@@ -539,7 +589,7 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
             crosscounter += 1
 
         # input the values for every organism
-        for org in orgs_ind.keys():
+        for org in orgs:
             if org in syn.get_orgs():
                 rng = syn.ranges_dict[org]
                 ## comment out chr to int conversion for now
@@ -552,11 +602,9 @@ cpdef save_to_vcf(syns, outf, ref=None, cores=1):
                 #    continue
                 #else:
                 #    chrom = int(match[1])
-                #org = orgs_ind[org] # try if it works without, else paste in below
                 rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
             else:
                 rec.samples[org].update({'SYN': 0})
-                #TODO check if correctly putting . in all non-accessed records
 
         out.write(rec)
     out.close()
