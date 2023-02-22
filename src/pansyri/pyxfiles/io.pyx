@@ -20,6 +20,7 @@ import logging
 import psutil
 import pysam
 import re
+import tempfile
 from gc import collect
 
 from cython.operator cimport dereference as deref, preincrement as inc
@@ -398,7 +399,16 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref', ref=None, keep_nonsyn_calls=False):
+cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]]):
+    tmpdir = tempfile.TemporaryDirectory()
+    tmpfiles = [tempfile.NamedTemporaryFile(dir=tmpdir).name for vcf in vcfs]
+
+    for i in range(len(vcfs)):
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i])
+
+    return tmpfiles
+
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, org='ref', ref=None, keep_nonsyn_calls=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -489,7 +499,86 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
     #vcfout.close()
     #vcfin.close()
 
+cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike]):
+    # quick and dirty reduction function, TODO write proper one when integrating with PFF variation merging
 
+    if len(vcfs) < 2:
+        merge_vcfs(vcfs[0], vcfs[1], opath)
+        return
+
+    tmpdir = tempfile.TemporaryDirectory()
+    tmpfiles = [tempfile.NamedTemporaryFile(dir=tmpdir).name for i in range(1, len(vcfs))]
+    merge_vcfs(vcfs[0], vcfs[1], tmpfiles[0])
+    for i in range(1, len(vcfs)-1):
+        merge_vcfs(tmpfiles[i-1], vcfs[i], tmpfiles[i])
+    # merge the final output
+    merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
+
+
+cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike]):
+    # TODO reimplement this with common framework with merge pffs
+    # do all this in memory to be faster
+    lvcf = pysam.VariantFile(lf)
+    rvcf = pysam.VariantFile(rf)
+    ovcf = pysam.VariantFile(of, 'w')
+
+    # Prepare the header
+    if lvcf.header != ovcf.header:
+        logger.error(f"Header not matching in {lf} and {rf}!")
+    ovcf.header = lvcf.header
+    ovcf.header.add_samples(rvcf.header.samples)
+
+    lann = next(lvcf)
+    rann = next(rvcf)
+    try:
+        while True:
+            # ensure they're both SNPs
+            if lann.id[:3] != 'SNP':
+                lann = next(lvcf)
+                continue
+            elif rann.id[:3] != 'SNP':
+                rann = next(rvcf)
+                continue
+
+            # skip until we are at the same position
+            if lann.pos < rann.pos or lann.chrom < rann.chrom:
+                lann = next(lvcf)
+                continue
+            elif rann.pos < lann.pos or rann.chrom < lann.chrom:
+                rann = next(rvcf)
+                continue
+            
+            # we have two SNPs at the same position, merge them
+            rec = ovcf.new_record()
+            rec.pos = lann.pos # shoud be equal anyway
+            rec.chrom = lann.chrom
+            if lann.alleles[0] != rann.alleles[0]:
+                logger.error(f"reference positions not matching in {lann} and {rann}!")
+            rec.alleles = set(lann.alleles).union(rann.alleles)
+
+            if lann.format != rann.format:
+                logger.error(f"format not matching in {lann} and {rann}!")
+            rec.format = lann.format
+
+            if lann.id != rann.id:
+                logger.error(f"id not matching in {lann} and {rann}!")
+            rec.id = lann.id
+
+            rec.samples.update(lann.samples, rann.samples)
+            rec.samples.update(rann.samples)
+
+            rec.info = lann.info + rann.info
+
+            ovcf.write(rec)
+
+            # discard these two SNPs, look at the next
+            lann = next(lvcf)
+            rann = next(rvcf)
+            continue
+    except StopIteration:
+        pass
+
+    return of # to enable reduction operation
 
 cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
@@ -540,7 +629,7 @@ def extract_syri_regions_to_list(fins, qrynames, cores=1, **kwargs):
     #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
     #        for fin in fins]
 
-cpdef save_to_vcf(syns, outf, ref=None, cores=1):
+cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1):
     #TODO add functionality to incorporate reference information as optional argument
     cdef:
         out = pysam.VariantFile(outf, 'w')

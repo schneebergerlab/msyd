@@ -90,8 +90,9 @@ def parse_input_tsv_path(path):
 
 def parse_input_tsv(fin):
     """
-    Takes a tsv file containing the input names/alignments/syri files and processes it for find_multisyn.
+    Takes a tsv file containing the input names/alignments/syri/vcf files and processes it for find_multisyn.
     Anything after a # is ignored. Lines starting with # are skipped.
+    By convention, tsv files usually have a header line starting with # (though this is not required).
     :params: `os.PathLike`, `str` or a TextIO object containing the paths of the input alignment and syri files in tsv format.
     Will be consumed by this function!
     :returns: a tuple of three lists containing the organism names, paths of the syri and alignment files, respectively.
@@ -101,46 +102,63 @@ def parse_input_tsv(fin):
     elif not isinstance(fin, io.TextIOBase):
         raise ValueError(f"{fin} is not a path-like or file-like object!")
 
-    syris = deque()     # Lists are too slow appending, using deque instead
-    alns = deque()
-    qrynames = deque()
+    cdef:
+        qrynames = deque()
+        syris = deque()     # Lists are too slow appending, using deque instead
+        alns = deque()
+        vcfs = deque()
+        str qry = ''
+        str syri = ''
+        str aln = ''
+        str vcf = ''
+
     for line in fin:
         if line[0] == '#' or line.strip() == '':
             continue
 
-        val = line.strip().split('#')[0].split('\t')
-        if len(val) < 2:
+        cells = line.strip().split('#')[0].split('\t')
+        if len(cells) < 2:
             logger.error(f"invalid entry in {fin.name}. Skipping line: {line}")
             continue
-        elif len(val) < 3:
-            logger.warning(f"No organism name specified in {fin.name}, using filename. Offending line: {line}")
-            qrynames.append(val[0].strip())
-            alns.append(val[0].strip())
-            syris.append(val[1].strip())
-            # Check that the files are accessible
-            if not os.path.isfile(val[0]):
-                raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
-            if not os.path.isfile(val[1]):
-                raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
-            continue
-        elif len(val) > 3:
-            logger.warning(f"More than three columnis in {fin.name}, ignoring anything after third column")
+        elif len(cells) < 3:
+            aln = cells[0].strip()
+            syri = cells[1].strip()
+            logger.warning(f"No organism name specified in {fin.name}, using alignment filename. Offending line: {line}")
+            qry = aln
+            logger.warning(f"No vcf specified in {fin.name}, trying to find syri vcf. Offending line: {line}")
+            vcf = ''.join(syri.split('.')[:-1]) + '.vcf'
+        elif len(cells) < 4:
+            aln = cells[0].strip()
+            syri = cells[1].strip()
+            vcf = cells[2].strip()
+            logger.warning(f"No organism name specified in {fin.name}, using alignment filename. Offending line: {line}")
+            qry = aln
+        else:
+            if len(cells) > 4:
+                logger.warning(f"More than four columns in {fin.name}, ignoring anything after third column")
+            qry = cells[0].strip()
+            aln = cells[1].strip()
+            syri = cells[2].strip()
+            vcf = cells[3].strip()
 
         # Check that the files are accessible
-        if not os.path.isfile(val[1]):
-            raise FileNotFoundError(f"Cannot find file at {val[0]}. Exiting")
-        if not os.path.isfile(val[2]):
-            raise FileNotFoundError(f"Cannot find file at {val[1]}. Exiting")
+        if not os.path.isfile(aln):
+            raise FileNotFoundError(f"Cannot find file at {aln}. Exiting")
+        if not os.path.isfile(syri):
+            raise FileNotFoundError(f"Cannot find file at {syri}. Exiting")
+        if not os.path.isfile(vcf):
+            raise FileNotFoundError(f"Cannot find file at {vcf}. Exiting")
 
-        qrynames.append(val[0].strip())
-        alns.append(val[1].strip())
-        syris.append(val[2].strip())
+        qrynames.append(qry)
+        alns.append(aln)
+        syris.append(syri)
+        vcfs.append(vcf)
 
     if len(set(qrynames)) != len(qrynames):
         logger.error(f"Non-unique names in {fin.name}. This will most likely cause issues, proceed with caution!")
 
     fin.close()
-    return (qrynames, syris, alns)
+    return (qrynames, syris, alns, vcfs)
 
 
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
