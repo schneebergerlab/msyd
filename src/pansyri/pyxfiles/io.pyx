@@ -455,7 +455,7 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
         rec.chrom = chrom
         if syn.get_degree() == len(orgs):
             if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"] # pysam requires at least two alleles, use the gVCF convention to annotate as no variant
+                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
             else:
                 rec.alleles = ["<SYN>", "<CORESYN>"]
             rec.id = "CORESYN{}".format(corecounter)
@@ -656,7 +656,7 @@ cpdef read_pff(f):
     """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
     """
     syns = deque()
-    orgs = f.readline()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
+    orgs = f.readline().strip()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
     for l in f:
         l = l.strip().split('\t')
         if l[0] == 'SYN': # line contains a pansyn region
