@@ -398,7 +398,7 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref', ref=None):
+cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='ref', ref=None, keep_nonsyn_calls=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -480,9 +480,10 @@ cpdef extract_syntenic_from_vcf(syns, inpath, outpath, force_index=True, org='re
         # write the small variants in the pansyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             # iterate through organisms, remove any data that is not syntenic
-            for org in orgsvcf:
-                if org not in syn.get_orgs():
-                    del rec[org]
+            if not keep_nonsyn_calls:
+                for org in orgsvcf:
+                    if org not in syn.get_orgs():
+                        del rec[org]
             vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
     #vcfout.close()

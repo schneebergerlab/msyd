@@ -78,18 +78,18 @@ def main(argv):
     #convert_parser.add_argument("-t", dest='filetype', required=False, type=str, help="File format to convert to.")
     #convert_parser.add_argument("-o", dest='outfile', default='-', type=argparse.FileType('wt'), help="Where to store disk output. Defaults to stdout (specified with \"-\").")
 
-    # Filter subparser
-    filter_parser = subparsers.add_parser("filter",
-        help="Filter a VCF file to only contain annotations in pansyntenic regions",
-        description="""
-        Used for filtering VCF files to only contain calls in pansyntenic regions.
-        Can be run on pff files processed with pansyn view.
-        """)
-    filter_parser.set_defaults(func=filter)
-    filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
-    filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-    filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF.")
-    filter_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="The reference to use for the synteny annotated in the output VCF")
+    ## Filter subparser
+    #filter_parser = subparsers.add_parser("filter",
+    #    help="Filter a VCF file to only contain annotations in pansyntenic regions",
+    #    description="""
+    #    Used for filtering VCF files to only contain calls in pansyntenic regions.
+    #    Can be run on pff files processed with pansyn view.
+    #    """)
+    #filter_parser.set_defaults(func=filter)
+    #filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
+    #filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
+    #filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF.")
+    #filter_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="The reference to use for the synteny annotated in the output VCF")
 
 
     # view subparser
@@ -102,9 +102,11 @@ def main(argv):
     view_parser.set_defaults(func=view)
     view_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
     view_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the output. File format is determined automatically from the extension, but can be overridden by supplying any of the --o flags.")
-    view_parser.add_argument("-e", dest='expr', action='store', type=str, help="Expression to use for filtering the pansyntenic regions")
+    view_parser.add_argument("-e", dest='expr', action='store', type=str, help="Expression to use for filtering the pansyntenic regions. This is done before --intersect is evaluated if also supplied")
     view_parser.add_argument("-p", dest='print', action='store_const', const=10, help="Print the first 10 regions after filtering, mainly for debugging")
     view_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="If saving to VCF, the reference to use can be specified with this flag")
+    view_parser.add_argument("--intersect", dest='intersect', type=argparse.FileType('r'), help="VCF File to intersect with the PFF file given with -i. Will only keep annotations within pansyntenic regions")
+
     view_parser.add_argument("--opff", dest='filetype', action='store_const', const='pff', help="store output in PFF format")
     view_parser.add_argument("--opff-nocg", dest='filetype', action='store_const', const='pff-nocg', help="store output in PFF format, discarding cigar strings")
     view_parser.add_argument("--ovcf", dest='filetype', action='store_const', const='vcf', help="store output in VCF format, discarding cigar strings")
@@ -150,13 +152,20 @@ def view(args):
 
     # do further processing here
     if args.expr:
+        logger.info(f"Applying filter: {args.expr}")
         df = util.apply_filtering(df, args.expr)
 
     if args.print:
         print(df.head(args.print))
     print(util.get_stats(df))
+
+    if args.intersect:
+        logger.info(f"Writing intersection to {args.outfile.name} as VCF")
+        io.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None)
+        return # has been saved already
+
     # save
-    logger.info(f"saving to {args.outfile.name} in {args.filetype} format")
+    logger.info(f"Writing to {args.outfile.name} in {args.filetype} format")
     if args.filetype == 'pff':
         io.save_to_pff(df, args.outfile)
     elif args.filetype == 'vcf':
@@ -165,17 +174,6 @@ def view(args):
         io.save_to_pff(df, args.outfile, save_cigars=False)
     else:
         logger.error(f"Invalid filetype: {args.filetype}")
-
-def filter(args):
-    df = io.read_pff(args.infile)
-    if not args.invcf:
-        logger.error("No vcf to filter specified!")
-        raise ValueError("No vcf to filter specified!")
-    # close the incoming handles to avoid double-opening the files
-    #args.invcf.close()
-    #args.outfile.close()
-    io.extract_syntenic_from_vcf(df, args.invcf.name, args.outfile.name, ref=args.ref.name)
-
 
 def plot(args):
     """Deprecated/internal, DO NOT USE
