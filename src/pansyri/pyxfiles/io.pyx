@@ -403,7 +403,7 @@ cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.Pa
     tmpfiles = [tempfile.NamedTemporaryFile().name for vcf in vcfs]
 
     for i in range(len(vcfs)):
-        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i])
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref)
 
     return tmpfiles
 
@@ -429,11 +429,11 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     if ref and type(ref) != dict:
         logger.info("Reading in Reference Fasta")
         ref = readfasta(ref)
-    else:
+    elif not ref:
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
 
-    orgsvcf = list(vcfin.header.samples) # select only 
+    orgsvcf = list(vcfin.header.samples) # select only contained organisms
 
     # force indexing to allow for calling fetch later.
     if force_index and not vcfin.index_filename:
@@ -525,8 +525,18 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     # Prepare the header
     if lvcf.header != ovcf.header:
         logger.error(f"Header not matching in {lf} and {rf}!")
-    ovcf.header = lvcf.header
-    ovcf.header.add_samples(rvcf.header.samples)
+
+    # merge the headers -- deduplicates automagically
+    for line in str(lvcf.header).splitlines()[1:-1]:
+        ovcf.header.add_line(line)
+    for line in str(rvcf.header).splitlines()[1:-1]:
+        ovcf.header.add_line(line)
+    #ovcf.header = lvcf.header
+    for sample in rvcf.header.samples:
+        ovcf.header.add_sample(sample)
+    for sample in lvcf.header.samples:
+        ovcf.header.add_sample(sample)
+    print(ovcf.header)
 
     lann = next(lvcf)
     rann = next(rvcf)
@@ -647,7 +657,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
     if ref and type(ref) != dict:
         logger.info("Reading in Reference Fasta")
         ref = readfasta(ref)
-    else:
+    elif not ref:
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...

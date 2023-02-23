@@ -118,9 +118,14 @@ def call(args):
 
     # if specified, merge the VCFs
     if args.vcf:
+        ref = None
+        if args.ref:
+            logger.info("Reading in Reference")
+            ref = io.readfasta(args.ref.name)
+
         logger.info("Pre-filtering VCFs to syntenic regions")
-        vcfs_filtered = io.prefilter(df, vcfs, args.ref.name)
-        logger.info("Merging VCFs, saving to {args.vcf.name}")
+        vcfs_filtered = io.prefilter(df, vcfs, ref)
+        logger.info(f"Merging VCFs, saving to {args.vcf.name}")
         io.reduce_vcfs(vcfs_filtered, args.vcf.name)
 
     # save output
