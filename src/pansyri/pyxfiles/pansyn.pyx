@@ -28,8 +28,10 @@ def find_overlaps(left, right, only_core=False):
     ret = deque()
 
     if len(right) == 0:
+        logger.error("find_overlap called with no pansyn regions (right)!")
         raise ValueError("right is empty!")
     if len(left) == 0:
+        logger.error("find_overlap called with no pansyn regions (left)!")
         raise ValueError("left is empty!")
 
     rit = right.iterrows()

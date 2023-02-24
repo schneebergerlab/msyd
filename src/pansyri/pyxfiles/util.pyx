@@ -135,7 +135,7 @@ def parse_input_tsv(fin):
             qry = aln
         else:
             if len(cells) > 4:
-                logger.warning(f"More than four columns in {fin.name}, ignoring anything after third column")
+                logger.warning(f"More than four columns in {fin.name}, ignoring anything after fourth column")
             qry = cells[0].strip()
             aln = cells[1].strip()
             syri = cells[2].strip()
