@@ -758,6 +758,9 @@ cpdef save_to_pff(df, buf, save_cigars=True):
 cpdef read_pff(f):
     """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
     """
+    if isinstance(f, str):
+        f = open(f, 'rt')
+
     syns = deque()
     orgs = f.readline().strip()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
     for l in f:

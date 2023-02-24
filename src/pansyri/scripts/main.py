@@ -75,6 +75,7 @@ def main(argv):
     call_parser.add_argument("-o", dest='pff', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
     call_parser.add_argument("-v", "--vcf", dest='vcf', type=argparse.FileType('wt'), help="Where to save the merged VCF.")
     call_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="Reference to use for the VCF output")
+    call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PFF file containing a previous pansynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Pansyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 4.", type=int, default=4)
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
@@ -109,7 +110,7 @@ def main(argv):
 
 def call(args):
     qrynames, syns, alns, vcfs = util.parse_input_tsv(args.infile)
-    df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL)
+    df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
     if args.print:
         logger.info("Printing sample head to STDOUT")
         print(df.head())
@@ -129,7 +130,7 @@ def call(args):
         io.reduce_vcfs(vcfs_filtered, args.vcf.name)
 
     # save output
-    logger.info("Saving pansyn calls to PFF at {args.pff.name}")
+    logger.info(f"Saving pansyn calls to PFF at {args.pff.name}")
     io.save_to_pff(df, args.pff, save_cigars=args.cigars)
     #if args.vcf:
     #    io.save_to_vcf(df, args.vcf, args.ref.name if args.ref else None, cores=args.cores)

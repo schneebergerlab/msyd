@@ -225,7 +225,7 @@ cdef remove_overlap(syn):
     return syn
 
 
-def find_multisyn(qrynames, syris, alns, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
+def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
     """
     Finds core and cross-syntenic regions in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -270,6 +270,11 @@ def find_multisyn(qrynames, syris, alns, sort=False, ref='a', cores=1, SYNAL=Tru
                 syns = pool.map(remove_overlap, syns)
 
     logger.info("overlap removed")
+
+    # shouldn't need any overlap removal
+    if base:
+        logger.info("reading in PFF for incremental calling")
+        syns.append(io.read_pff(base))
 
     pansyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)
