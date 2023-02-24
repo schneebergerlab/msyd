@@ -436,6 +436,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     orgsvcf = list(vcfin.header.samples) # select only contained organisms
 
     # force indexing to allow for calling fetch later.
+    #TODO try using until_eof=True as mentioned in the pysam FAQ
     if force_index and not vcfin.index_filename:
         vcfin.close()
         pysam.tabix_index(inpath, force=True, preset='vcf', keep_original=True)
@@ -574,6 +575,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 logger.error(f"id not matching in {lann} and {rann}!")
             rec.id = lann.id
 
+            # TODO handle genotype column properly
             rec.samples.update(lann.samples, rann.samples)
             rec.samples.update(rann.samples)
 
