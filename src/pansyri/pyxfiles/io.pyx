@@ -568,18 +568,18 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             rec.alleles = set(lann.alleles).union(rann.alleles)
 
             if lann.format != rann.format:
-                logger.error(f"format not matching in {lann} and {rann}!")
-            rec.format = lann.format
+                logger.error(f"format not matching: {lann.format} and {rann.format}!")
+            #rec.format = lann.format
 
             if lann.id != rann.id:
                 logger.error(f"id not matching in {lann} and {rann}!")
             rec.id = lann.id
 
             # TODO handle genotype column properly
-            rec.samples.update(lann.samples, rann.samples)
+            rec.samples.update(lann.samples)
             rec.samples.update(rann.samples)
 
-            rec.info = lann.info + rann.info
+            rec.info = str(lann.info) + str(rann.info)
 
             ovcf.write(rec)
 
