@@ -9,6 +9,7 @@ Requirements for running pansyn are `Cython`, `pysam`, `pandas` and `scipy` for 
 Pansyn can be used as either a Python library or a CLI tool.
 Pansyn can identify pansyntenic regions in a set of genomes aligned to a common reference, manipulate pansynteny callset files and determine a suitable ordering for plotting synteny between the genomes with `plotsr`.
 The different functionalities of pansyn are separated into modules for the python library and subcommands for the CLI interface.
+Many convenient shorthand functions are defined in the `util` module.
 
 ### `pansyn call`
 
@@ -26,6 +27,16 @@ eri	col_eri.bam	col_erisyri.out
 ```
 
 `pansyn call` takes a number of optional CLI flags, described by calling `pansyn call -h`.
+If the -v output is specified with an output vcf, pansyn will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
+In order to do this, the input TSV needs to have an additional column specifying the path to the VCF files.
+An example might look like this:
+
+```
+\#name	aln	syri	vcf
+an1	col_an1.bam	col_an1syri.out	col_an1.vcf
+c24	col_c24.bam	col_c24syri.out	col_c24.vcf
+eri	col_eri.bam	col_erisyri.out	col_eri.vcf
+```
 
 ### `pansyn view`
 
@@ -47,6 +58,13 @@ For users of the python API, `filter_pansyns` can also be called with any custom
 
 For a complete reference of the filtering language, see `view_reference.md`
 
+If the `--intersect` option is passed with a VCF file, a VCF file containing only variants annotated in pansyntenic regions will be written to the file specified in `-o`.
+If `-e` is also specified, the filtering will be performed before the intersection.
+An example usecase would be to only get pansyntenic SNPs from Chr. 8:
+```
+pansyn view -e 'on Chr8' -i calls.pff -e --intersect snps.vcf
+```
+
 ### `pansyn order`
 
 `pansyn` can try to determine a suitable ordering for plotting a set of genomes once pansynteny has been called in that set.
@@ -54,7 +72,7 @@ The ordering functionality takes a pansynteny callset in PFF format as input (sp
 The organisms are given with the name that was specified in the input file to `pansyn call`.
 
 The ordering is determined by performing single-linkage hierarchical clustering followed by leaf-order optimization (as implemented in `scipy`) according to the amount of shared pairwise pansynteny.
-It is intended for within-species order determination; determining the optimal ordering for a particular region of the genome can be accomplished by filteringt he PFF file using `pansyn view`.
+It is intended for within-species order determination; determining the optimal ordering for a particular region of the genome can be accomplished by filtering the PFF file using `pansyn view`.
 The algorithm may not produce suitable output if used on regions with little synteny.
 
 ## Example pansyn workflow
