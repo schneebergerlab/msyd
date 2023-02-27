@@ -326,6 +326,16 @@ cdef compile_filter(exp: str):
         return lambda x: x.get_degree() <= num
     # maybe also implement > < etc
 
+    # Len filters
+    match = re.fullmatch("(len|length)\s?>=\s?(\d)+", exp)
+    if match:
+        num = int(match[2])
+        return lambda x: len(x.ref) >= num
+    match = re.fullmatch("(len|length)\s?<=\s?(\d)+", exp)
+    if match:
+        num = int(match[2])
+        return lambda x: len(x.ref) <= num
+
     # organism filters
     match = re.fullmatch("(cont|contains)\s(.*)", exp)
     if match:
