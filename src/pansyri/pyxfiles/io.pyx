@@ -569,8 +569,8 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             if lann.format != rann.format:
                 # temporary prints necessary because pysam is annoying
-                print(lann.format)
-                print(rann.format)
+                print(str(lann.format))
+                print(str(rann.format))
                 logger.error(f"format not matching: {lann.format} and {rann.format}!")
             #rec.format = lann.format
 
