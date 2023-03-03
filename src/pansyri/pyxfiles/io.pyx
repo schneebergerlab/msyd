@@ -569,8 +569,6 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             if lann.format != rann.format:
                 # temporary prints necessary because pysam is annoying
-                print(str(lann.format))
-                print(str(rann.format))
                 logger.error(f"format not matching: {lann.format} and {rann.format}!")
             #rec.format = lann.format
 
@@ -582,7 +580,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             rec.samples.update(lann.samples)
             rec.samples.update(rann.samples)
 
-            rec.info = str(lann.info) + str(rann.info)
+            # pysam does not allow setting the info field all at once, do it iteratively:
+            for key in lann.info:
+                rec.info[key] = lann.info[key]
+
+            for key in rann.info:
+                if key in lann.info and lann.info[key] != rann.info[key]:
+                    logger.warning(f"Conflicting info in INFO field for key {key}: {lann.info[key]}, {rann.info[key]}!")
+                rec.info[key] = rann.info[key]
 
             ovcf.write(rec)
 
