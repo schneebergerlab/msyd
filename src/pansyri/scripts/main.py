@@ -123,6 +123,8 @@ def call(args):
         if args.ref:
             logger.info("Reading in Reference")
             ref = io.readfasta(args.ref.name)
+        else:
+            logger.warning("No reference specified, not saving sequence to VCF!")
 
         logger.info("Pre-filtering VCFs to syntenic regions")
         vcfs_filtered = io.prefilter(df, vcfs, ref)
