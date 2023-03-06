@@ -562,7 +562,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             # we have two SNPs at the same position, merge them
             rec = ovcf.new_record()
             rec.pos = lann.pos # shoud be equal anyway
-            rec.chrom = lann.chrom
+
+            chrom = lann.chrom
+            # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
+            if chrom not in ovcf.header.contigs:
+                ovcf.header.add_line("##contig=<ID={}>".format(chrom))
+
+            rec.chrom = chrom
+
             if lann.alleles[0] != rann.alleles[0]:
                 logger.error(f"reference positions not matching in {lann} and {rann}!")
             rec.alleles = set(lann.alleles).union(rann.alleles)
