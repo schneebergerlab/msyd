@@ -586,7 +586,8 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             for key in rann.info:
                 if key in lann.info and lann.info[key] != rann.info[key]:
-                    logger.warning(f"Conflicting info in INFO field for key {key}: {lann.info[key]}, {rann.info[key]}!")
+                    logger.warning(f"Conflicting info in INFO field for key {key}: {lann.info[key]}, {rann.info[key]}! Choosing {lann.info[key]}") # avoid setting a key twice to not annoy pysam
+                    continue
                 rec.info[key] = rann.info[key]
 
             ovcf.write(rec)
