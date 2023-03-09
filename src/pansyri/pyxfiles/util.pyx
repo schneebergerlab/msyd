@@ -27,6 +27,7 @@ class CustomFormatter(logging.Formatter):
     bold_red = "\x1b[0;49;31;21m"
     reset = "\x1b[0m"
     format = "%(asctime)s - %(name)s - %(funcName)s - %(levelname)s - %(message)s (%(module)s:%(lineno)d)"
+    #TODO why is module always main?? maybe try instantiating not using root logger??
 
     FORMATS = {
         logging.DEBUG: grey + format + reset,
