@@ -537,7 +537,12 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         ovcf.header.add_sample(sample)
     for sample in lvcf.header.samples:
         ovcf.header.add_sample(sample)
-    print(ovcf.header)
+    #print(ovcf.header)
+
+    # Panic on two empty vcfs
+    if len(ovcf.headers.samples) == 0:
+        logger.error("Merging two VCFs with no samples is not supported, exiting!")
+        return
 
     lann = next(lvcf)
     rann = next(rvcf)
