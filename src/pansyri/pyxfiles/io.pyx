@@ -540,9 +540,9 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     #print(ovcf.header)
 
     # Panic on two empty vcfs
-    if len(ovcf.headers.samples) == 0:
+    if len(ovcf.header.samples) == 0:
         logger.error("Merging two VCFs with no samples is not supported, exiting!")
-        return
+        #return
 
     lann = next(lvcf)
     rann = next(rvcf)
@@ -579,11 +579,6 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 logger.error(f"reference positions not matching in {lann} and {rann}!")
             rec.alleles = set(lann.alleles).union(rann.alleles)
 
-            if lann.format != rann.format:
-                # temporary prints necessary because pysam is annoying
-                logger.error(f"format not matching: {lann.format} and {rann.format}!")
-            #rec.format = lann.format
-
             if lann.id != rann.id:
                 logger.error(f"id not matching in {lann} and {rann}!")
             rec.id = lann.id
@@ -591,6 +586,15 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             # TODO handle genotype column properly
             rec.samples.update(lann.samples)
             rec.samples.update(rann.samples)
+
+            # check if format is handled automagically by pysam
+            if lann.format != rann.format:
+                # temporary prints necessary because pysam is annoying
+                logger.info(f"format not matching: {lann.format} and {rann.format}!")
+                print([x for x in lann.format])
+                print([x for x in rann.format])
+                print([x for x in rec.format])
+
 
             # pysam does not allow setting the info field all at once, do it iteratively:
             for key in lann.info:
