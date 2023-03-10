@@ -101,6 +101,16 @@ def main(argv):
     view_parser.add_argument("--opff-nocg", dest='filetype', action='store_const', const='pff-nocg', help="store output in PFF format, discarding cigar strings")
     view_parser.add_argument("--ovcf", dest='filetype', action='store_const', const='vcf', help="store output in VCF format, discarding cigar strings")
 
+    merge_parser = subparsers.add_parser("merge",
+        help="Merge different VCFs",
+        description="""
+        Exposes the optional VCF merging functionality in pansyri call directly.
+        Mainly for testing and debugging purposes
+        """)
+    merge_parser.set_defaults(func=merge)
+    merge_parser.add_argument("-v", dest='vcfs', nargs='+', required=True, type=argparse.FileType('r'), help="The VCF files to merge.")
+    merge_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the merged VCF.")
+
     args = parser.parse_args(argv)
     if args.func:
         args.func(args)
@@ -136,6 +146,11 @@ def call(args):
     io.save_to_pff(df, args.pff, save_cigars=args.cigars)
     #if args.vcf:
     #    io.save_to_vcf(df, args.vcf, args.ref.name if args.ref else None, cores=args.cores)
+
+def merge(args):
+    # temporary function to better test the vcf merging functionality
+    logger.info(f"Merging {args.vcfs} to {args.outfile}")
+    io.reduce_vcfs(args.vcfs, args.outfile.name)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
