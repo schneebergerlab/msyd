@@ -580,7 +580,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             rec.alleles = set(lann.alleles).union(rann.alleles)
 
             if lann.id != rann.id:
-                logger.error(f"id not matching in {lann} and {rann}!")
+                logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
             rec.id = lann.id
 
             # TODO handle genotype column properly
