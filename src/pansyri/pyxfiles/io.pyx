@@ -407,7 +407,7 @@ cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.Pa
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, org='ref', ref=None, keep_nonsyn_calls=False):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -450,7 +450,13 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     # add pansyn regions and all variation therein
     for syn in syns.iterrows():
         syn = syn[1][0]
-        rng = syn.ref if org == 'ref' else syn.ranges_dict[org]
+        rng = syn.ref
+        if synorg != 'ref':
+            if synorg in syn.ranges_dict:
+                rng = syn.ranges_dict[synorg]
+            else: # ignore regions not present in this org
+                continue
+        
         rec = vcfout.new_record()
         rec.start = rng.start
         rec.pos = rec.start
