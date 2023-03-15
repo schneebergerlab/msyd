@@ -450,7 +450,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     # add pansyn regions and all variation therein
     for syn in syns.iterrows():
         syn = syn[1][0]
-        rng = syn.ref if org == 'ref' else syn.rngs[org]
+        rng = syn.ref if org == 'ref' else syn.ranges_dict[org]
         rec = vcfout.new_record()
         rec.start = rng.start
         rec.pos = rec.start
@@ -504,23 +504,30 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
 cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike]):
     # quick and dirty reduction function, TODO write proper one when integrating with PFF variation merging
 
-    if len(vcfs) < 2:
+    if len(vcfs) < 1:
+        logger.error("reduce_vcfs called with empty vcfs!")
+        return
+    elif len(vcfs) == 1:
+        logger.warning(f"reduce_vcfs called with only one vcf: {vcfs}")
+        return
+    elif len(vcfs) == 2:
         merge_vcfs(vcfs[0], vcfs[1], opath)
         return
 
-    tmpfiles = [tempfile.NamedTemporaryFile().name for i in range(1, len(vcfs))]
+    tmpfiles = [tempfile.NamedTemporaryFile().name for _ in range(2, len(vcfs))] # the first two and last vcfs don't need to be stored as tempfiles
     merge_vcfs(vcfs[0], vcfs[1], tmpfiles[0])
-    for i in range(1, len(vcfs)-1):
-        merge_vcfs(tmpfiles[i-1], vcfs[i], tmpfiles[i])
-    # merge the final output
+    for i in range(1, len(vcfs)-2):
+        merge_vcfs(tmpfiles[i-1], vcfs[i+1], tmpfiles[i])
+    # incorporate the last vcf, save directly to output
     merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
 
 
 cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike]):
+    logger.info(f"Merging {lf} and {rf} into {of}")
     # TODO reimplement this with common framework with merge pffs
     # do all this in memory to be faster
-    lvcf = pysam.VariantFile(lf)
-    rvcf = pysam.VariantFile(rf)
+    lvcf = pysam.VariantFile(lf, 'r')
+    rvcf = pysam.VariantFile(rf, 'r')
     ovcf = pysam.VariantFile(of, 'w')
 
     # Prepare the header
@@ -533,6 +540,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     for line in str(rvcf.header).splitlines()[1:-1]:
         ovcf.header.add_line(line)
     #ovcf.header = lvcf.header
+    logger.info(f"Found samples: {list(lvcf.header.samples)}, {list(rvcf.header.samples)}")
     for sample in rvcf.header.samples:
         ovcf.header.add_sample(sample)
     for sample in lvcf.header.samples:
