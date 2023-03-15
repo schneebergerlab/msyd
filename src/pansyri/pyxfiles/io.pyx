@@ -584,17 +584,17 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             rec.id = lann.id
 
             # TODO handle genotype column properly
-            rec.samples.update(lann.samples)
-            rec.samples.update(rann.samples)
+
+            # rec.samples.update() throws internal pysam errors, circumvent it by directly calling update for each sample
+            for sample in lann.samples:
+                rec.samples[sample].update(lann.samples[sample])
+            for sample in rann.samples:
+                rec.samples[sample].update(rann.samples[sample])
 
             # check if format is handled automagically by pysam
-            if lann.format != rann.format:
+            if list(lann.format) != list(rann.format):
                 # temporary prints necessary because pysam is annoying
-                logger.info(f"format not matching: {lann.format} and {rann.format}!")
-                print([x for x in lann.format])
-                print([x for x in rann.format])
-                print([x for x in rec.format])
-
+                logger.info(f"format not matching: {list(lann.format)} and {list(rann.format)}!")
 
             # pysam does not allow setting the info field all at once, do it iteratively:
             for key in lann.info:
