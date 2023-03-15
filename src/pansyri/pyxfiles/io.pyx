@@ -501,7 +501,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             if not keep_nonsyn_calls:
                 for org in orgsvcf:
                     if org not in syn.get_orgs():
-                        del rec[org]
+                        del rec.samples[org]
             vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
     #vcfout.close()
