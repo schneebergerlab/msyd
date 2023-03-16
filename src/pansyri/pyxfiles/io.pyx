@@ -501,7 +501,10 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             if not keep_nonsyn_calls:
                 for org in orgsvcf:
                     if org not in syn.get_orgs():
-                        del rec.samples[org]
+                        # pysam doesn't support deletion, instead set every field to None individually
+                        #del rec.samples[org]
+                        for k in rec.samples[org]:
+                            rec.samples[org][k] = None
             vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
     #vcfout.close()
