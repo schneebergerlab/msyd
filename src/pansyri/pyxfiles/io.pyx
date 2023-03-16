@@ -618,18 +618,33 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             lref = lann.alleles[0]
             rref = rann.alleles[0]
-            oref = lref
+            rec.alleles = []
             # check if references need to be merged
             if lref != rref:
-                #if lref in {'<SYN>', '<CORESYN>'
-                logger.error(f"reference positions not compatible: {lann.alleles} != {rann.alleles}!")
-            rec.alleles = set(lann.alleles).union(rann.alleles)
-
-            if lann.id != rann.id:
-                logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
-            rec.id = lann.id
+                # check if one of these is without proper annotation
+                if lref == '<SYN>':
+                    rec.alleles.append(rref)
+                elif rref == '<SYN>':
+                    rec.alleles.append(lref)
+                else:
+                    logger.error(f"reference positions not compatible: {lann.alleles} != {rann.alleles}!")
+            # merge left alleles first
+            for allele in lann.alleles[1:]:
+                rec.alleles.append(allele)
+            # add right alleles, and deduplicate if necessary
+            #TODO think about handling genotype column in here
+            for allele in rann.alleles[1:]:
+                    # might be a runtime problem if there are very many alleles,
+                    # should be fine though
+                    if allele not in rec.alleles:
+                        rec.alleles.append(allele)
 
             # TODO handle genotype column properly
+            #TODO replace with one warning for all such occurences
+            #if lann.id != rann.id:
+            #    logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
+            rec.id = lann.id
+
 
             # rec.samples.update() throws internal pysam errors, circumvent it by directly calling update for each sample
             for sample in lann.samples:
