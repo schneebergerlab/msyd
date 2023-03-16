@@ -403,6 +403,7 @@ cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.Pa
     tmpfiles = [tempfile.NamedTemporaryFile().name for _ in vcfs]
 
     for i in range(len(vcfs)):
+        logger.info(f"Prefiltering {vcfs[i]}")
         extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=False)
 
     return tmpfiles
@@ -496,10 +497,20 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                     rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
                 else:
                     rec.samples[org].update({'SYN': 0})
+            # write to file
             vcfout.write(rec)
 
         # write the small variants in the pansyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
+            # double check if the chr has been added, was throwing errors for some reason...
+            if rec.chrom not in header_chrs:
+                if ref:
+                    # add length if it is known from the reference
+                    vcfout.header.add_line("##contig=<ID={},length={}>".format(rec.chrom, len(ref[rec.chrom])))
+                else:
+                    vcfout.header.add_line("##contig=<ID={}>".format(rec.chrom))
+
+
             # iterate through organisms, remove any data that is not syntenic
             if not keep_nonsyn_calls:
                 for org in orgsvcf:
