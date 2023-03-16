@@ -182,8 +182,6 @@ def get_orgs_from_df(df):
     return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()), df.iterrows()))
 
 
-#TODO implement function to direcly filter multisyn out for degrees
-
 def get_len(df):
     return sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
 
