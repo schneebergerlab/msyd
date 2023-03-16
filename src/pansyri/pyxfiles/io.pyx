@@ -540,19 +540,25 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     ovcf = pysam.VariantFile(of, 'w')
 
     # Prepare the header
-    if lvcf.header != ovcf.header:
-        logger.error(f"Header not matching in {lf} and {rf}!")
+    if str(lvcf.header) != str(ovcf.header):
+        logger.info(f"Headers not matching in {lf} and {rf}! Combining.")
 
     # merge the headers -- deduplicates automagically
     for line in str(lvcf.header).splitlines()[1:-1]:
         ovcf.header.add_line(line)
     for line in str(rvcf.header).splitlines()[1:-1]:
         ovcf.header.add_line(line)
-    #ovcf.header = lvcf.header
+
     logger.info(f"Found samples: {list(lvcf.header.samples)}, {list(rvcf.header.samples)}")
     for sample in rvcf.header.samples:
+        if sample in ovcf.header.samples:
+            logger.warning(f"Duplicate sample {sample} encountered in {rvcf}. Appending _r")
+            sample += '_r'
         ovcf.header.add_sample(sample)
     for sample in lvcf.header.samples:
+        if sample in ovcf.header.samples:
+            logger.warning(f"Duplicate sample {sample} encountered in {lvcf}. Appending _r")
+            sample += '_l'
         ovcf.header.add_sample(sample)
     #print(ovcf.header)
 
