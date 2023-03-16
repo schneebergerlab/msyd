@@ -400,10 +400,10 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
 cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike]):
-    tmpfiles = [tempfile.NamedTemporaryFile().name for vcf in vcfs]
+    tmpfiles = [tempfile.NamedTemporaryFile().name for _ in vcfs]
 
     for i in range(len(vcfs)):
-        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref)
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=False)
 
     return tmpfiles
 
