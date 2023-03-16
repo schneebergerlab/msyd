@@ -407,7 +407,7 @@ cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.Pa
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -444,8 +444,9 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         vcfin = pysam.VariantFile(inpath)
 
     # add header required for storing PANSYN annotations
-    for line in HEADER.splitlines():
-        vcfout.header.add_line(line)
+    if add_syn_anns:
+        for line in HEADER.splitlines():
+            vcfout.header.add_line(line)
 
     # add pansyn regions and all variation therein
     for syn in syns.iterrows():
@@ -457,43 +458,45 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             else: # ignore regions not present in this org
                 continue
         
-        rec = vcfout.new_record()
-        rec.start = rng.start
-        rec.pos = rec.start
-        rec.stop = rng.end
-        chrom = rng.chr
+        # add the pansyn region, if specified
+        if add_syn_anns:
+            rec = vcfout.new_record()
+            rec.start = rng.start
+            rec.pos = rec.start
+            rec.stop = rng.end
+            chrom = rng.chr
 
-        if chrom not in header_chrs:
-            if ref:
-                # add length if it is known from the reference
-                vcfout.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
-            else:
-                vcfout.header.add_line("##contig=<ID={}>".format(chrom))
+            if chrom not in header_chrs:
+                if ref:
+                    # add length if it is known from the reference
+                    vcfout.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
+                else:
+                    vcfout.header.add_line("##contig=<ID={}>".format(chrom))
 
-        rec.chrom = chrom
-        if syn.get_degree() == len(orgs):
-            if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
+            rec.chrom = chrom
+            if syn.get_degree() == len(orgs):
+                if ref:
+                    rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
+                else:
+                    rec.alleles = ["<SYN>", "<CORESYN>"]
+                rec.id = "CORESYN{}".format(corecounter)
+                corecounter += 1
             else:
-                rec.alleles = ["<SYN>", "<CORESYN>"]
-            rec.id = "CORESYN{}".format(corecounter)
-            corecounter += 1
-        else:
-            if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
-            else:
-                rec.alleles = ["<SYN>", "<CROSSSYN>"]
-            rec.id = "CROSSSYN{}".format(crosscounter)
-            crosscounter += 1
+                if ref:
+                    rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
+                else:
+                    rec.alleles = ["<SYN>", "<CROSSSYN>"]
+                rec.id = "CROSSSYN{}".format(crosscounter)
+                crosscounter += 1
 
-        # write the pansyn annotation
-        for org in orgsvcf:
-            if org in syn.get_orgs():
-                rng = syn.ranges_dict[org]
-                rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
-            else:
-                rec.samples[org].update({'SYN': 0})
-        vcfout.write(rec)
+            # write the pansyn annotation
+            for org in orgsvcf:
+                if org in syn.get_orgs():
+                    rng = syn.ranges_dict[org]
+                    rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+                else:
+                    rec.samples[org].update({'SYN': 0})
+            vcfout.write(rec)
 
         # write the small variants in the pansyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
@@ -549,6 +552,11 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     for line in str(rvcf.header).splitlines()[1:-1]:
         ovcf.header.add_line(line)
 
+    # Panic on two empty vcfs
+    if len(rvcf.header.samples) == 0 or len(lvcf.header.samples) == 0:
+        logger.error("Merging VCFs with no samples is not supported, exiting!")
+        #return
+
     logger.info(f"Found samples: {list(lvcf.header.samples)}, {list(rvcf.header.samples)}")
     for sample in rvcf.header.samples:
         if sample in ovcf.header.samples:
@@ -562,22 +570,19 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         ovcf.header.add_sample(sample)
     #print(ovcf.header)
 
-    # Panic on two empty vcfs
-    if len(ovcf.header.samples) == 0:
-        logger.error("Merging two VCFs with no samples is not supported, exiting!")
-        #return
-
+    # iterate through the VCFs, merging individual records
+    # keeps only records that can be merged
     lann = next(lvcf)
     rann = next(rvcf)
     try:
         while True:
             # ensure they're both SNPs
-            if lann.id[:3] != 'SNP':
-                lann = next(lvcf)
-                continue
-            elif rann.id[:3] != 'SNP':
-                rann = next(rvcf)
-                continue
+            #if lann.id[:3] != 'SNP':
+            #    lann = next(lvcf)
+            #    continue
+            #elif rann.id[:3] != 'SNP':
+            #    rann = next(rvcf)
+            #    continue
 
             # skip until we are at the same position
             if lann.pos < rann.pos or lann.chrom < rann.chrom:
@@ -586,6 +591,8 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             elif rann.pos < lann.pos or rann.chrom < lann.chrom:
                 rann = next(rvcf)
                 continue
+
+            #assert(lann.pos == rann.pos and lann.chrom == rann.chrom)
             
             # we have two SNPs at the same position, merge them
             rec = ovcf.new_record()
@@ -598,8 +605,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             rec.chrom = chrom
 
-            if lann.alleles[0] != rann.alleles[0]:
-                logger.error(f"reference positions not matching in {lann} and {rann}!")
+            lref = lann.alleles[0]
+            rref = rann.alleles[0]
+            oref = lref
+            # check if references need to be merged
+            if lref != rref:
+                #if lref in {'<SYN>', '<CORESYN>'
+                logger.error(f"reference positions not compatible: {lann.alleles} != {rann.alleles}!")
             rec.alleles = set(lann.alleles).union(rann.alleles)
 
             if lann.id != rann.id:
