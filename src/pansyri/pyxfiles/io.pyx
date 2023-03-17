@@ -646,14 +646,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             logger.info(gtmap)
             logger.info(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))
             # this should be faster, test
-            logger.info(gtmap.keys()[-1:] + gtmap.keys()[:-1])
+            logger.info(list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1])
 
             alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
             # <NOTAL> annotations have only one allele in SyRI VCF files
             # pysam throws an error when storing variants with only one allele,
             # but can read them just fine
             if len(alleles) == 1:
-                alleles.append(None) # try to trick pysam
+                alleles.append('') # try to trick pysam
             rec.alleles = alleles
 
             if lann.id != rann.id:
@@ -671,9 +671,16 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 for sample in samples:
                     if not 'GT' in rec.samples[sample]: # nothing needs updating
                         continue
+                    # apparently pysam treats the genotype specially without documenting that behaviour...
+                    gt = rec.samples[sample]['GT']
+                    logger.info(f"GT: {gt}")
+                    rec.samples[sample]['GT'][0] = gtmap[alleles[gt[0]]]
+                    rec.samples[sample]['GT'][1] = gtmap[alleles[gt[1]]]
+
                     # this line will be problematic if there are ever more than 10 alleles; i don't think that's realistic though
-                    rec.samples[sample]['GT'] = rec.samples[sample]['GT'].translate(
-                            {str(i):gtmap[alleles[i]] for i in range(len(alleles))})
+
+                    #rec.samples[sample]['GT'] = rec.samples[sample]['GT'].translate(
+                    #        {str(i):gtmap[alleles[i]] for i in range(len(alleles))})
 
             # check if format is handled automagically by pysam
             if list(lann.format) != list(rann.format):
