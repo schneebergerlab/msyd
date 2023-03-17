@@ -618,6 +618,15 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             rec.chrom = chrom
 
+
+            # idea for improved allele handling
+            # first, construct gt -> index maps w/ reference as GT 0 from lann and rann gts
+            # something like {gt:no for no, gt in enumerate(alleles)}
+            # then merge into common dictionary, if necessary swapping the reference
+            # sort, store in alleles field, keeping the dictionary
+            # the reassign all gt vals with regex by iterating through the dict
+
+            
             lref = lann.alleles[0]
             rref = rann.alleles[0]
             alleles = [] # cache into separate variable, pysam can't handle appending apparently
