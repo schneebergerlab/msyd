@@ -626,46 +626,35 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             # sort, store in alleles field, keeping the dictionary
             # the reassign all gt vals with regex by iterating through the dict
 
-            
             lref = lann.alleles[0]
             rref = rann.alleles[0]
-            alleles = [] # cache into separate variable, pysam can't handle appending apparently
+            # these lists also act as index -> genotype maps
+            # construct joined gt -> index map
+            gtmap = {gt:ind+1 for ind, gt in enumerate(set(lann.alleles[1:] + rann.alleles[1:]))}
             # check if references need to be merged
             if lref != rref:
                 # check if one of these is without proper reference
                 if lref == '<SYN>':
-                    alleles.append(rref)
+                    gtmap[rref]=0
                 elif rref == '<SYN>':
-                    alleles.append(lref)
+                    gtmap[rref]=0
                 else:
                     logger.error(f"reference positions not compatible: {lann.alleles} != {rann.alleles}!")
-
-            # merge left alleles first
-            for allele in lann.alleles[1:]:
-                alleles.append(allele)
-            # add right alleles, and deduplicate if necessary
-            #TODO think about handling genotype column in here
-            for allele in rann.alleles[1:]:
-                    # might be a runtime problem if there are very many alleles,
-                    # should be fine though
-                    if allele not in alleles:
-                        alleles.append(allele)
-
-            logger.info(alleles)
-            # <NOTAL> annotations have only one allele in SyRI VCF files
-            # pysam throws an error when storing variants with only one allele, but can read them just fine
-            # => reuse the old alleles object if possible
-            if len(alleles) == 1:
-                if list(lann.alleles) == list(rann.alleles):
-                    rec.alleles = lann.alleles
-                else:
-                    logger.error(f"Non-identical allele tuples of length 1: {lann.alleles}, {rann.alleles}!")
-                #rec.alleles[0] = alleles[0]
             else:
-                rec.alleles = alleles
+                gtmap[rref] = 0
 
-            # TODO handle genotype column properly
-            offset = len(lann.alleles[1:])
+            logger.info(gtmap)
+            logger.info(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))
+            # this should be faster, test
+            logger.info(gtmap.keys()[-1:] + gtmap.keys()[:-1])
+
+            alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
+            # <NOTAL> annotations have only one allele in SyRI VCF files
+            # pysam throws an error when storing variants with only one allele,
+            # but can read them just fine
+            if len(alleles) == 1:
+                alleles.append(None) # try to trick pysam
+            rec.alleles = alleles
 
             if lann.id != rann.id:
                 logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
@@ -673,10 +662,18 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
 
             # rec.samples.update() throws internal pysam errors, circumvent it by directly calling update for each sample
-            for sample in lann.samples:
-                rec.samples[sample].update(lann.samples[sample])
-            for sample in rann.samples:
-                rec.samples[sample].update(rann.samples[sample])
+            for samples in [lann.samples, rann.samples]:
+                for sample in samples:
+                    rec.samples[sample].update(samples[sample])
+
+            # handle GT column separately, incorporating the gtmap constructed earlier
+            for (samples, alleles) in [(lann.samples, lann.alleles), (rann.samples, rann.alleles)]:
+                for sample in samples:
+                    if not 'GT' in rec.samples[sample]: # nothing needs updating
+                        continue
+                    # this line will be problematic if there are ever more than 10 alleles; i don't think that's realistic though
+                    rec.samples[sample]['GT'] = rec.samples[sample]['GT'].translate(
+                            {str(i):gtmap[alleles[i]] for i in range(len(alleles))})
 
             # check if format is handled automagically by pysam
             if list(lann.format) != list(rann.format):
