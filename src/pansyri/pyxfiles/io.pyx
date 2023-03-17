@@ -639,12 +639,24 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             for allele in rann.alleles[1:]:
                     # might be a runtime problem if there are very many alleles,
                     # should be fine though
-                    if allele not in rec.alleles:
+                    if allele not in alleles:
                         alleles.append(allele)
 
-            rec.alleles = alleles
+            logger.info(alleles)
+            # <NOTAL> annotations have only one allele in SyRI VCF files
+            # pysam throws an error when storing variants with only one allele, but can read them just fine
+            # => reuse the old alleles object if possible
+            if len(alleles) == 1:
+                if list(lann.alleles) == list(rann.alleles):
+                    rec.alleles = lann.alleles
+                else:
+                    logger.error(f"Non-identical allele tuples of length 1: {lann.alleles}, {rann.alleles}!")
+                #rec.alleles[0] = alleles[0]
+            else:
+                rec.alleles = alleles
 
             # TODO handle genotype column properly
+            offset = len(lann.alleles[1:])
 
             if lann.id != rann.id:
                 logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
