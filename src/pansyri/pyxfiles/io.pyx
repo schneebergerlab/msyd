@@ -653,7 +653,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             # pysam throws an error when storing variants with only one allele,
             # but can read them just fine
             if len(alleles) == 1:
-                alleles.append('') # try to trick pysam
+                alleles.append(' ') # try to trick pysam
             rec.alleles = alleles
 
             if lann.id != rann.id:
@@ -673,7 +673,6 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         continue
                     # apparently pysam treats the genotype specially without documenting that behaviour...
                     gt = rec.samples[sample]['GT']
-                    logger.info(f"GT: {gt}")
                     if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None: # do nothing if there is no proper gt
                         rec.samples[sample]['GT'][0] = gtmap[alleles[gt[0]]]
                         rec.samples[sample]['GT'][1] = gtmap[alleles[gt[1]]]
