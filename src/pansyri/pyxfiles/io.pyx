@@ -671,11 +671,15 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         continue
                     # apparently pysam treats the genotype specially without documenting that behaviour...
                     gt = rec.samples[sample]['GT']
-                    if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None: # do nothing if there is no proper gt
-                        rec.samples[sample]['GT'][0] = gtmap[alleles[gt[0]]]
-                        rec.samples[sample]['GT'][1] = gtmap[alleles[gt[1]]]
+
+                    if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None:
+                        # there is a phased GT
+                        rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], gtmap[alleles[gt[1]]])
+                    elif gt and len(gt) == 1 and not gt[0] is None:
+                        # there is an unphased GT
+                        rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], '')
                     else:
-                        # log for now
+                        # there is an invalid GT
                         logger.warning(f"Invalid GT found: {gt}")
 
 
