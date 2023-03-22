@@ -674,8 +674,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                     # apparently pysam treats the genotype specially without documenting that behaviour...
                     gt = rec.samples[sample]['GT']
                     logger.info(f"GT: {gt}")
-                    rec.samples[sample]['GT'][0] = gtmap[alleles[gt[0]]]
-                    rec.samples[sample]['GT'][1] = gtmap[alleles[gt[1]]]
+                    if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None: # do nothing if there is no proper gt
+                        rec.samples[sample]['GT'][0] = gtmap[alleles[gt[0]]]
+                        rec.samples[sample]['GT'][1] = gtmap[alleles[gt[1]]]
+                    else:
+                        # log for now
+                        logger.warning(f"Invalid GT found: {gt}")
+
 
                     # this line will be problematic if there are ever more than 10 alleles; i don't think that's realistic though
 
