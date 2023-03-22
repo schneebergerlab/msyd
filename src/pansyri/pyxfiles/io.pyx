@@ -643,12 +643,10 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             else:
                 gtmap[rref] = 0
 
-            logger.info(gtmap)
-            logger.info(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))
-            # this should be faster, test
-            logger.info(list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1])
+            #TODO benchmark
+            alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
+            #alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
 
-            alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
             # <NOTAL> annotations have only one allele in SyRI VCF files
             # pysam throws an error when storing variants with only one allele,
             # but can read them just fine
@@ -711,7 +709,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         pass
 
     if conflictinginfo:
-        logger.warning(f"There was conflicting information stored in INFO! {rvcf.name} values were overwritten!")
+        logger.warning(f"There was conflicting information stored in INFO! {rf} values were overwritten!")
 
     return of # to enable reduction operation
 
