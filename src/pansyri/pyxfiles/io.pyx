@@ -658,6 +658,9 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
                     else:
                         logger.error(f"no matching allele could be found among {lann.alleles} and {rann.alleles}! Skipping!")
+
+                        rann = next(lvcf)
+                        lann = next(lvcf)
                         continue
             else:
                 gtmap[rref] = 0
