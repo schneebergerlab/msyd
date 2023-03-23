@@ -635,17 +635,36 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             if lref != rref:
                 # check if one of these is without proper reference
                 if lref == '<SYN>':
-                    gtmap[rref]=0
+                    gtmap[rref] = 0
                 elif rref == '<SYN>':
-                    gtmap[rref]=0
-                else:
-                    logger.error(f"reference positions not compatible: {lann.alleles} != {rann.alleles}!")
+                    gtmap[rref] = 0
+                else: # disagreement in refrence sequence, see if annotated 
+                    logger.warning(f"Non-identical references: {lann.alleles[0]} != {rann.alleles[0]}! Looking for identical alleles to use as reference")
+                    ov = set(lann.alleles).intersection(rann.alleles)
+                    if ov:
+                        logger.info(f"{lann.alleles}, {rann.alleles}, {ov}, {gtmap}")
+                        gtmap[next(iter(ov))] = 0
+                        # add references that haven't been added
+                        mval = max(gtmap.values())
+                        if lref not in gtmap:
+                            mval += 1
+                            gtmap[lref] = mval
+                        if rref not in gtmap:
+                            mval += 1
+                            gtmap[rref] = mval
+                        # reconstruct the gtmap, to avoid problems with indices not matching up
+                        gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
+                        
+
+                    else:
+                        logger.error(f"no matching allele could be found among {lann.alleles} and {rann.alleles}! Skipping!")
+                        continue
             else:
                 gtmap[rref] = 0
 
             #TODO benchmark
-            alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
-            #alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
+            #alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
+            alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
 
             # <NOTAL> annotations have only one allele in SyRI VCF files
             # pysam throws an error when storing variants with only one allele,
@@ -677,7 +696,11 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], gtmap[alleles[gt[1]]])
                     elif gt and len(gt) == 1 and not gt[0] is None:
                         # there is an unphased GT
-                        rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], '')
+                        logger.info(gt[0])
+                        logger.info(gtmap[alleles[gt[0]]])
+                        logger.info(alleles)
+                        logger.info(gtmap)
+                        rec.samples[sample]['GT'] = gtmap[alleles[gt[0]]]
                     else:
                         # there is an invalid GT
                         logger.warning(f"Invalid GT found: {gt}")
