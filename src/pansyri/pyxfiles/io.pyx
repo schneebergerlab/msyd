@@ -545,7 +545,7 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
     merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
 
 
-cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike]):
+cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike], condense_errors=True):
     logger.info(f"Merging {lf} and {rf} into {of}")
     # TODO reimplement this with common framework with merge pffs
     # do all this in memory to be faster
@@ -554,6 +554,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     ovcf = pysam.VariantFile(of, 'w')
 
     conflictinginfo = False
+    conflictingid = False
 
     # Prepare the header
     if str(lvcf.header) != str(ovcf.header):
@@ -643,7 +644,9 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                     ov = set(lann.alleles).intersection(rann.alleles)
                     if ov: # there is an overlap that can be used as new reference
                         #logger.info(f"{lann.alleles}, {rann.alleles}, {ov}, {gtmap}")
-                        gtmap[next(iter(ov))] = 0
+                        new_ref = next(iter(ov))
+                        logger.warning(f"Found matching alleles, using as reference: {new_ref}")
+                        gtmap[new_ref] = 0
                     else:
                         logger.error(f"no matching allele could be found among {lann.alleles} and {rann.alleles}! Skipping!")
 
@@ -678,7 +681,10 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             rec.alleles = alleles
 
             if lann.id != rann.id:
-                logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
+                if condense_errors:
+                    conflictingid = True
+                else:
+                    logger.warning(f"id not matching in {lann.id} and {rann.id}! Choosing {lann.id}")
             rec.id = lann.id
 
 
@@ -703,7 +709,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         rec.samples[sample]['GT'] = gtmap[alleles[gt[0]]]
                     else:
                         # there is an invalid GT
-                        logger.warning(f"Invalid GT found: {gt}")
+                        logger.warning(f"Invalid GT found: {gt} for {sample} in {rec.id}")
 
             #if list(lann.format) != list(rann.format):
             #    # temporary prints necessary because pysam is annoying
@@ -715,9 +721,12 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
             for key in rann.info:
                 if key in lann.info and lann.info[key] != rann.info[key]:
-                    conflictinginfo = True
-                    continue
-                rec.info[key] = rann.info[key]
+                    if condense_errors:
+                        conflictinginfo = True
+                    else:
+                        logger.warning(f"Conflicting info stored for {key} in {rec.id}: {lann.info[key]} != {rann.info[key]}! Choosing {lann.info[key]}")
+                    #continue
+                rec.info[key] = lann.info[key]
 
             ovcf.write(rec)
 
@@ -728,8 +737,11 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     except StopIteration:
         pass
 
-    if conflictinginfo:
-        logger.warning(f"There was conflicting information stored in INFO! {rf} values were overwritten!")
+    if condense_errors:
+        if conflictinginfo:
+            logger.warning(f"There was conflicting information stored in INFO! {rf} values were overwritten!")
+        if conflictingid:
+            logger.warning(f"There were VCF records at the same position with different IDs! {lf} IDs were used")
 
     return of # to enable reduction operation
 
