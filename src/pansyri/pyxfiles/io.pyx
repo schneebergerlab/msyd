@@ -638,36 +638,37 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                     gtmap[rref] = 0
                 elif rref == '<SYN>':
                     gtmap[rref] = 0
-                else: # disagreement in refrence sequence, see if annotated 
+                else: # disagreement in reference sequence, try to choose new reference
                     logger.warning(f"Non-identical references: {lann.alleles[0]} != {rann.alleles[0]}! Looking for identical alleles to use as reference")
                     ov = set(lann.alleles).intersection(rann.alleles)
-                    if ov:
-                        logger.info(f"{lann.alleles}, {rann.alleles}, {ov}, {gtmap}")
+                    if ov: # there is an overlap that can be used as new reference
+                        #logger.info(f"{lann.alleles}, {rann.alleles}, {ov}, {gtmap}")
                         gtmap[next(iter(ov))] = 0
-                        # add references that haven't been added
-                        mval = max(gtmap.values())
-                        if lref not in gtmap:
-                            mval += 1
-                            gtmap[lref] = mval
-                        if rref not in gtmap:
-                            mval += 1
-                            gtmap[rref] = mval
-                        # reconstruct the gtmap, to avoid problems with indices not matching up
-                        gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
-                        
-
                     else:
                         logger.error(f"no matching allele could be found among {lann.alleles} and {rann.alleles}! Skipping!")
 
                         rann = next(lvcf)
                         lann = next(lvcf)
                         continue
+
+                # add references that haven't been added so far
+                mval = max(gtmap.values())
+                if lref not in gtmap:
+                    mval += 1
+                    gtmap[lref] = mval
+                if rref not in gtmap:
+                    mval += 1
+                    gtmap[rref] = mval
+
+                # reconstruct the gtmap, to avoid problems with indices not matching up
+                gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
+                        
             else:
                 gtmap[rref] = 0
 
-            #TODO benchmark
             #alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
             alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
+            #logger.info(f"{alleles}, {gtmap}")
 
             # <NOTAL> annotations have only one allele in SyRI VCF files
             # pysam throws an error when storing variants with only one allele,
@@ -687,7 +688,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                     rec.samples[sample].update(samples[sample])
 
             # handle GT column separately, incorporating the gtmap constructed earlier
-            for (samples, alleles) in [(lann.samples, lann.alleles), (rann.samples, rann.alleles)]:
+            for samples in [lann.samples, rann.samples]:
                 for sample in samples:
                     if not 'GT' in rec.samples[sample]: # nothing needs updating
                         continue
@@ -699,25 +700,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], gtmap[alleles[gt[1]]])
                     elif gt and len(gt) == 1 and not gt[0] is None:
                         # there is an unphased GT
-                        logger.info(gt[0])
-                        logger.info(gtmap[alleles[gt[0]]])
-                        logger.info(alleles)
-                        logger.info(gtmap)
                         rec.samples[sample]['GT'] = gtmap[alleles[gt[0]]]
                     else:
                         # there is an invalid GT
                         logger.warning(f"Invalid GT found: {gt}")
 
-
-                    # this line will be problematic if there are ever more than 10 alleles; i don't think that's realistic though
-
-                    #rec.samples[sample]['GT'] = rec.samples[sample]['GT'].translate(
-                    #        {str(i):gtmap[alleles[i]] for i in range(len(alleles))})
-
-            # check if format is handled automagically by pysam
-            if list(lann.format) != list(rann.format):
-                # temporary prints necessary because pysam is annoying
-                logger.info(f"format not matching: {list(lann.format)} and {list(rann.format)}!")
+            #if list(lann.format) != list(rann.format):
+            #    # temporary prints necessary because pysam is annoying
+            #    logger.info(f"format not matching: {list(lann.format)} and {list(rann.format)}!")
 
             # pysam does not allow setting the info field all at once, do it iteratively:
             for key in lann.info:
