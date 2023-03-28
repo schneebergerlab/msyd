@@ -404,7 +404,7 @@ cpdef prefilter(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.Pa
 
     for i in range(len(vcfs)):
         logger.info(f"Prefiltering {vcfs[i]}")
-        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=False)
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=True)
 
     return tmpfiles
 
@@ -605,6 +605,8 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             elif rann.pos < lann.pos or rann.chrom < lann.chrom:
                 rann = next(rvcf)
                 continue
+            #TODO handle different variants at same position
+            # merge on ref
 
             #assert(lann.pos == rann.pos and lann.chrom == rann.chrom)
             
@@ -633,46 +635,48 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             # construct joined gt -> index map
             gtmap = {gt:ind+1 for ind, gt in enumerate(set(lann.alleles[1:] + rann.alleles[1:]))}
             # check if references need to be merged
-            if lref != rref:
-                # check if one of these is without proper reference
-                if lref == '<SYN>':
-                    gtmap[rref] = 0
-                elif rref == '<SYN>':
-                    gtmap[rref] = 0
-                else: # disagreement in reference sequence, try to choose new reference
-                    logger.warning(f"Non-identical references: {lann.alleles[0]} != {rann.alleles[0]}! Looking for identical alleles to use as reference")
-                    ov = set(lann.alleles).intersection(rann.alleles)
-                    if ov: # there is an overlap that can be used as new reference
-                        #logger.info(f"{lann.alleles}, {rann.alleles}, {ov}, {gtmap}")
-                        new_ref = next(iter(ov))
-                        logger.warning(f"Found matching alleles, using as reference: {new_ref}")
-                        gtmap[new_ref] = 0
-                    else:
-                        logger.error(f"no matching allele could be found among {lann.alleles} and {rann.alleles}! Skipping!")
+            #if lref != rref:
+            #    # check if one of these is without proper reference
+            #    if lref == '<SYN>':
+            #        gtmap[rref] = 0
+            #    elif rref == '<SYN>':
+            #        gtmap[rref] = 0
+            #    else: # disagreement in reference sequence, try to choose new reference
+            #        logger.warning(f"Non-identical references: {lann.alleles[0]} != {rann.alleles[0]}! Looking for identical alleles to use as reference")
+            #        ov = set(lann.alleles).intersection(rann.alleles)
+            #        if ov: # there is an overlap that can be used as new reference
+            #            #logger.info(f"{lann.alleles}, {rann.alleles}, {ov}, {gtmap}")
+            #            new_ref = next(iter(ov))
+            #            logger.warning(f"Found matching alleles, using as reference: {new_ref}")
+            #            gtmap[new_ref] = 0
+            #        else:
+            #            logger.error(f"no matching allele could be found among {lann.alleles} and {rann.alleles}! Skipping!")
 
-                        rann = next(lvcf)
-                        lann = next(lvcf)
-                        continue
+            #            rann = next(lvcf)
+            #            lann = next(lvcf)
+            #            continue
 
-                # add references that haven't been added so far
-                mval = max(gtmap.values())
-                if lref not in gtmap:
-                    mval += 1
-                    gtmap[lref] = mval
-                if rref not in gtmap:
-                    mval += 1
-                    gtmap[rref] = mval
+            #    # add references that haven't been added so far
+            #    mval = max(gtmap.values())
+            #    if lref not in gtmap:
+            #        mval += 1
+            #        gtmap[lref] = mval
+            #    if rref not in gtmap:
+            #        mval += 1
+            #        gtmap[rref] = mval
 
-                # reconstruct the gtmap, to avoid problems with indices not matching up
-                gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
-                        
-            else:
-                gtmap[rref] = 0
+            #    # reconstruct the gtmap, to avoid problems with indices not matching up
+            #    gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
+            #            
+            #else:
+            #    gtmap[rref] = 0
 
-            #alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
-            alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
-            #logger.info(f"{alleles}, {gtmap}")
+            ##alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
+            #alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
+            ##logger.info(f"{alleles}, {gtmap}")
 
+            alleles = [rref] + list(gtmap.keys())
+            gtmap[rref] = 0 # add the reference to gtmap
             # <NOTAL> annotations have only one allele in SyRI VCF files
             # pysam throws an error when storing variants with only one allele,
             # but can read them just fine
