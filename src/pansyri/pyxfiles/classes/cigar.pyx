@@ -88,11 +88,11 @@ cdef class Cigar:
                 buf += tup.n
         return buf
 
-    def get_identity(self, bint ref=True):
+    def get_identity(self):#, bint ref=True):
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').
         """
-        return self.get_len_of_type(set(ord('=')))/self.get_len(ref=ref)
+        return self.get_len_of_type(set(ord('=')))/len(self)
 
     def __len__(self):
         cdef unsigned int buf = 0
