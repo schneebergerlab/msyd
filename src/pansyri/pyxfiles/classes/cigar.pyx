@@ -92,7 +92,7 @@ cdef class Cigar:
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').
         """
-        return self.get_len_of_type(set(ord('=')))/len(self)
+        return self.get_len_of_type({ord('=')})/len(self)
 
     def __len__(self):
         cdef unsigned int buf = 0
