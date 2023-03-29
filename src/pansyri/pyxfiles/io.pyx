@@ -601,7 +601,34 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             elif lann.alleles[0] != rann.alleles[0]:
                 # there are multiple annotations on this position, and they aren't sorted
                 # (if they are sorted the code above already works)
-                pass
+                pos = lann.pos
+                chrom = lann.chrom
+
+                # extract all records at this position in rann, store in dictionary
+                mapping = dict()
+                while rann.pos == pos and rann.chrom == chrom:
+                    if rann.alleles[0] in mapping:
+                        logger.error(f"Two variants with same reference ({rann.alleles[0]}) at same position ({rann.pos})!")
+                    else:
+                        mapping[rann.alleles[0]] = rann
+                    rann = next(rvcf)
+                # rann now contains the first record after this position
+
+                # match with records in lvcf one by one
+                while lvcf.pos == pos and lvcf.chrom == chrom:
+                    if lann.alleles[0] in mapping:
+                        merge_vcf_records(lann, mapping[lann.alleles[0]], ovcf)
+                        del mapping[ann.alleles[0]]
+                    else:
+                        ovcf.write(lann)
+                # lann now contains the first record after this position
+
+                # add records in rvcf that do not match any in lvcf
+                for record in mapping.values():
+                    ovcf.write(record)
+
+                # all variants up to this position have been added, continue as normal
+                continue
 
             merge_vcf_records(lann, rann, ovcf)
             # discard these two records, look at the next
@@ -609,13 +636,10 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             rann = next(rvcf)
             continue
 
-            #TODO handle different variants at same position
-            # merge on ref
-
     except StopIteration:
         pass
 
-    if condense_errors:
+    if condense_errors: # not working currently
         if conflictinginfo:
             logger.warning(f"There was conflicting information stored in INFO! {rf} values were overwritten!")
         if conflictingid:
