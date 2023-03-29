@@ -396,6 +396,8 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
+##FORMAT=<ID=CG,Number=1,Type=String,Description="CIGAR String containing the alignment to the reference">
+##FORMAT=<ID=ID,Number=1,Type=Integer,Description="Sequence Identity of the alignment of this region to the reference">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
@@ -408,7 +410,7 @@ cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -495,6 +497,12 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 if org in syn.get_orgs():
                     rng = syn.ranges_dict[org]
                     rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+                    if syn.cigars_dict:
+                        cg = syn.cigars_dict[org]
+                        if add_cigar:
+                            rec.samples[org].update({'CG': cg.to_string()})
+                        if add_identity:
+                            rec.samples[org].update({'ID': int(cg.get_identity()*100)})
                 else:
                     rec.samples[org].update({'SYN': 0})
             # write to file
@@ -797,7 +805,7 @@ def extract_syri_regions_to_list(fins, qrynames, cores=1, **kwargs):
     #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
     #        for fin in fins]
 
-cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1):
+cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
     #TODO add functionality to incorporate reference information as optional argument
     cdef:
         out = pysam.VariantFile(outf, 'w')
@@ -880,6 +888,13 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
                 #else:
                 #    chrom = int(match[1])
                 rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+
+                if syn.cigars_dict:
+                    cg = syn.cigars_dict[org]
+                    if add_cigar:
+                        rec.samples[org].update({'CG': cg.to_string()})
+                    if add_identity:
+                        rec.samples[org].update({'ID': int(cg.get_identity()*100)})
             else:
                 rec.samples[org].update({'SYN': 0})
 
