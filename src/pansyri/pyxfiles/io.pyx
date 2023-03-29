@@ -617,12 +617,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 # rann now contains the first record after this position
 
                 # match with records in lvcf one by one
-                while lvcf.pos == pos and lvcf.chrom == chrom:
+                while lann.pos == pos and lann.chrom == chrom:
                     if lann.alleles[0] in mapping:
                         merge_vcf_records(lann, mapping[lann.alleles[0]], ovcf)
-                        del mapping[ann.alleles[0]]
+                        del mapping[lann.alleles[0]]
                     else:
                         ovcf.write(lann)
+                    lann = next(lvcf)
                 # lann now contains the first record after this position
 
                 # add records in rvcf that do not match any in lvcf
