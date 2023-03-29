@@ -574,13 +574,15 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     logger.info(f"Found samples: {list(lvcf.header.samples)}, {list(rvcf.header.samples)}")
     for sample in rvcf.header.samples:
         if sample in ovcf.header.samples:
-            logger.warning(f"Duplicate sample {sample} encountered in {rvcf}. Appending _r")
-            sample += '_r'
+            logger.warning(f"Duplicate sample {sample} encountered in {rf}. Appending filename")
+            sample += '_'
+            sample += rf
         ovcf.header.add_sample(sample)
     for sample in lvcf.header.samples:
         if sample in ovcf.header.samples:
-            logger.warning(f"Duplicate sample {sample} encountered in {lvcf}. Appending _r")
-            sample += '_l'
+            logger.warning(f"Duplicate sample {sample} encountered in {lf}. Appending filename")
+            sample += '_'
+            sample += lf
         ovcf.header.add_sample(sample)
     #print(ovcf.header)
 
