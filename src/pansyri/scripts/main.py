@@ -137,7 +137,7 @@ def call(args):
             logger.warning("No reference specified, not saving sequence to VCF!")
 
         logger.info("Pre-filtering VCFs to syntenic regions")
-        vcfs_filtered = io.prefilter(df, vcfs, ref)
+        vcfs_filtered = io.filter_vcfs(df, vcfs, ref)
         logger.info(f"Merging VCFs, saving to {args.vcf.name}")
         io.reduce_vcfs(vcfs_filtered, args.vcf.name)
 
