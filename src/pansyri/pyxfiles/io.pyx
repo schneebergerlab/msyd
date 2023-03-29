@@ -544,7 +544,6 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
     # incorporate the last vcf, save directly to output
     merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
 
-
 cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike], condense_errors=True):
     logger.info(f"Merging {lf} and {rf} into {of}")
     # TODO reimplement this with common framework with merge pffs
@@ -585,124 +584,6 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         ovcf.header.add_sample(sample)
     #print(ovcf.header)
 
-    def merge_records(lrec, rrec):
-        
-        # we have two SNPs at the same position, merge them
-        rec = ovcf.new_record()
-        rec.pos = lrec.pos # shoud be equal anyway
-
-        chrom = lrec.chrom
-        # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
-        if chrom not in ovcf.header.contigs:
-            ovcf.header.add_line("##contig=<ID={}>".format(chrom))
-
-        rec.chrom = chrom
-
-        lref = lrec.alleles[0]
-        rref = rrec.alleles[0]
-        # these lists also act as index -> genotype maps
-        # construct joined gt -> index map
-        gtmap = {gt:ind+1 for ind, gt in enumerate(set(lrec.alleles[1:] + rrec.alleles[1:]))}
-        # check if references need to be merged
-        #if lref != rref:
-        #    # check if one of these is without proper reference
-        #    if lref == '<SYN>':
-        #        gtmap[rref] = 0
-        #    elif rref == '<SYN>':
-        #        gtmap[rref] = 0
-        #    else: # disagreement in reference sequence, try to choose new reference
-        #        logger.warning(f"Non-identical references: {lrec.alleles[0]} != {rrec.alleles[0]}! Looking for identical alleles to use as reference")
-        #        ov = set(lrec.alleles).intersection(rrec.alleles)
-        #        if ov: # there is an overlap that can be used as new reference
-        #            #logger.info(f"{lrec.alleles}, {rrec.alleles}, {ov}, {gtmap}")
-        #            new_ref = next(iter(ov))
-        #            logger.warning(f"Found matching alleles, using as reference: {new_ref}")
-        #            gtmap[new_ref] = 0
-        #        else:
-        #            logger.error(f"no matching allele could be found among {lrec.alleles} and {rrec.alleles}! Skipping!")
-
-        #            rrec = next(lvcf)
-        #            lrec = next(lvcf)
-        #            continue
-
-        #    # add references that haven't been added so far
-        #    mval = max(gtmap.values())
-        #    if lref not in gtmap:
-        #        mval += 1
-        #        gtmap[lref] = mval
-        #    if rref not in gtmap:
-        #        mval += 1
-        #        gtmap[rref] = mval
-
-        #    # reconstruct the gtmap, to avoid problems with indices not matching up
-        #    gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
-        #            
-        #else:
-        #    gtmap[rref] = 0
-
-        ##alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
-        #alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
-        ##logger.info(f"{alleles}, {gtmap}")
-
-        alleles = [rref] + list(gtmap.keys())
-        gtmap[rref] = 0 # add the reference to gtmap
-        # <NOTAL> annotations have only one allele in SyRI VCF files
-        # pysam throws an error when storing variants with only one allele,
-        # but can read them just fine
-        if len(alleles) == 1:
-            alleles.append(' ') # try to trick pysam
-        rec.alleles = alleles
-
-        if lrec.id != rrec.id:
-            if condense_errors:
-                conflictingid = True
-            else:
-                logger.warning(f"id not matching in {lrec.id} and {rrec.id}! Choosing {lrec.id}")
-        rec.id = lrec.id
-
-
-        # rec.samples.update() throws internal pysam errors, circumvent it by directly calling update for each sample
-        for samples in [lrec.samples, rrec.samples]:
-            for sample in samples:
-                rec.samples[sample].update(samples[sample])
-
-        # handle GT column separately, incorporating the gtmap constructed earlier
-        for samples in [lrec.samples, rrec.samples]:
-            for sample in samples:
-                if not 'GT' in rec.samples[sample]: # nothing needs updating
-                    continue
-                # apparently pysam treats the genotype specially without documenting that behaviour...
-                gt = rec.samples[sample]['GT']
-
-                if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None:
-                    # there is a phased GT
-                    rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], gtmap[alleles[gt[1]]])
-                elif gt and len(gt) == 1 and not gt[0] is None:
-                    # there is an unphased GT
-                    rec.samples[sample]['GT'] = gtmap[alleles[gt[0]]]
-                else:
-                    # there is an invalid GT
-                    logger.warning(f"Invalid GT found: {gt} for {sample} in {rec.id}")
-
-        #if list(lrec.format) != list(rrec.format):
-        #    # temporary prints necessary because pysam is annoying
-        #    logger.info(f"format not matching: {list(lrec.format)} and {list(rrec.format)}!")
-
-        # pysam does not allow setting the info field all at once, do it iteratively:
-        for key in lrec.info:
-            rec.info[key] = lrec.info[key]
-
-        for key in rrec.info:
-            if key in lrec.info and lrec.info[key] != rrec.info[key]:
-                if condense_errors:
-                    conflictinginfo = True
-                else:
-                    logger.warning(f"Conflicting info stored for {key} in {rec.id}: {lrec.info[key]} != {rrec.info[key]}! Choosing {lrec.info[key]}")
-                #continue
-            rec.info[key] = lrec.info[key]
-
-        return rec
-
 
     # iterate through the VCFs, merging individual records
     # keeps only records that can be merged
@@ -722,7 +603,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 # (if they are sorted the code above already works)
                 pass
 
-            ovcf.write(merge_records(lann, rann))
+            merge_vcf_records(lann, rann, ovcf)
             # discard these two records, look at the next
             lann = next(lvcf)
             rann = next(rvcf)
@@ -741,6 +622,127 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
             logger.warning(f"There were VCF records at the same position with different IDs! {lf} IDs were used")
 
     return of # to enable reduction operation
+
+cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile, condense_errors=True):
+    """
+    Merge two vcf records from different files, append to ovcf.
+    """
+    rec = ovcf.new_record()
+    rec.pos = lrec.pos # shoud be equal anyway
+
+    chrom = lrec.chrom
+    # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
+    if chrom not in ovcf.header.contigs:
+        ovcf.header.add_line("##contig=<ID={}>".format(chrom))
+
+    rec.chrom = chrom
+
+    lref = lrec.alleles[0]
+    rref = rrec.alleles[0]
+    # these lists also act as index -> genotype maps
+    # construct joined gt -> index map
+    gtmap = {gt:ind+1 for ind, gt in enumerate(set(lrec.alleles[1:] + rrec.alleles[1:]))}
+    # check if references need to be merged
+    #if lref != rref:
+    #    # check if one of these is without proper reference
+    #    if lref == '<SYN>':
+    #        gtmap[rref] = 0
+    #    elif rref == '<SYN>':
+    #        gtmap[rref] = 0
+    #    else: # disagreement in reference sequence, try to choose new reference
+    #        logger.warning(f"Non-identical references: {lrec.alleles[0]} != {rrec.alleles[0]}! Looking for identical alleles to use as reference")
+    #        ov = set(lrec.alleles).intersection(rrec.alleles)
+    #        if ov: # there is an overlap that can be used as new reference
+    #            #logger.info(f"{lrec.alleles}, {rrec.alleles}, {ov}, {gtmap}")
+    #            new_ref = next(iter(ov))
+    #            logger.warning(f"Found matching alleles, using as reference: {new_ref}")
+    #            gtmap[new_ref] = 0
+    #        else:
+    #            logger.error(f"no matching allele could be found among {lrec.alleles} and {rrec.alleles}! Skipping!")
+
+    #            rrec = next(lvcf)
+    #            lrec = next(lvcf)
+    #            continue
+
+    #    # add references that haven't been added so far
+    #    mval = max(gtmap.values())
+    #    if lref not in gtmap:
+    #        mval += 1
+    #        gtmap[lref] = mval
+    #    if rref not in gtmap:
+    #        mval += 1
+    #        gtmap[rref] = mval
+
+    #    # reconstruct the gtmap, to avoid problems with indices not matching up
+    #    gtmap = {gt:ind for ind, gt in enumerate(sorted(gtmap.keys(), key=lambda gt: gtmap[gt]))}
+    #            
+    #else:
+    #    gtmap[rref] = 0
+
+    ##alleles = list(gtmap.keys())[-1:] + list(gtmap.keys())[:-1] # this should be faster and valid for python dicts >= 3.8
+    #alleles = sorted(gtmap.keys(), key=lambda gt: gtmap[gt])
+    ##logger.info(f"{alleles}, {gtmap}")
+
+    alleles = [rref] + list(gtmap.keys())
+    gtmap[rref] = 0 # add the reference to gtmap
+    # <NOTAL> annotations have only one allele in SyRI VCF files
+    # pysam throws an error when storing variants with only one allele,
+    # but can read them just fine
+    if len(alleles) == 1:
+        alleles.append(' ') # try to trick pysam
+    rec.alleles = alleles
+
+    if lrec.id != rrec.id:
+        if condense_errors:
+            conflictingid = True
+        else:
+            logger.warning(f"id not matching in {lrec.id} and {rrec.id}! Choosing {lrec.id}")
+    rec.id = lrec.id
+
+
+    # rec.samples.update() throws internal pysam errors, circumvent it by directly calling update for each sample
+    for samples in [lrec.samples, rrec.samples]:
+        for sample in samples:
+            rec.samples[sample].update(samples[sample])
+
+    # handle GT column separately, incorporating the gtmap constructed earlier
+    for samples in [lrec.samples, rrec.samples]:
+        for sample in samples:
+            if not 'GT' in rec.samples[sample]: # nothing needs updating
+                continue
+            # apparently pysam treats the genotype specially without documenting that behaviour...
+            gt = rec.samples[sample]['GT']
+
+            if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None:
+                # there is a phased GT
+                rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], gtmap[alleles[gt[1]]])
+            elif gt and len(gt) == 1 and not gt[0] is None:
+                # there is an unphased GT
+                rec.samples[sample]['GT'] = gtmap[alleles[gt[0]]]
+            else:
+                # there is an invalid GT
+                logger.warning(f"Invalid GT found: {gt} for {sample} in {rec.id}")
+
+    #if list(lrec.format) != list(rrec.format):
+    #    # temporary prints necessary because pysam is annoying
+    #    logger.info(f"format not matching: {list(lrec.format)} and {list(rrec.format)}!")
+
+    # pysam does not allow setting the info field all at once, do it iteratively:
+    for key in lrec.info:
+        rec.info[key] = lrec.info[key]
+
+    for key in rrec.info:
+        if key in lrec.info and lrec.info[key] != rrec.info[key]:
+            if condense_errors:
+                conflictinginfo = True
+            else:
+                logger.warning(f"Conflicting info stored for {key} in {rec.id}: {lrec.info[key]} != {rrec.info[key]}! Choosing {lrec.info[key]}")
+            #continue
+        else:
+            rec.info[key] = rrec.info[key]
+
+    ovcf.write(rec)
+
 
 cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
