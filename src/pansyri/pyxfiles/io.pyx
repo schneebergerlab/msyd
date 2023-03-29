@@ -609,7 +609,9 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 # extract all records at this position in rann, store in dictionary
                 mapping = dict()
                 while rann.pos == pos and rann.chrom == chrom:
-                    if rann.alleles[0] in mapping:
+                    if rann.alleles[0] == 'N': # to handle NOTAL and HDR records
+                        pass
+                    elif rann.alleles[0] in mapping:
                         logger.error(f"Two variants with same reference at same position: {rann}, {mapping[rann.alleles[0]]}!")
                     else:
                         mapping[rann.alleles[0]] = rann
@@ -618,7 +620,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
                 # match with records in lvcf one by one
                 while lann.pos == pos and lann.chrom == chrom:
-                    if lann.alleles[0] in mapping:
+                    if lann.alleles[0] != 'N' and lann.alleles[0] in mapping:
                         merge_vcf_records(lann, mapping[lann.alleles[0]], ovcf)
                         del mapping[lann.alleles[0]]
                     else:
