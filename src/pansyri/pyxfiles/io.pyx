@@ -664,6 +664,8 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
     """
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
+    if chrom not in ovcf.header.contigs:
+        ovcf.header.add_line("##contig=<ID={}>".format(chrom))
     new_rec = ovcf.new_record()
     new_rec.pos = rec.pos
     new_rec.chrom = rec.chrom
