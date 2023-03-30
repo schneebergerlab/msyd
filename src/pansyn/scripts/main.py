@@ -74,6 +74,7 @@ def main(argv):
     call_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output, alignment and VCF files in from. For more details, see the Readme.")
     call_parser.add_argument("-o", dest='pff', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
     call_parser.add_argument("-m", "--merge-vcf", dest='vcf', type=argparse.FileType('wt'), help="Merge the VCFs specified in the input table, store the merged VCF at the path specified.")
+    call_parser.add_argument("-f", "--filter", dest='filter', action='store_const', const=True, default=False, help="Filter VCFs to only contain records in pansyntenic regions before merging.")
     call_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="Reference to use for the VCF output")
     call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PFF file containing a previous pansynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Pansyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 4.", type=int, default=4)
@@ -136,8 +137,10 @@ def call(args):
         else:
             logger.warning("No reference specified, not saving sequence to VCF!")
 
-        #logger.info("Pre-filtering VCFs to syntenic regions")
-        #vcfs_filtered = io.filter_vcfs(df, vcfs, ref)
+        if args.filter:
+            logger.info("Pre-filtering VCFs to pansyntenic regions")
+            vcfs = io.filter_vcfs(df, vcfs, ref)
+
         logger.info(f"Merging VCFs, saving to {args.vcf.name}")
         io.reduce_vcfs(vcfs, args.vcf.name)
 
