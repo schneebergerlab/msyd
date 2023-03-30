@@ -616,11 +616,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
                 # extract all records at this position in rann, store in dictionary
                 mapping = dict()
+                rann = next(rvcf)
                 while rann.pos == pos and rann.chrom == chrom:
                     if rann.alleles[0] == 'N': # to handle NOTAL and HDR records
                         pass
                     elif rann.alleles[0] in mapping:
-                        logger.error(f"Two variants with same reference at same position: {rann}, {mapping[rann.alleles[0]]}!")
+                        logger.error(f"Two variants with same reference at same position in same file: {rann}, {mapping[rann.alleles[0]]}.")
+                        #merge_vcf_records(rann, mapping[rann.alleles[0]], ovcf)
                     else:
                         mapping[rann.alleles[0]] = rann
                     rann = next(rvcf)
@@ -665,6 +667,7 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
     if rec.chrom not in ovcf.header.contigs:
+        #logger.info(f"Adding {rec.chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(rec.chrom))
     new_rec = ovcf.new_record()
     new_rec.pos = rec.pos
@@ -687,6 +690,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
     chrom = lrec.chrom
     # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
     if chrom not in ovcf.header.contigs:
+        #logger.info(f"Adding {chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(chrom))
 
     rec.chrom = chrom
@@ -727,13 +731,15 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
                 continue
             # apparently pysam treats the genotype specially without documenting that behaviour...
             gt = rec.samples[sample]['GT']
-
-            if gt and len(gt) >=2 and not gt[0] is None and not gt[1] is None:
-                # there is a phased GT
-                rec.samples[sample]['GT'] = (gtmap[alleles[gt[0]]], gtmap[alleles[gt[1]]])
-            elif gt and len(gt) == 1 and not gt[0] is None:
+            mapper = lambda x: gtmap[alleles[x]] if x is not None else gtmap[alleles[0]]
+            if not gt:
+                logger.warning(f"Invalid GT found: {gt} for {sample} in {rec.id}")
+                continue
+            elif len(gt) == 2:
+                rec.samples[sample]['GT'] = (mapper(gt[0]), mapper(gt[1]))
+            elif len(gt) == 1:
                 # there is an unphased GT
-                rec.samples[sample]['GT'] = gtmap[alleles[gt[0]]]
+                rec.samples[sample]['GT'] = mapper(gt[0])
             else:
                 # there is an invalid GT
                 logger.warning(f"Invalid GT found: {gt} for {sample} in {rec.id}")
