@@ -136,10 +136,10 @@ def call(args):
         else:
             logger.warning("No reference specified, not saving sequence to VCF!")
 
-        logger.info("Pre-filtering VCFs to syntenic regions")
-        vcfs_filtered = io.filter_vcfs(df, vcfs, ref)
+        #logger.info("Pre-filtering VCFs to syntenic regions")
+        #vcfs_filtered = io.filter_vcfs(df, vcfs, ref)
         logger.info(f"Merging VCFs, saving to {args.vcf.name}")
-        io.reduce_vcfs(vcfs_filtered, args.vcf.name)
+        io.reduce_vcfs(vcfs, args.vcf.name)
 
     # save output
     logger.info(f"Saving pansyn calls to PFF at {args.pff.name}")
