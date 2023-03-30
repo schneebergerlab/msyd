@@ -27,7 +27,7 @@ eri	col_eri.bam	col_erisyri.out
 ```
 
 `pansyn call` takes a number of optional CLI flags, described by calling `pansyn call -h`.
-If the -v output is specified with an output vcf, pansyn will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
+If the -m output is specified with an output vcf, pansyn will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
 In order to do this, the input TSV needs to have an additional column specifying the path to the VCF files.
 An example might look like this:
 
