@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as spclhier
 
-import pansyri.util as util
-from pansyri.classes.coords import Range
+import pansyn.util as util
+from pansyn.classes.coords import Range
 
 logger = util.CustomFormatter.getlogger(__name__)
 

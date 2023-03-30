@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import pansyri.util as util
-import pansyri.ordering as ordering
-import pansyri.io as io
-import pansyri.imputation as imputation
-import pansyri.pansyn as pansyn
-from pansyri.classes.coords import Range
+import pansyn.util as util
+import pansyn.ordering as ordering
+import pansyn.io as io
+import pansyn.imputation as imputation
+import pansyn.pansyn as pansyn
+from pansyn.classes.coords import Range
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -16,7 +16,7 @@ import argparse
 import sys
 
 """
-This file serves as the main entrypoint for the pansyri CLI.
+This file serves as the main entrypoint for the pansyn CLI.
 """
 
 def main(argv):
@@ -29,7 +29,7 @@ def main(argv):
     """)
     parser.set_defaults(func=None, cores=1)
 
-    subparsers = parser.add_subparsers()#description="See also pansyri [subparser] -h:") # title/description?
+    subparsers = parser.add_subparsers()#description="See also pansyn [subparser] -h:") # title/description?
     # ordering parser
     order_parser = subparsers.add_parser("order",
         help="Determine a suitable ordering for plotting from a pansyn callset.",
@@ -104,7 +104,7 @@ def main(argv):
     merge_parser = subparsers.add_parser("merge",
         help="Merge different VCFs",
         description="""
-        Exposes the optional VCF merging functionality in pansyri call directly.
+        Exposes the optional VCF merging functionality in pansyn call directly.
         Mainly for testing and debugging purposes
         """)
     merge_parser.set_defaults(func=merge)

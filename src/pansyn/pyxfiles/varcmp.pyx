@@ -4,13 +4,11 @@
 # cython: language_level = 3
 
 
-import pandas as pd
-import numpy as np
 from collections import defaultdict
 
-from pansyri.pansyn import Range, Pansyn
-from pansyri.classes.vars import SNV
-import pansyri.util as util
+from pansyn.pansyn import Range, Pansyn
+from pansyn.classes.vars import SNV
+import pansyn.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 

@@ -73,12 +73,12 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
 
-# everything above this doesn't depend on pansyri
+# everything above this doesn't depend on pansyn
 
-import pansyri.pansyn as pansyn
-from pansyri.classes.cigar import Cigar
-from pansyri.classes.coords import Pansyn, Range
-import pansyri.io
+import pansyn.pansyn as pansyn
+from pansyn.classes.cigar import Cigar
+from pansyn.classes.coords import Pansyn, Range
+import pansyn.io
 
 
 
@@ -395,13 +395,13 @@ def pff_to_file(df, path):
     """Convenience wrapper for to_format to save to a file directly
     """
     with open(path, 'wt') as f:
-        pansyri.io.to_pff(df, f)
+        pansyn.io.to_pff(df, f)
 
 def pff_to_string(df, save_cigars=False):
     """Convenience wrapper for to_format, saves to a stringbuffer, returns the string.
     Mainly meant for printing small-ish callsets.
     """
     with io.StringIO() as buf:
-        pansyri.io.to_pff(df, buf, save_cigars=save_cigars)
+        pansyn.io.to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 

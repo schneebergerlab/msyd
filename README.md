@@ -2,7 +2,7 @@
 
 ## Installation
 pansyn can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
-Requirements for running pansyn are `Cython`, `pysam`, `pandas` and `scipy` for the plotsr ordering functionality.
+Requirements for running pansyn are `Cython`, `pysam`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
 
 ## Usage
 
@@ -77,7 +77,7 @@ The algorithm may not produce suitable output if used on regions with little syn
 
 ## Example pansyn workflow
 
-![Diagram illustrating an example workflow for using pansyn](https://github.com/schneebergerlab/pansyri/blob/leon/workflow.svg)
+![Diagram illustrating an example workflow for using pansyn](https://github.com/schneebergerlab/pansyn/blob/leon/workflow.svg)
 
 The first step in using `pansyn` is to assemble a number of query genomes and choose a reference.
 Assemblies should be of high quality and be chromosome-scale; they may need to be scaffolded (using e.g. RagTag) before further processing.

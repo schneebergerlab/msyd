@@ -29,11 +29,11 @@ from libcpp.deque cimport deque as cpp_deq
 cimport numpy as np
 cimport cython
 
-from pansyri.classes.coords import Range
-from pansyri.classes.coords import Pansyn
-from pansyri.classes.vars import SNV
-import pansyri.util as util
-import pansyri.classes.cigar as cigar
+from pansyn.classes.coords import Range
+from pansyn.classes.coords import Pansyn
+from pansyn.classes.vars import SNV
+import pansyn.util as util
+import pansyn.classes.cigar as cigar
 
 logger = util.CustomFormatter.getlogger(__name__)
 np.random.seed(1)
@@ -913,7 +913,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
     out.close()
 
 cpdef save_to_pff(df, buf, save_cigars=True):
-    """Takes a df containing `Pansyn` objects and writes them in pansyri file format to `buf`.
+    """Takes a df containing `Pansyn` objects and writes them in pansyn file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
     # output organisms in lexicalic ordering
