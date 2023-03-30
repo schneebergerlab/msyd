@@ -718,7 +718,8 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
             rec.samples[sample].update(samples[sample])
 
     # handle GT column separately, incorporating the gtmap constructed earlier
-    for samples in [lrec.samples, rrec.samples]:
+    #for samples in [lrec.samples, rrec.samples]:
+    for (samples, alleles) in [(lrec.samples, lrec.alleles), (rrec.samples, rrec.alleles)]:
         for sample in samples:
             if not 'GT' in rec.samples[sample]: # nothing needs updating
                 continue
@@ -734,6 +735,8 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
             else:
                 # there is an invalid GT
                 logger.warning(f"Invalid GT found: {gt} for {sample} in {rec.id}")
+
+            #logger.info(f"{gt}, {gtmap}, {alleles}, {rec.samples[sample]['GT']}")
 
     #if list(lrec.format) != list(rrec.format):
     #    # temporary prints necessary because pysam is annoying
