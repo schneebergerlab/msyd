@@ -421,8 +421,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         vcfout = pysam.VariantFile(outpath, 'w', header=vcfin.header)
         orgs = util.get_orgs_from_df(syns)
         header_chrs = set(vcfin.header.contigs)
-        int crosscounter = 0
-        int corecounter = 0
+        int syncounter = 1
 
     if not set(vcfin.header.samples).issubset(orgs):
         logger.warning("Input VCF contains organisms not in PFF file! Double-Check names used in .tsv. Truncating VCF.")
@@ -456,57 +455,20 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         syn = syn[1][0]
         rng = syn.ref
         if synorg != 'ref':
+            # untested as of now
             if synorg in syn.ranges_dict:
                 rng = syn.ranges_dict[synorg]
+                syn = copy(syn)
+                syn.ref = rng
+                del syn.ranges_dict[synorg]
             else: # ignore regions not present in this org
                 continue
         
         # add the pansyn region, if specified
         if add_syn_anns:
-            rec = vcfout.new_record()
-            rec.start = rng.start
-            rec.pos = rec.start
-            rec.stop = rng.end
-            chrom = rng.chr
+            add_syn_ann(syn, vcfout, ref=ref, no=syncounter, add_cigar=add_cigar, add_identity=add_identity)
 
-            if chrom not in header_chrs:
-                if ref:
-                    # add length if it is known from the reference
-                    vcfout.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
-                else:
-                    vcfout.header.add_line("##contig=<ID={}>".format(chrom))
-
-            rec.chrom = chrom
-            if syn.get_degree() == len(orgs):
-                if ref:
-                    rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
-                else:
-                    rec.alleles = ["<SYN>", "<CORESYN>"]
-                rec.id = "CORESYN{}".format(corecounter)
-                corecounter += 1
-            else:
-                if ref:
-                    rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
-                else:
-                    rec.alleles = ["<SYN>", "<CROSSSYN>"]
-                rec.id = "CROSSSYN{}".format(crosscounter)
-                crosscounter += 1
-
-            # write the pansyn annotation
-            for org in orgsvcf:
-                if org in syn.get_orgs():
-                    rng = syn.ranges_dict[org]
-                    rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
-                    if syn.cigars_dict:
-                        cg = syn.cigars_dict[org]
-                        if add_cigar:
-                            rec.samples[org].update({'CG': cg.to_string()})
-                        if add_identity:
-                            rec.samples[org].update({'ID': int(cg.get_identity()*100)})
-                else:
-                    rec.samples[org].update({'SYN': 0})
-            # write to file
-            vcfout.write(rec)
+            syncounter +=1
 
         # write the small variants in the pansyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
@@ -532,7 +494,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     #vcfout.close()
     #vcfin.close()
 
-cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike]):
+cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike], add_syn_anns=True):
     # quick and dirty reduction function, TODO write proper one when integrating with PFF variation merging
 
     if len(vcfs) < 1:
@@ -551,6 +513,94 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
         merge_vcfs(tmpfiles[i-1], vcfs[i+1], tmpfiles[i])
     # incorporate the last vcf, save directly to output
     merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
+
+cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[str, os.PathLike], ref=None):
+    """Takes a VCF file, overwrites it adding annotations for core/cross-syn region. Other records are preserved as-is."""
+    cdef:
+        # read in old file, initialise for overwriting
+        oldvcf = pysam.VariantFile(vcf, 'r')
+        newvcf = pysam.VariantFile(vcf + '_alt', 'w')
+        int syncounter = 1
+        orgs = sorted(util.get_orgs_from_df(syns))
+        #int orgsc = len(orgs)
+
+    # copy header
+    for line in str(oldvcf.header).splitlines()[:-1]:
+        #logger.info(line)
+        newvcf.header.add_line(line)
+
+    # extend header if necessary
+    for line in HEADER.splitlines():
+        #if not line in set(newvcf.header):
+        newvcf.header.add_line(line)
+
+    for sample in oldvcf.header.samples:
+        newvcf.header.add_sample(sample)
+
+    syniter = syns.iterrows()
+    syn = next(syniter)[1][0]
+
+    for oldrec in oldvcf:
+        if oldrec.chrom < syn.ref.chr:
+            copy_record(oldrec, newvcf)
+        elif oldrec.start < syn.ref.start:
+            copy_record(oldrec, newvcf)
+        else:
+            # the record is not before the syn
+            add_syn_ann(syn, newvcf, ref=ref, no=syncounter)
+            syncounter += 1
+            copy_record(oldrec, newvcf)
+            try:
+                syn = next(syniter)[1][0]
+            except StopIteration:
+                syn.ref.start = 99999999999 # to disable ever entering the else case again
+
+
+cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=True):
+    rng = syn.ref
+    rec = ovcf.new_record()
+    rec.start = rng.start
+    rec.pos = rec.start
+    rec.stop = rng.end
+    chrom = rng.chr
+
+    if chrom not in ovcf.header.contigs:
+        if ref:
+            # add length if it is known from the reference
+            ovcf.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
+        else:
+            ovcf.header.add_line("##contig=<ID={}>".format(chrom))
+
+    rec.chrom = chrom
+    if set(ovcf.header.samples).issubset(syn.get_orgs()):
+        if ref:
+            rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
+        else:
+            rec.alleles = ["<SYN>", "<CORESYN>"]
+        rec.id = "CORESYN{}".format(no)
+    else:
+        if ref:
+            rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
+        else:
+            rec.alleles = ["<SYN>", "<CROSSSYN>"]
+        rec.id = "CROSSSYN{}".format(no)
+
+    # write the pansyn annotation
+    for org in ovcf.header.samples:
+        if org in syn.get_orgs():
+            rng = syn.ranges_dict[org]
+            rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+            if syn.cigars_dict:
+                cg = syn.cigars_dict[org]
+                if add_cigar:
+                    rec.samples[org].update({'CG': cg.to_string()})
+                if add_identity:
+                    rec.samples[org].update({'ID': int(cg.get_identity()*100)})
+        else:
+            rec.samples[org].update({'SYN': 0})
+    # write to file
+    ovcf.write(rec)
+
 
 cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike], condense_errors=True):
     logger.info(f"Merging {lf} and {rf} into {of}")

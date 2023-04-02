@@ -14,6 +14,7 @@ import pandas as pd
 
 import argparse
 import sys
+import tempfile
 
 """
 This file serves as the main entrypoint for the pansyn CLI.
@@ -128,8 +129,13 @@ def call(args):
 
     print(util.get_stats(df))
 
+    # save output
+    logger.info(f"Saving pansyn calls to PFF at {args.pff.name}")
+    io.save_to_pff(df, args.pff, save_cigars=args.cigars)
+
     # if specified, merge the VCFs
     if args.vcf:
+        logger.info(f"Merging VCFs into {args.vcf.name}")
         ref = None
         if args.ref:
             logger.info("Reading in Reference")
@@ -141,14 +147,12 @@ def call(args):
             logger.info("Pre-filtering VCFs to pansyntenic regions")
             vcfs = io.filter_vcfs(df, vcfs, ref)
 
-        logger.info(f"Merging VCFs, saving to {args.vcf.name}")
-        io.reduce_vcfs(vcfs, args.vcf.name)
+        tmpfile = tempfile.NamedTemporaryFile().name
+        logger.info(f"Merging VCFs, saving to {tmpfile}")
+        io.reduce_vcfs(vcfs, tmpfile)
 
-    # save output
-    logger.info(f"Saving pansyn calls to PFF at {args.pff.name}")
-    io.save_to_pff(df, args.pff, save_cigars=args.cigars)
-    #if args.vcf:
-    #    io.save_to_vcf(df, args.vcf, args.ref.name if args.ref else None, cores=args.cores)
+        logger.info(f"Adding Pansyn annotations, saving to {args.vcf.name}")
+        io.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
 
 def merge(args):
     # temporary function to better test the vcf merging functionality
