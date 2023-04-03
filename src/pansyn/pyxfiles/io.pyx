@@ -524,15 +524,19 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
         orgs = sorted(util.get_orgs_from_df(syns))
         #int orgsc = len(orgs)
 
-    # copy header
+    # copy header, deduplicate along the way
+    headerset = set()
     for line in str(oldvcf.header).splitlines()[:-1]:
         #logger.info(line)
-        newvcf.header.add_line(line)
+        if not line in headerset:
+            newvcf.header.add_line(line)
+            headerset.add(line)
 
     # extend header if necessary
     for line in HEADER.splitlines():
-        #if not line in set(newvcf.header):
-        newvcf.header.add_line(line)
+        if not line in headerset:
+            newvcf.header.add_line(line)
+            headerset.add(line)
 
     for sample in oldvcf.header.samples:
         newvcf.header.add_sample(sample)
