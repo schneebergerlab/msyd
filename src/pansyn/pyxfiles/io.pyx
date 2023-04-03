@@ -660,9 +660,11 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         while True:
             # skip until we are at the same position
             if lann.pos < rann.pos or lann.chrom < rann.chrom:
+                copy_record(lann, ovcf) # try also adding non-multigenomic records
                 lann = next(lvcf)
                 continue
             elif rann.pos < lann.pos or rann.chrom < lann.chrom:
+                copy_record(rann, ovcf) # try also adding non-multigenomic records
                 rann = next(rvcf)
                 continue
             elif lann.alleles[0] != rann.alleles[0]:
