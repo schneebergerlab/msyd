@@ -1,11 +1,12 @@
 digraph example{
 	//rankdir = LR
 	{
+		// input files
 		//node[style=none];
-		ref[label=<ref<br/><i>FASTA</i>>, style=filled];
+		ref[label=<Reference genome<br/><i>FASTA</i>>, style=filled];
 		subgraph cluster1{
 			label="Input genomes";
-			fontname=bold;
+			fontname="Times-Bold";
 			Q2[label=<Query 2<br/><i>FASTA</i>>];
 			Q1[label=<Query 1<br/><i>FASTA</i>>];
 			Q4[label=<Query 4<br/><i>FASTA</i>>];
@@ -14,6 +15,7 @@ digraph example{
 	}
 
 	{
+		// intermediate files
 		//node[style=dashed];
 		syriout[label=<syri.out files>];
 		vcfs[label=<variant files<br/><i>VCF</i>>];
@@ -21,17 +23,19 @@ digraph example{
 	}
 
 	{
+		// software tools
 		node[shape=box];
 		minimap2;
 		SyRI;
-		callers [label="Other variant calling pipeline", fontname="italic"];
+		callers [label="Other variant calling pipeline", fontname="Times-Italic", style=dashed];
 		call [label="pansyn call"];
 		view [label="pansyn view"];
 	}
 
 	subgraph cluster2{
+		// output files
 		label="Output files";
-		fontname=bold;
+		fontname="Times-Bold";
 		labelloc=b;
 		node[style=bold];
 		vcf [label=<merged VCF<br/><i>VCF</i>>];
