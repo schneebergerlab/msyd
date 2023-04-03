@@ -27,9 +27,9 @@
      inkscape:deskcolor="#505050"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="0.89571167"
-     inkscape:cx="476.15769"
-     inkscape:cy="510.76704"
+     inkscape:zoom="0.6333638"
+     inkscape:cx="-65.523164"
+     inkscape:cy="523.39588"
      inkscape:window-width="1916"
      inkscape:window-height="1032"
      inkscape:window-x="0"
@@ -43,7 +43,7 @@
     <color-profile
        name="Chemical-proof"
        xlink:href="file:///usr/share/color/icc/krita/cmyk.icm"
-       id="color-profile687" />
+       id="color-profile1728" />
     <marker
        style="overflow:visible"
        id="marker23472"
@@ -299,26 +299,25 @@
          y="80.975937" />
     </g>
     <g
-       id="g25816"
-       transform="translate(2.9999983)">
+       id="g1717">
       <text
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-         x="33.852821"
+         x="36.852821"
          y="140.35893"
          id="text305-70"><tspan
            sodipodi:role="line"
            id="tspan303-9"
            style="font-weight:bold;stroke-width:0.264583"
-           x="33.852821"
+           x="36.852821"
            y="140.35893">pansyn call</tspan></text>
       <rect
-         style="fill:none;fill-opacity:0.925373;fill-rule:evenodd;stroke:#000000;stroke-width:1.56387;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:markers stroke fill"
+         style="fill:none;fill-opacity:0.925373;fill-rule:evenodd;stroke:#000000;stroke-width:1.64624;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:markers stroke fill"
          id="rect415-36"
-         width="62.275593"
-         height="13.602923"
-         x="32.781937"
-         y="130.78194" />
+         width="69.428978"
+         height="13.520554"
+         x="35.82312"
+         y="130.82312" />
     </g>
     <g
        id="g30033"
@@ -348,48 +347,46 @@
          y="134.71094" />
     </g>
     <g
-       id="g8932"
-       transform="translate(5.1939397,-4.5983759)">
+       id="g1725">
       <text
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-         x="12.81615"
-         y="89.790504"
+         x="18.01009"
+         y="85.192131"
          id="text305-7"><tspan
            sodipodi:role="line"
            id="tspan303-5"
            style="font-style:italic;font-weight:normal;stroke-width:0.264583"
-           x="12.81615"
-           y="89.790504">PAF/SAM/BAMs</tspan></text>
+           x="18.01009"
+           y="85.192131">PAF/SAM/BAMs</tspan></text>
       <rect
-         style="fill:none;fill-opacity:0.925373;fill-rule:evenodd;stroke:#000000;stroke-width:1.70465;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:markers stroke fill"
+         style="fill:none;fill-opacity:0.925373;fill-rule:evenodd;stroke:#000000;stroke-width:1.77575;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:markers stroke fill"
          id="rect415-35"
-         width="74.765923"
-         height="13.462146"
-         x="10.658385"
-         y="80.283905" />
+         width="81.563438"
+         height="13.391048"
+         x="15.887875"
+         y="75.721077" />
     </g>
     <g
-       id="g26634"
-       transform="translate(8.6955916,2.2316849)">
+       id="g1701">
       <text
          xml:space="preserve"
          style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
-         x="68.010086"
-         y="115.35892"
+         x="76.705681"
+         y="117.5906"
          id="text305-7-2"><tspan
            sodipodi:role="line"
            id="tspan303-5-9"
            style="font-style:italic;font-weight:normal;stroke-width:0.264583"
-           x="68.010086"
-           y="115.35892">SyRI.out Files</tspan></text>
+           x="76.705681"
+           y="117.5906">SyRI.out Files</tspan></text>
       <rect
-         style="fill:none;fill-opacity:0.925373;fill-rule:evenodd;stroke:#000000;stroke-width:1.59249;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:markers stroke fill"
+         style="fill:none;fill-opacity:0.925373;fill-rule:evenodd;stroke:#000000;stroke-width:1.70831;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:markers stroke fill"
          id="rect415-35-1"
-         width="64.711914"
-         height="13.574305"
-         x="65.796249"
-         y="105.79626" />
+         width="75.107666"
+         height="13.458488"
+         x="74.549751"
+         y="108.08585" />
     </g>
     <g
        id="g37235"
@@ -501,16 +498,13 @@
        id="path10410"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
-       inkscape:connection-start="#g1138"
-       inkscape:connection-end="#g8932" />
+       inkscape:connection-start="#g1138" />
     <path
-       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.8;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:3.2, 1.6;stroke-dashoffset:0;stroke-opacity:1;marker-start:url(#Arrow3)"
-       d="M 124.47419,82.552012 90.618248,82.485384"
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.704764;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:2.81906, 1.40953;stroke-dashoffset:0;stroke-opacity:1;marker-start:url(#Arrow3)"
+       d="M 124.4694,82.552024 98.247304,82.485262"
        id="path12975"
        inkscape:connector-type="polyline"
-       inkscape:connector-curvature="0"
-       inkscape:connection-start="#g12223"
-       inkscape:connection-end="#g8932" />
+       inkscape:connector-curvature="0" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.8;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:3.2, 1.6;stroke-dashoffset:0;stroke-opacity:1;marker-start:url(#Arrow3)"
        d="m 137.7978,75.5 1.94713,-55.441663"
@@ -596,8 +590,7 @@
        d="M 53.147482,130.64086 55.316109,89.147675"
        id="path23218"
        inkscape:connector-type="polyline"
-       inkscape:connector-curvature="0"
-       inkscape:connection-end="#g8932" />
+       inkscape:connector-curvature="0" />
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:5.64444px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
@@ -735,16 +728,13 @@
        id="path35320"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
-       inkscape:connection-start="#g12223"
-       inkscape:connection-end="#g26634" />
+       inkscape:connection-start="#g12223" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.8;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#marker23472)"
-       d="m 81.60631,130.78194 16.809589,-9.17969"
+       d="m 81.606313,130.78194 16.809586,-9.17969"
        id="path36124"
        inkscape:connector-type="polyline"
-       inkscape:connector-curvature="0"
-       inkscape:connection-start="#g25816"
-       inkscape:connection-end="#g26634" />
+       inkscape:connector-curvature="0" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker23352)"
        d="m 144.49655,89.655488 17.43477,17.762082"
@@ -802,7 +792,6 @@
        id="path39532"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0"
-       inkscape:connection-start="#g25816"
        inkscape:connection-end="#g38900" />
     <path
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker23352)"
@@ -824,6 +813,12 @@
        style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.264583px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
        d="m 235.06895,92.923758 v 0.968021"
        id="path44418"
+       inkscape:connector-type="polyline"
+       inkscape:connector-curvature="0" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:0.7458;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#marker23472)"
+       d="m 154.86416,117.70699 -48.98092,13.26658"
+       id="path923"
        inkscape:connector-type="polyline"
        inkscape:connector-curvature="0" />
   </g>
