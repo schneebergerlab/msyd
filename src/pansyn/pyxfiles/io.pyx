@@ -572,7 +572,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
             ovcf.header.add_line("##contig=<ID={}>".format(chrom))
 
     rec.chrom = chrom
-    if set(ovcf.header.samples).issubset(syn.get_orgs()):
+    if set(ovcf.header.samples).issubset(syn.get_orgs()): # if the region is coresyn within the VCF
         if ref:
             rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
         else:
