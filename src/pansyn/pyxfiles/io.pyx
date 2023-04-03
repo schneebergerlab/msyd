@@ -622,11 +622,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     if str(lvcf.header) != str(ovcf.header):
         logger.info(f"Headers not matching in {lf} and {rf}! Combining.")
 
-    # merge the headers -- deduplicates automagically
+    # merge the headers, deduplicate along the way
+    headerset = set()
     for line in str(lvcf.header).splitlines()[1:-1]:
-        ovcf.header.add_line(line)
+        if not line in headerset:
+            ovcf.header.add_line(line)
     for line in str(rvcf.header).splitlines()[1:-1]:
-        ovcf.header.add_line(line)
+        if not line in headerset:
+            ovcf.header.add_line(line)
 
     # Panic on two empty vcfs
     if len(rvcf.header.samples) == 0 or len(lvcf.header.samples) == 0:
