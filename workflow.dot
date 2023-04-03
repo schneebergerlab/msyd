@@ -1,0 +1,64 @@
+digraph example{
+	//rankdir = LR
+	{
+		//node[style=none];
+		ref[label=<ref<br/><i>FASTA</i>>, style=filled];
+		subgraph cluster1{
+			label="Input genomes";
+			fontname=bold;
+			Q2[label=<Query 2<br/><i>FASTA</i>>];
+			Q1[label=<Query 1<br/><i>FASTA</i>>];
+			Q4[label=<Query 4<br/><i>FASTA</i>>];
+			Q3[label=<Query 3<br/><i>FASTA</i>>];
+		}
+	}
+
+	{
+		//node[style=dashed];
+		syriout[label=<syri.out files>];
+		vcfs[label=<variant files<br/><i>VCF</i>>];
+		alns[label=<Alignment files<br/><i>PAF/SAM/BAM</i>>];
+	}
+
+	{
+		node[shape=box];
+		minimap2;
+		SyRI;
+		callers [label="Other variant calling pipeline", fontname="italic"];
+		call [label="pansyn call"];
+		view [label="pansyn view"];
+	}
+
+	subgraph cluster2{
+		label="Output files";
+		fontname=bold;
+		labelloc=b;
+		node[style=bold];
+		vcf [label=<merged VCF<br/><i>VCF</i>>];
+		pff [label=<pansynteny call file<br/><i>PFF</i>>];
+		filtered [label=<pansyntenic variants<br/>(optionally filtered)<br/><i>VCF</i>>];
+	}
+
+	Q1 -> minimap2;
+	Q2 -> minimap2;
+	Q3 -> minimap2;
+	Q4 -> minimap2;
+	ref -> minimap2[style=bold];
+
+	minimap2 -> alns -> SyRI -> syriout;
+	SyRI -> vcfs
+	callers -> vcfs [style=dotted];
+
+	ref -> call -> pff;
+	vcfs -> call -> vcf;
+	syriout -> call;
+	alns -> call;
+
+	pff -> view -> pff;
+	vcf -> view [style=dashed];
+	vcfs -> view -> filtered;
+
+
+
+
+}
