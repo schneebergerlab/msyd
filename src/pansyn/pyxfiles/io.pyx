@@ -518,8 +518,8 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
     """Takes a VCF file, overwrites it adding annotations for core/cross-syn region. Other records are preserved as-is."""
     cdef:
         # read in old file, initialise for overwriting
-        oldvcf = pysam.VariantFile(vcf, 'r')
-        newvcf = pysam.VariantFile(vcf + '_alt', 'w')
+        oldvcf = pysam.VariantFile(vcfin, 'r')
+        newvcf = pysam.VariantFile(vcfout, 'w')
         int syncounter = 1
         orgs = sorted(util.get_orgs_from_df(syns))
         #int orgsc = len(orgs)
