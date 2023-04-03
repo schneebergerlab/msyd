@@ -145,7 +145,7 @@ def call(args):
 
         if args.filter:
             logger.info("Pre-filtering VCFs to pansyntenic regions")
-            vcfs = io.filter_vcfs(df, vcfs, ref)
+            vcfs = io.filter_vcfs(df, vcfs, ref, add_syn_anns=False)
 
         tmpfile = tempfile.NamedTemporaryFile().name
         logger.info(f"Merging VCFs, saving to {tmpfile}")
