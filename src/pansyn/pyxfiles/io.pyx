@@ -475,7 +475,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # double check if the chr has been added, was throwing errors for some reason...
             if rec.chrom not in header_chrs:
                 logger.info(f"extract_from_syntenic Adding {rec.chrom} to header")
-                header_chrs.add(chrom)
+                header_chrs.add(rec.chrom)
                 if ref:
                     # add length if it is known from the reference
                     vcfout.header.add_line("##contig=<ID={},length={}>".format(rec.chrom, len(ref[rec.chrom])))
@@ -577,7 +577,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     chrom = rng.chr
 
     if chrom not in set(ovcf.header.contigs):
-        logger.info(f"add_syn_ann Adding {rec.chrom} to header")
+        logger.info(f"add_syn_ann Adding {chrom} to header")
         if ref:
             # add length if it is known from the reference
             ovcf.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
@@ -930,7 +930,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
         if chrom not in header_chrs:
-            logger.info(f"save_to_vcf Adding {rec.chrom} to header")
+            logger.info(f"save_to_vcf Adding {chrom} to header")
             header_chrs.add(chrom)
             if ref:
                 # add length if it is known from the reference
