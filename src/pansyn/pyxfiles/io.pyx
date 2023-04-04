@@ -450,7 +450,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         for line in HEADER.splitlines():
             vcfout.header.add_line(line)
 
-    # add pansyn regions and all variation therein
+    # add pansyn regions and contained records
     for syn in syns.iterrows():
         syn = syn[1][0]
         rng = syn.ref
@@ -482,6 +482,12 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 else:
                     vcfout.header.add_line("##contig=<ID={}>".format(rec.chrom))
 
+            # check if the region is complex by looking for symbolic alleles
+            if no_complex:
+                #if any(map(lambda x: re.fullmatch(r'N|[ACGT]*', x) == None, rec.alleles)):
+                # does this need checking for None alleles? not sure...
+                if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
+                    continue # skip this variant
 
             # iterate through organisms, remove any data that is not syntenic
             if not keep_nonsyn_calls:
