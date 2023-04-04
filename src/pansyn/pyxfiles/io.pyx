@@ -406,7 +406,8 @@ cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.
 
     for i in range(len(vcfs)):
         logger.info(f"Filtering {vcfs[i]}")
-        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns, no_complex=no_complex)
+        syri_vcf = not re.fullmatch(r".*syri\.out$", vcfs[i]) == None
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns, no_complex=no_complex, coords_in_info=syri_vcf)
 
     return tmpfiles
 
@@ -436,6 +437,10 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
 
 
     orgsvcf = list(vcfin.header.samples) # select only contained organisms
+
+    if coords_in_info and len(orgsvcf) != 1:
+        logger.error("reading coords from INFO only supported for VCFs with exactly one sample!")
+        raise ValueError("reading coords from INFO only supported for VCFs with exactly one sample!")
 
     # force indexing to allow for calling fetch later.
     #TODO try using until_eof=True as mentioned in the pysam FAQ
@@ -489,6 +494,14 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
                     continue # skip this variant
 
+            # read in coords from INFO column, add to single sample
+            # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
+            if coords_in_info:
+                sample = orgsvcf[0] # there can only be one sample
+                for ind in ['START', 'END', 'CHR']:
+                    if ind in rec.info:
+                        rec.samples[sample][ind] = rec.info[ind]
+
             # iterate through organisms, remove any data that is not syntenic
             if not keep_nonsyn_calls:
                 for org in orgsvcf:
@@ -497,6 +510,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                         #del rec.samples[org]
                         for k in rec.samples[org]:
                             rec.samples[org][k] = None
+
             vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
 
     #vcfout.close()
