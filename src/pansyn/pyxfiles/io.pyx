@@ -397,7 +397,7 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
 ##FORMAT=<ID=CG,Number=1,Type=String,Description="CIGAR String containing the alignment to the reference">
-##FORMAT=<ID=ID,Number=1,Type=Integer,Description="Sequence Identity of the alignment of this region to the reference">
+##FORMAT=<ID=AI,Number=1,Type=Integer,Description="Alignment Identity of the alignment of this region to the reference">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
@@ -599,7 +599,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
                 if add_cigar:
                     rec.samples[org].update({'CG': cg.to_string()})
                 if add_identity:
-                    rec.samples[org].update({'ID': int(cg.get_identity()*100)})
+                    rec.samples[org].update({'AI': int(cg.get_identity()*100)})
         else:
             rec.samples[org].update({'SYN': 0})
     # write to file
@@ -964,7 +964,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
                     if add_cigar:
                         rec.samples[org].update({'CG': cg.to_string()})
                     if add_identity:
-                        rec.samples[org].update({'ID': int(cg.get_identity()*100)})
+                        rec.samples[org].update({'AI': int(cg.get_identity()*100)})
             else:
                 rec.samples[org].update({'SYN': 0})
 
