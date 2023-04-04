@@ -474,6 +474,8 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             # double check if the chr has been added, was throwing errors for some reason...
             if rec.chrom not in header_chrs:
+                logger.info(f"extract_from_syntenic Adding {rec.chrom} to header")
+                header_chrs.add(chrom)
                 if ref:
                     # add length if it is known from the reference
                     vcfout.header.add_line("##contig=<ID={},length={}>".format(rec.chrom, len(ref[rec.chrom])))
@@ -568,7 +570,8 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     rec.stop = rng.end
     chrom = rng.chr
 
-    if chrom not in ovcf.header.contigs:
+    if chrom not in set(ovcf.header.contigs):
+        logger.info(f"add_syn_ann Adding {rec.chrom} to header")
         if ref:
             # add length if it is known from the reference
             ovcf.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
@@ -727,8 +730,8 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
     """
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
-    if rec.chrom not in ovcf.header.contigs:
-        #logger.info(f"Adding {rec.chrom} to header")
+    if rec.chrom not in set(ovcf.header.contigs):
+        logger.info(f"copy_record Adding {rec.chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(rec.chrom))
     new_rec = ovcf.new_record()
     new_rec.pos = rec.pos
@@ -750,8 +753,8 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
 
     chrom = lrec.chrom
     # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
-    if chrom not in ovcf.header.contigs:
-        #logger.info(f"Adding {chrom} to header")
+    if chrom not in set(ovcf.header.contigs):
+        logger.info(f"merge_vcf_records Adding {chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(chrom))
 
     rec.chrom = chrom
@@ -921,6 +924,8 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
         if chrom not in header_chrs:
+            logger.info(f"save_to_vcf Adding {rec.chrom} to header")
+            header_chrs.add(chrom)
             if ref:
                 # add length if it is known from the reference
                 out.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
