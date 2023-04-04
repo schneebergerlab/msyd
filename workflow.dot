@@ -1,17 +1,14 @@
 digraph example{
 	//rankdir = LR
-	{
-		// input files
-		//node[style=none];
-		ref[label=<Reference genome<br/><i>FASTA</i>>, style=filled];
-		subgraph cluster1{
+	// input files
+	subgraph cluster1{
 			label="Input genomes";
 			fontname="Times-Bold";
+			ref[label=<Reference sample<br/><i>FASTA</i>>, style=filled];
 			Q2[label=<Query 2<br/><i>FASTA</i>>];
 			Q1[label=<Query 1<br/><i>FASTA</i>>];
 			Q4[label=<Query 4<br/><i>FASTA</i>>];
 			Q3[label=<Query 3<br/><i>FASTA</i>>];
-		}
 	}
 
 	{
@@ -25,11 +22,11 @@ digraph example{
 	{
 		// software tools
 		node[shape=box];
-		minimap2;
-		SyRI;
+		aligner [label=<Whole-Genome alignment<br/>e.g. <b>minimap2, NUCmer</b>>]
+		SyRI [label=<Synteny calling<br/><b>SyRI</b>>];
+		call [label=<Call pansyntenic regions<br/><b>pansyn call</b>>];
 		callers [label="Other variant calling pipeline", fontname="Times-Italic", style=dashed];
-		call [label="pansyn call"];
-		view [label="pansyn view"];
+		view [label=<Filter pansyntenic regions<br/><b>pansyn view</b>>, style=dashed];
 	}
 
 	subgraph cluster2{
@@ -43,13 +40,13 @@ digraph example{
 		filtered [label=<pansyntenic variants<br/>(optionally filtered)<br/><i>VCF</i>>];
 	}
 
-	Q1 -> minimap2;
-	Q2 -> minimap2;
-	Q3 -> minimap2;
-	Q4 -> minimap2;
-	ref -> minimap2[style=bold];
+	Q1 -> aligner;
+	Q2 -> aligner;
+	Q3 -> aligner;
+	Q4 -> aligner;
+	ref -> aligner[style=bold];
 
-	minimap2 -> alns -> SyRI -> syriout;
+	aligner -> alns -> SyRI -> syriout;
 	SyRI -> vcfs
 	callers -> vcfs [style=dotted];
 
