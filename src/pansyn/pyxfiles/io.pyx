@@ -592,7 +592,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
             rec.alleles = ["<SYN>", "<CROSSSYN>"]
         rec.id = "CROSSSYN{}".format(no)
 
-    rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
+    #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
 
     # write the pansyn annotation
     for org in ovcf.header.samples:
@@ -950,7 +950,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
             rec.id = "CROSSSYN{}".format(crosscounter)
             crosscounter += 1
 
-        rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
+        #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
 
         # input the values for every organism
         for org in orgs:
