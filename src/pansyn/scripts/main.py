@@ -77,7 +77,7 @@ def main(argv):
     call_parser.add_argument("-m", "--merge-vcf", dest='vcf', type=argparse.FileType('wt'), help="Merge the VCFs specified in the input table, store the merged VCF at the path specified.")
     call_parser.add_argument("-a", "--all", dest='all', action='store_const', const=True, default=False, help="Merge all VCF records instead of only records annotated in pansyntenic regions.")
     call_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="Reference to use for the VCF output")
-    call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PFF file containing a previous pansynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
+    #call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PFF file containing a previous pansynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Pansyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 4.", type=int, default=4)
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
