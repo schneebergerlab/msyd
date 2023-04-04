@@ -15,7 +15,7 @@ Many convenient shorthand functions are defined in the `util` module.
 
 This subcommand is used to call pansyntenic regions in a set of genomes.
 It uses the Synteny Intersection Algorithm to identify both core and reference cross synteny, but can optionally be configured to call only core synteny (making it faster particularly when run with many genomes).
-`pansyn call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment and SyRI.out file.
+`pansyn call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment and SyRI.out file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
 Both files should be using the same reference in all specified genomes.
 An example input file might look something like the following:
 
