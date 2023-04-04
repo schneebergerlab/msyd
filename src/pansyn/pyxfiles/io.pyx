@@ -762,7 +762,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
     gtmap = {gt:ind+1 for ind, gt in enumerate(set(lrec.alleles[1:] + rrec.alleles[1:]))}
 
     alleles = [rref] + list(gtmap.keys())
-    gtmap[rref] = 0 # add the reference to gtmap
+    gtmap[rref] = None # add the reference to gtmap
 
     # <NOTAL> annotations have only one allele in SyRI VCF files
     # pysam throws an error when storing variants with only one allele,
