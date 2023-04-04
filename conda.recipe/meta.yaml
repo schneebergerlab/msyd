@@ -1,0 +1,47 @@
+{% set version = "0.0.1" %}
+{% set sha256 = "b87705421a2249fd5bb359642494a7f7a9bcbf90a0b73531d1da2d7fedbad396" %} # TO BE ADDED 
+
+package:
+  name: pansyn
+  version: {{ version }}
+
+source:
+  url: https://github.com/schneebergerlab/pansyn/archive/v{{ version }}.tar.gz
+  sha256: {{ sha256 }}
+
+build:
+  number: 0
+  skip: True # [py < 38]
+  script: "{{ PYTHON }} setup.py install --single-version-externally-managed --record=record.txt"
+
+requirements:
+  build:
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+  host:
+    - python
+    - setuptools
+    - numpy
+    - cython
+  run:
+    - python
+    - numpy
+    - pandas
+    - scipy
+    - psutil
+    - pysam
+
+test:
+  commands:
+    - pansyn --version
+
+about:
+  home: https://github.com/schneebergerlab/pansyn
+  license: MIT License
+  license_file: LICENSE
+  summary: Pan-genomic syntenic region identification
+
+extra:
+  maintainers:
+    - lrauschning
+    - mnshgl0110
