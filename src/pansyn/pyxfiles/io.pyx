@@ -412,7 +412,7 @@ cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=True):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
