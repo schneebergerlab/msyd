@@ -393,6 +393,7 @@ cpdef extract_syri_snvs(fin):
 HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
 ##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
 ##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
+##INFO=<ID=PID,Number=1,Type=Integer,Description="Numerical part of the ID of the parent PANSYN region. If the PID of a region is 10, it's parent's ID will be CROSSSYN10 or CORESYN10 (and there will be only one of either).">
 ##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
@@ -472,7 +473,6 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         # add the pansyn region, if specified
         if add_syn_anns:
             add_syn_ann(syn, vcfout, ref=ref, no=syncounter, add_cigar=add_cigar, add_identity=add_identity)
-
             syncounter +=1
 
         # write the small variants in the pansyn region
@@ -486,6 +486,10 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                     vcfout.header.add_line("##contig=<ID={},length={}>".format(rec.chrom, len(ref[rec.chrom])))
                 else:
                     vcfout.header.add_line("##contig=<ID={}>".format(rec.chrom))
+
+            # add Parent information
+            if add_syn_anns:
+                rec.info['PID']=syncounter
 
             # check if the region is complex by looking for symbolic alleles
             if no_complex:
