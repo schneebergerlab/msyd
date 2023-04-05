@@ -407,7 +407,7 @@ cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.
 
     for i in range(len(vcfs)):
         logger.info(f"Filtering {vcfs[i]}")
-        syri_vcf = not re.fullmatch(r".*syri\.out$", vcfs[i]) == None
+        syri_vcf = not re.fullmatch(r".*syri\.vcf$", vcfs[i]) == None
         extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns, no_complex=no_complex, coords_in_info=syri_vcf)
 
     return tmpfiles
@@ -436,6 +436,10 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     elif not ref:
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
+    # add header required for storing PANSYN annotations
+    if add_syn_anns or coords_in_info:
+        for line in HEADER.splitlines():
+            vcfout.header.add_line(line)
 
     orgsvcf = list(vcfin.header.samples) # select only contained organisms
 
@@ -450,11 +454,6 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         pysam.tabix_index(inpath, force=True, preset='vcf', keep_original=True)
         inpath += ".gz" # no way to turn off automatic compression, apparently
         vcfin = pysam.VariantFile(inpath)
-
-    # add header required for storing PANSYN annotations
-    if add_syn_anns:
-        for line in HEADER.splitlines():
-            vcfout.header.add_line(line)
 
     # add pansyn regions and contained records
     for syn in syns.iterrows():
@@ -479,17 +478,13 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             # double check if the chr has been added, was throwing errors for some reason...
             if rec.chrom not in header_chrs:
-                logger.info(f"extract_from_syntenic Adding {rec.chrom} to header")
+                #logger.info(f"extract_from_syntenic Adding {rec.chrom} to header")
                 header_chrs.add(rec.chrom)
                 if ref:
                     # add length if it is known from the reference
                     vcfout.header.add_line("##contig=<ID={},length={}>".format(rec.chrom, len(ref[rec.chrom])))
                 else:
                     vcfout.header.add_line("##contig=<ID={}>".format(rec.chrom))
-
-            # add Parent information
-            if add_syn_anns:
-                rec.info['PID']=syncounter
 
             # check if the region is complex by looking for symbolic alleles
             if no_complex:
@@ -498,25 +493,31 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
                     continue # skip this variant
 
+            new_rec = vcfout.new_record()
+            new_rec.pos = rec.pos
+            new_rec.chrom = rec.chrom
+            new_rec.id = rec.id
+            new_rec.alleles = rec.alleles
+            # discard old INFO information if reading it in as coords
+            if not coords_in_info:
+                for key in rec.info:
+                    new_rec.info[key] = rec.info[key]
+            # add Parent information
+            if add_syn_anns:
+                new_rec.info['PID'] = syncounter
+            for sample in rec.samples:
+                if keep_nonsyn_calls or sample in orgsvcf:
+                    new_rec.samples[sample].update(rec.samples[sample])
+
             # read in coords from INFO column, add to single sample
             # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
             if coords_in_info:
                 sample = orgsvcf[0] # there can only be one sample
                 for info, ft in [('StartB', 'START'), ('EndB', 'END'), ('ChrB', 'CHR')]:
-                    if ind in rec.info:
-                        rec.samples[sample][ft] = rec.info[info]
+                    if info in rec.info:
+                        new_rec.samples[sample][ft] = rec.info[info]
 
-            # iterate through organisms, remove any data that is not syntenic
-            if not keep_nonsyn_calls:
-                for org in orgsvcf:
-                    if org not in syn.get_orgs():
-                        # pysam doesn't support deletion, instead set every field to None individually
-                        #del rec.samples[org]
-                        for k in rec.samples[org]:
-                            rec.samples[org][k] = None
-
-            vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
-
+            vcfout.write(new_rec)
     #vcfout.close()
     #vcfin.close()
 
@@ -595,7 +596,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     chrom = rng.chr
 
     if chrom not in set(ovcf.header.contigs):
-        logger.info(f"add_syn_ann Adding {chrom} to header")
+        #logger.info(f"add_syn_ann Adding {chrom} to header")
         if ref:
             # add length if it is known from the reference
             ovcf.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
@@ -755,7 +756,7 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
     if rec.chrom not in set(ovcf.header.contigs):
-        logger.info(f"copy_record Adding {rec.chrom} to header")
+        #logger.info(f"copy_record Adding {rec.chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(rec.chrom))
     new_rec = ovcf.new_record()
     new_rec.pos = rec.pos
@@ -778,7 +779,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
     chrom = lrec.chrom
     # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
     if chrom not in set(ovcf.header.contigs):
-        logger.info(f"merge_vcf_records Adding {chrom} to header")
+        #logger.info(f"merge_vcf_records Adding {chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(chrom))
 
     rec.chrom = chrom
@@ -954,7 +955,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
         if chrom not in header_chrs:
-            logger.info(f"save_to_vcf Adding {chrom} to header")
+            #logger.info(f"save_to_vcf Adding {chrom} to header")
             header_chrs.add(chrom)
             if ref:
                 # add length if it is known from the reference
