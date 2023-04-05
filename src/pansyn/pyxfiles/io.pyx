@@ -573,14 +573,14 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
 
     for oldrec in oldvcf:
         if oldrec.chrom < syn.ref.chr:
-            copy_record(oldrec, newvcf)
+            copy_record(oldrec, newvcf, pid=syncounter-1)
         elif oldrec.start < syn.ref.start:
-            copy_record(oldrec, newvcf)
+            copy_record(oldrec, newvcf, pid=syncounter-1)
         else:
             # the record is not before the syn
+            copy_record(oldrec, newvcf, pid=syncounter-1)
             add_syn_ann(syn, newvcf, ref=ref, no=syncounter)
             syncounter += 1
-            copy_record(oldrec, newvcf)
             try:
                 syn = next(syniter)[1][0]
             except StopIteration:
@@ -751,7 +751,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
     return of # to enable reduction operation
 
-cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
+cdef copy_record(rec: VariantRecord, ovcf:VariantFile, int pid=0):
     """
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
@@ -767,6 +767,8 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
         new_rec.info[key] = rec.info[key]
     for sample in rec.samples:
         new_rec.samples[sample].update(rec.samples[sample])
+    if pid != 0: # set parent ID if necessary
+        new_rec.info['PID'] = pid
     ovcf.write(new_rec)
 
 cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile, condense_errors=True):
