@@ -513,7 +513,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
             if coords_in_info:
                 sample = orgsvcf[0] # there can only be one sample
-                for info, ft in [('StartB', 'START'), ('EndB', 'END'), ('ChrB', 'CHR')]:
+                for info, ft in [('ChrB', 'CHR'), ('StartB', 'START'), ('EndB', 'END')]:
                     if info in rec.info:
                         new_rec.samples[sample][ft] = rec.info[info]
 
