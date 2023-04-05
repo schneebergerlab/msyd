@@ -393,24 +393,26 @@ cpdef extract_syri_snvs(fin):
 HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
 ##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
 ##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
+##INFO=<ID=PID,Number=1,Type=Integer,Description="Numerical part of the ID of the parent PANSYN region. If the PID of a region is 10, it's parent's ID will be CROSSSYN10 or CORESYN10 (and there will be only one of either).">
 ##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
 ##FORMAT=<ID=END,Number=1,Type=Integer,Description="End position  in this sample">
 ##FORMAT=<ID=CG,Number=1,Type=String,Description="CIGAR String containing the alignment to the reference">
-##FORMAT=<ID=ID,Number=1,Type=Integer,Description="Sequence Identity of the alignment of this region to the reference">
+##FORMAT=<ID=AI,Number=1,Type=Integer,Description="Alignment Identity of the alignment of this region to the reference">
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike], add_syn_anns=False):
+cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike], add_syn_anns=False, no_complex=False):
     tmpfiles = [tempfile.NamedTemporaryFile().name for _ in vcfs]
 
     for i in range(len(vcfs)):
         logger.info(f"Filtering {vcfs[i]}")
-        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns)
+        syri_vcf = not re.fullmatch(r".*syri\.vcf$", vcfs[i]) == None
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns, no_complex=no_complex, coords_in_info=syri_vcf)
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -434,8 +436,16 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     elif not ref:
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
+    # add header required for storing PANSYN annotations
+    if add_syn_anns or coords_in_info:
+        for line in HEADER.splitlines():
+            vcfout.header.add_line(line)
 
     orgsvcf = list(vcfin.header.samples) # select only contained organisms
+
+    if coords_in_info and len(orgsvcf) != 1:
+        logger.error("reading coords from INFO only supported for VCFs with exactly one sample!")
+        raise ValueError("reading coords from INFO only supported for VCFs with exactly one sample!")
 
     # force indexing to allow for calling fetch later.
     #TODO try using until_eof=True as mentioned in the pysam FAQ
@@ -445,12 +455,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         inpath += ".gz" # no way to turn off automatic compression, apparently
         vcfin = pysam.VariantFile(inpath)
 
-    # add header required for storing PANSYN annotations
-    if add_syn_anns:
-        for line in HEADER.splitlines():
-            vcfout.header.add_line(line)
-
-    # add pansyn regions and all variation therein
+    # add pansyn regions and contained records
     for syn in syns.iterrows():
         syn = syn[1][0]
         rng = syn.ref
@@ -467,30 +472,52 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         # add the pansyn region, if specified
         if add_syn_anns:
             add_syn_ann(syn, vcfout, ref=ref, no=syncounter, add_cigar=add_cigar, add_identity=add_identity)
-
             syncounter +=1
 
         # write the small variants in the pansyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             # double check if the chr has been added, was throwing errors for some reason...
             if rec.chrom not in header_chrs:
+                #logger.info(f"extract_from_syntenic Adding {rec.chrom} to header")
+                header_chrs.add(rec.chrom)
                 if ref:
                     # add length if it is known from the reference
                     vcfout.header.add_line("##contig=<ID={},length={}>".format(rec.chrom, len(ref[rec.chrom])))
                 else:
                     vcfout.header.add_line("##contig=<ID={}>".format(rec.chrom))
 
+            # check if the region is complex by looking for symbolic alleles
+            if no_complex:
+                #if any(map(lambda x: re.fullmatch(r'N|[ACGT]*', x) == None, rec.alleles)):
+                # does this need checking for None alleles? not sure...
+                if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
+                    continue # skip this variant
 
-            # iterate through organisms, remove any data that is not syntenic
-            if not keep_nonsyn_calls:
-                for org in orgsvcf:
-                    if org not in syn.get_orgs():
-                        # pysam doesn't support deletion, instead set every field to None individually
-                        #del rec.samples[org]
-                        for k in rec.samples[org]:
-                            rec.samples[org][k] = None
-            vcfout.write(rec) # this is failing, but still writing the correct output? WTF?
+            new_rec = vcfout.new_record()
+            new_rec.pos = rec.pos
+            new_rec.chrom = rec.chrom
+            new_rec.id = rec.id
+            new_rec.alleles = rec.alleles
+            # discard old INFO information if reading it in as coords
+            if not coords_in_info:
+                for key in rec.info:
+                    new_rec.info[key] = rec.info[key]
+            # add Parent information
+            if add_syn_anns:
+                new_rec.info['PID'] = syncounter
+            for sample in rec.samples:
+                if keep_nonsyn_calls or sample in orgsvcf:
+                    new_rec.samples[sample].update(rec.samples[sample])
 
+            # read in coords from INFO column, add to single sample
+            # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
+            if coords_in_info:
+                sample = orgsvcf[0] # there can only be one sample
+                for info, ft in [('StartB', 'START'), ('EndB', 'END'), ('ChrB', 'CHR')]:
+                    if info in rec.info:
+                        new_rec.samples[sample][ft] = rec.info[info]
+
+            vcfout.write(new_rec)
     #vcfout.close()
     #vcfin.close()
 
@@ -546,14 +573,14 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
 
     for oldrec in oldvcf:
         if oldrec.chrom < syn.ref.chr:
-            copy_record(oldrec, newvcf)
+            copy_record(oldrec, newvcf, pid=syncounter-1)
         elif oldrec.start < syn.ref.start:
-            copy_record(oldrec, newvcf)
+            copy_record(oldrec, newvcf, pid=syncounter-1)
         else:
             # the record is not before the syn
+            copy_record(oldrec, newvcf, pid=syncounter-1)
             add_syn_ann(syn, newvcf, ref=ref, no=syncounter)
             syncounter += 1
-            copy_record(oldrec, newvcf)
             try:
                 syn = next(syniter)[1][0]
             except StopIteration:
@@ -568,7 +595,8 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     rec.stop = rng.end
     chrom = rng.chr
 
-    if chrom not in ovcf.header.contigs:
+    if chrom not in set(ovcf.header.contigs):
+        #logger.info(f"add_syn_ann Adding {chrom} to header")
         if ref:
             # add length if it is known from the reference
             ovcf.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
@@ -589,6 +617,8 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
             rec.alleles = ["<SYN>", "<CROSSSYN>"]
         rec.id = "CROSSSYN{}".format(no)
 
+    #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
+
     # write the pansyn annotation
     for org in ovcf.header.samples:
         if org in syn.get_orgs():
@@ -599,7 +629,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
                 if add_cigar:
                     rec.samples[org].update({'CG': cg.to_string()})
                 if add_identity:
-                    rec.samples[org].update({'ID': int(cg.get_identity()*100)})
+                    rec.samples[org].update({'AI': int(cg.get_identity()*100)})
         else:
             rec.samples[org].update({'SYN': 0})
     # write to file
@@ -622,11 +652,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     if str(lvcf.header) != str(ovcf.header):
         logger.info(f"Headers not matching in {lf} and {rf}! Combining.")
 
-    # merge the headers -- deduplicates automagically
+    # merge the headers, deduplicate along the way
+    headerset = set()
     for line in str(lvcf.header).splitlines()[1:-1]:
-        ovcf.header.add_line(line)
+        if not line in headerset:
+            ovcf.header.add_line(line)
     for line in str(rvcf.header).splitlines()[1:-1]:
-        ovcf.header.add_line(line)
+        if not line in headerset:
+            ovcf.header.add_line(line)
 
     # Panic on two empty vcfs
     if len(rvcf.header.samples) == 0 or len(lvcf.header.samples) == 0:
@@ -657,9 +690,11 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         while True:
             # skip until we are at the same position
             if lann.pos < rann.pos or lann.chrom < rann.chrom:
+                copy_record(lann, ovcf) # try also adding non-multigenomic records
                 lann = next(lvcf)
                 continue
             elif rann.pos < lann.pos or rann.chrom < lann.chrom:
+                copy_record(rann, ovcf) # try also adding non-multigenomic records
                 rann = next(rvcf)
                 continue
             elif lann.alleles[0] != rann.alleles[0]:
@@ -716,12 +751,12 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
     return of # to enable reduction operation
 
-cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
+cdef copy_record(rec: VariantRecord, ovcf:VariantFile, int pid=0):
     """
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
-    if rec.chrom not in ovcf.header.contigs:
-        #logger.info(f"Adding {rec.chrom} to header")
+    if rec.chrom not in set(ovcf.header.contigs):
+        #logger.info(f"copy_record Adding {rec.chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(rec.chrom))
     new_rec = ovcf.new_record()
     new_rec.pos = rec.pos
@@ -732,6 +767,8 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile):
         new_rec.info[key] = rec.info[key]
     for sample in rec.samples:
         new_rec.samples[sample].update(rec.samples[sample])
+    if pid != 0: # set parent ID if necessary
+        new_rec.info['PID'] = pid
     ovcf.write(new_rec)
 
 cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile, condense_errors=True):
@@ -743,19 +780,25 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
 
     chrom = lrec.chrom
     # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
-    if chrom not in ovcf.header.contigs:
-        #logger.info(f"Adding {chrom} to header")
+    if chrom not in set(ovcf.header.contigs):
+        #logger.info(f"merge_vcf_records Adding {chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(chrom))
 
     rec.chrom = chrom
 
     lref = lrec.alleles[0]
     rref = rrec.alleles[0]
+
+    rec.stop = lrec.stop
+
+    if lref != rref:
+        logger.error("Trying to join records with different references!")
+
     # construct joined gt -> index map
     gtmap = {gt:ind+1 for ind, gt in enumerate(set(lrec.alleles[1:] + rrec.alleles[1:]))}
 
     alleles = [rref] + list(gtmap.keys())
-    gtmap[rref] = 0 # add the reference to gtmap
+    gtmap[rref] = None # add the reference to gtmap
 
     # <NOTAL> annotations have only one allele in SyRI VCF files
     # pysam throws an error when storing variants with only one allele,
@@ -914,6 +957,8 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
         if chrom not in header_chrs:
+            #logger.info(f"save_to_vcf Adding {chrom} to header")
+            header_chrs.add(chrom)
             if ref:
                 # add length if it is known from the reference
                 out.header.add_line("##contig=<ID={},length={}>".format(chrom, len(ref[chrom])))
@@ -938,6 +983,8 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
             rec.id = "CROSSSYN{}".format(crosscounter)
             crosscounter += 1
 
+        #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
+
         # input the values for every organism
         for org in orgs:
             if org in syn.get_orgs():
@@ -959,7 +1006,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
                     if add_cigar:
                         rec.samples[org].update({'CG': cg.to_string()})
                     if add_identity:
-                        rec.samples[org].update({'ID': int(cg.get_identity()*100)})
+                        rec.samples[org].update({'AI': int(cg.get_identity()*100)})
             else:
                 rec.samples[org].update({'SYN': 0})
 

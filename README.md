@@ -15,16 +15,23 @@ Many convenient shorthand functions are defined in the `util` module.
 
 This subcommand is used to call pansyntenic regions in a set of genomes.
 It uses the Synteny Intersection Algorithm to identify both core and reference cross synteny, but can optionally be configured to call only core synteny (making it faster particularly when run with many genomes).
-`pansyn call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment and SyRI.out file.
+`pansyn call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment and SyRI.out file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
 Both files should be using the same reference in all specified genomes.
 An example input file might look something like the following:
 
 ```
-\#name	aln	syri
+$cat genomes.tsv
+#name	aln	syri
 an1	col_an1.bam	col_an1syri.out
 c24	col_c24.bam	col_c24syri.out
 eri	col_eri.bam	col_erisyri.out
 ```
+
+Pansynteny could then be called with `pansyn`:
+```
+$pansyn call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
+```
+
 
 `pansyn call` takes a number of optional CLI flags, described by calling `pansyn call -h`.
 If the -m output is specified with an output vcf, pansyn will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
@@ -32,10 +39,16 @@ In order to do this, the input TSV needs to have an additional column specifying
 An example might look like this:
 
 ```
-\#name	aln	syri	vcf
+$cat genomes_with_vcf.tsv
+#name	aln	syri	vcf
 an1	col_an1.bam	col_an1syri.out	col_an1.vcf
 c24	col_c24.bam	col_c24syri.out	col_c24.vcf
 eri	col_eri.bam	col_erisyri.out	col_eri.vcf
+```
+
+In the call above, the VCF merging functionality could then be enabled:
+```
+$pansyn call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
 
 ### `pansyn view`
