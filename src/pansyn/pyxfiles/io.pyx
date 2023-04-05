@@ -785,6 +785,12 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
 
     lref = lrec.alleles[0]
     rref = rrec.alleles[0]
+
+    rec.stop = lrec.stop
+
+    if lref != rref:
+        logger.error("Trying to join records with different references!")
+
     # construct joined gt -> index map
     gtmap = {gt:ind+1 for ind, gt in enumerate(set(lrec.alleles[1:] + rrec.alleles[1:]))}
 
