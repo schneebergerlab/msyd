@@ -20,11 +20,18 @@ Both files should be using the same reference in all specified genomes.
 An example input file might look something like the following:
 
 ```
-\#name	aln	syri
+$cat genomes.tsv
+#name	aln	syri
 an1	col_an1.bam	col_an1syri.out
 c24	col_c24.bam	col_c24syri.out
 eri	col_eri.bam	col_erisyri.out
 ```
+
+Pansynteny could then be called with `pansyn`:
+```
+$pansyn call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
+```
+
 
 `pansyn call` takes a number of optional CLI flags, described by calling `pansyn call -h`.
 If the -m output is specified with an output vcf, pansyn will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
@@ -32,10 +39,16 @@ In order to do this, the input TSV needs to have an additional column specifying
 An example might look like this:
 
 ```
-\#name	aln	syri	vcf
+$cat genomes_with_vcf.tsv
+#name	aln	syri	vcf
 an1	col_an1.bam	col_an1syri.out	col_an1.vcf
 c24	col_c24.bam	col_c24syri.out	col_c24.vcf
 eri	col_eri.bam	col_erisyri.out	col_eri.vcf
+```
+
+In the call above, the VCF merging functionality could then be enabled:
+```
+$pansyn call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
 
 ### `pansyn view`
