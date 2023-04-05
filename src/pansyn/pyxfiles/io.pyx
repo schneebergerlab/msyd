@@ -502,9 +502,9 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
             if coords_in_info:
                 sample = orgsvcf[0] # there can only be one sample
-                for ind in ['START', 'END', 'CHR']:
+                for info, ft in [('StartB', 'START'), ('EndB', 'END'), ('ChrB', 'CHR')]:
                     if ind in rec.info:
-                        rec.samples[sample][ind] = rec.info[ind]
+                        rec.samples[sample][ft] = rec.info[info]
 
             # iterate through organisms, remove any data that is not syntenic
             if not keep_nonsyn_calls:
