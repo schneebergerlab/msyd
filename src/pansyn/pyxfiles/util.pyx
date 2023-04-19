@@ -367,9 +367,16 @@ cdef compile_filter(exp: str):
     if match:
         return lambda x: x.ref.chr == match[2]
     
+    # find simple cases
+    if exp.lower() == 'true':
+        return lambda x: True
+    elif exp.lower() == 'false':
+        return lambda x: False
     # de-bracket expressions
-    if exp[0] == '(' and exp[-1] == ')': # no regex required!
+    elif exp[0] == '(' and exp[-1] == ')': # no regex required!
         return compile_filter(exp[1:-1])
+
+
 
     logger.error(f"compile_filter called with invalid expression: {exp}")
     raise ValueError(f"compile_filter called with invalid expression: {exp}")
