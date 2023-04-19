@@ -303,67 +303,67 @@ cdef compile_filter(exp: str):
         return lambda x: not compile_filter(match[2])(x)
 
     # handle and clauses
-    match = re.fullmatch("\((.*)\)\s?(&|and)\s?\((.*)\)", exp)
+    match = re.fullmatch("\((.*)\)\s?(&|and)\s?\((.*)\)", exp, flags=re.IGNORECASE)
     if match:
         return lambda x: compile_filter(match[1])(x) and compile_filter(match[3])(x)
 
     # handle or clauses
-    match = re.fullmatch("\((.*)\)\s?(\||or)\s?\((.*)\)", exp)
+    match = re.fullmatch("\((.*)\)\s?(\||or)\s?\((.*)\)", exp, flags=re.IGNORECASE)
     if match:
         return lambda x: compile_filter(match[1])(x) or compile_filter(match[3])(x)
 
     # handle xor clauses
-    match = re.fullmatch("\((.*)\)\s?(\^|xor)\s?\((.*)\)", exp)
+    match = re.fullmatch("\((.*)\)\s?(\^|xor)\s?\((.*)\)", exp, flags=re.IGNORECASE)
     if match:
         return lambda x: compile_filter(match[1])(x) ^ compile_filter(match[3])(x)
 
     ## handle primitives
     # degree filters
-    match = re.fullmatch("(deg|degree)\s?>=\s?(\d)+", exp)
+    match = re.fullmatch("(deg|degree)\s?>=\s?(\d)+", exp, flags=re.IGNORECASE)
     if match:
         num = int(match[2])
         return lambda x: x.get_degree() >= num
-    match = re.fullmatch("(deg|degree)\s?<=\s?(\d)+", exp)
+    match = re.fullmatch("(deg|degree)\s?<=\s?(\d)+", exp, flags=re.IGNORECASE)
     if match:
         num = int(match[2])
         return lambda x: x.get_degree() <= num
     # maybe also implement > < etc
 
     # Len filters
-    match = re.fullmatch("(len|length)\s?>=\s?(\d)+", exp)
+    match = re.fullmatch("(len|length)\s?>=\s?(\d)+", exp, flags=re.IGNORECASE)
     if match:
         num = int(match[2])
         return lambda x: len(x.ref) >= num
-    match = re.fullmatch("(len|length)\s?<=\s?(\d)+", exp)
+    match = re.fullmatch("(len|length)\s?<=\s?(\d)+", exp, flags=re.IGNORECASE)
     if match:
         num = int(match[2])
         return lambda x: len(x.ref) <= num
 
     # organism filters
-    match = re.fullmatch("(cont|contains)\s(.*)", exp)
+    match = re.fullmatch("(cont|contains)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         org = match[2]
         return lambda x: org in x.get_orgs()
 
-    match = re.fullmatch("(cont|contains)\sall\s(.*)", exp)
+    match = re.fullmatch("(cont|contains)\sall\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         orgs = match[2].split(',')
         return lambda x: all([org.strip() in x.get_orgs() for org in orgs])
 
-    match = re.fullmatch("(cont|contains)\sany\s(.*)", exp)
+    match = re.fullmatch("(cont|contains)\sany\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         orgs = match[2].split(',')
         return lambda x: any([org.strip() in x.get_orgs() for org in orgs])
 
     # handle position on reference, TODO maybe also do this for organism?
-    match = re.fullmatch("(in)\s(.*)", exp)
+    match = re.fullmatch("(in)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         #TODO error handling?
         rng = Range.read_pff(None, match[2])
         return lambda x: x.ref in rng
 
     # chr filter
-    match = re.fullmatch("(on)\s(.*)", exp)
+    match = re.fullmatch("(on)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         return lambda x: x.ref.chr == match[2]
     
