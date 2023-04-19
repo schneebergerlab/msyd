@@ -3,11 +3,11 @@
 import pandas as pd
 import pytest
 
-import pansyri.util as util
+import pasy.util as util
 
-from pansyri.pansyn import *
-from pansyri.classes.coords import Range, Pansyn
-from pansyri.classes.cigar import Cigar
+from pasy.pansyn import *
+from pasy.classes.coords import Range, Pansyn
+from pasy.classes.cigar import Cigar
 
 
 ### Tests for the `Pansyn` module

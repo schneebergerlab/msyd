@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pansyn.scripts.main import main
+from pasy.scripts.main import main
 import sys
 if __name__ == '__main__':
     main(sys.argv[1:])

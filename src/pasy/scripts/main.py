@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import pansyn.util as util
-import pansyn.ordering as ordering
-import pansyn.io as io
-import pansyn.imputation as imputation
-import pansyn.pansyn as pansyn
-from pansyn.classes.coords import Range
+import pasy.util as util
+import pasy.ordering as ordering
+import pasy.io as io
+import pasy.imputation as imputation
+import pasy.pansyn as pansyn
+from pasy.classes.coords import Range
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -17,23 +17,23 @@ import sys
 import tempfile
 
 """
-This file serves as the main entrypoint for the pansyn CLI.
+This file serves as the main entrypoint for the pasy CLI.
 """
 
 def main(argv):
 
     parser = argparse.ArgumentParser(description="""
-    Pansyn is a pansynteny identifier.
-    Pansyn consists of a Cython library and a CLI interface.\n
+    pasy is a tool for identifying and processing pansynteny.
+    pasy consists of a Python library and a CLI interface.\n
     The CLI interface consists of multiple subcommands, described briefly below.\n
-    For more information, see the documentation and subparser help messages accessed by calling pansyn [subparser] -h.
+    For more information, see the documentation and subparser help messages accessed by calling pasy [subparser] -h.
     """)
     parser.set_defaults(func=None, cores=1)
 
-    subparsers = parser.add_subparsers()#description="See also pansyn [subparser] -h:") # title/description?
+    subparsers = parser.add_subparsers()#description="See also pasy [subparser] -h:") # title/description?
     # ordering parser
     order_parser = subparsers.add_parser("order",
-        help="Determine a suitable ordering for plotting from a pansyn callset.",
+        help="Determine a suitable ordering for plotting from a pansynteny callset.",
         description="""
         Determine the optimal ordering of the supplied genomes for plotting using a clustering-based algorithm.
         The ordering is determined such that adjacent organisms share as many basepairs of pansynteny  as possible.
@@ -51,7 +51,7 @@ def main(argv):
     #    help="Filter a VCF file to only contain annotations in pansyntenic regions",
     #    description="""
     #    Used for filtering VCF files to only contain calls in pansyntenic regions.
-    #    Can be run on pff files processed with pansyn view.
+    #    Can be run on pff files processed with pasy view.
     #    """)
     #filter_parser.set_defaults(func=filter)
     #filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
@@ -107,7 +107,7 @@ def main(argv):
     merge_parser = subparsers.add_parser("merge",
         help="Merge different VCFs",
         description="""
-        Exposes the optional VCF merging functionality in pansyn call directly.
+        Exposes the optional VCF merging functionality in pasy call directly.
         Mainly for testing and debugging purposes
         """)
     merge_parser.set_defaults(func=merge)
@@ -131,7 +131,7 @@ def call(args):
     print(util.get_stats(df))
 
     # save output
-    logger.info(f"Saving pansyn calls to PFF at {args.pff.name}")
+    logger.info(f"Saving pasy calls to PFF at {args.pff.name}")
     io.save_to_pff(df, args.pff, save_cigars=args.cigars)
 
     # if specified, merge the VCFs
@@ -168,7 +168,7 @@ def order(args):
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
 
 def view(args):
-    logger.info(f"reading pansyn output from {args.infile.name}")
+    logger.info(f"reading pansynteny from {args.infile.name}")
     df = io.read_pff(args.infile)
     if not args.filetype: # determine filetype if not present
         args.filetype = args.outfile.name.split(".")[-1]

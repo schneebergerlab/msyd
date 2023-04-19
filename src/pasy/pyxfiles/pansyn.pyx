@@ -10,11 +10,11 @@ import functools
 from collections import deque
 import multiprocessing
 
-import pansyn.io as io
-import pansyn.util as util
-import pansyn.classes as classes
-from pansyn.classes.cigar import Cigar
-from pansyn.classes.coords import Pansyn, Range, Position
+import pasy.io as io
+import pasy.util as util
+import pasy.classes as classes
+from pasy.classes.cigar import Cigar
+from pasy.classes.coords import Pansyn, Range, Position
 
 cdef int MIN_SYN_THRESH = 10
 

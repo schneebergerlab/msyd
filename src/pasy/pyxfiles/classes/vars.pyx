@@ -3,7 +3,7 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-import pansyn.util as util
+import pasy.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 
