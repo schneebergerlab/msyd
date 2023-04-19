@@ -1,7 +1,4 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-# distutils: language = c++
-# cython: language_level = 3
 import math
 
 import numpy as np

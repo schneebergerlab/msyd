@@ -2,11 +2,12 @@
 # in python, probably not worth cythonizing
 
 import pasy.util as util
-import pasy.ordering as ordering
 import pasy.io as io
 import pasy.imputation as imputation
 import pasy.pansyn as pansyn
 from pasy.classes.coords import Range
+
+import pasy.scripts.ordering as ordering
 
 logger = util.CustomFormatter.getlogger(__name__)
 
