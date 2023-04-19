@@ -345,12 +345,12 @@ cdef compile_filter(exp: str):
         org = match[2]
         return lambda x: org in x.get_orgs()
 
-    match = re.fullmatch("(cont|contains)\sall\s(.*)", exp, flags=re.IGNORECASE)
+    match = re.fullmatch("(contall|containsall)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         orgs = match[2].split(',')
         return lambda x: all([org.strip() in x.get_orgs() for org in orgs])
 
-    match = re.fullmatch("(cont|contains)\sany\s(.*)", exp, flags=re.IGNORECASE)
+    match = re.fullmatch("(contany|containsany)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         orgs = match[2].split(',')
         return lambda x: any([org.strip() in x.get_orgs() for org in orgs])
