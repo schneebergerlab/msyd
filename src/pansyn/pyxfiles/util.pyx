@@ -201,6 +201,9 @@ def get_stats(df):
     Calls get_len and tabularize_lens, prettyprints their output.
     """
     tot_len = get_len(df)
+    if tot_len == 0:
+        return "Empty!"
+
     lens = tabularize_lens(df)
     nos = tabularize_nos(df)
     avglens = list(map(lambda x: x[0]/x[1], zip(lens, nos)))
