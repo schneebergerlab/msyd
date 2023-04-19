@@ -206,7 +206,7 @@ def get_stats(df):
 
     lens = tabularize_lens(df)
     nos = tabularize_nos(df)
-    avglens = list(map(lambda x: x[0]/x[1], zip(lens, nos)))
+    avglens = list(map(lambda x: x[0]/x[1] if x[1] > 0 else 0, zip(lens, nos)))
     ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\tAvg. Length\n" + "\n".join([f"{i + 1}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
     return ret
 
