@@ -75,13 +75,21 @@ class Range:
         return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
 
     def read_pff(org:str, cell: str):
-        """Parse a Range in PFF format"""
+        """Parse a Range in PFF format
+        PFF format is :-separated and must contain the chromosome first, then followed by a haplotype (optional) and a start and end position separated by -.
+        If the end position is before the start position, the range is treated as inverted.
+        `org` specifies the organism the returned range should have. If this range is just used for filtering, None may be passed.
+        Examples: Chr1:mat:1000-2000, Chr3:10000-50000
+        """
         #TODO error handling in here
         cellarr = cell.split(':')
-        start = int(cellarr[2].split('-')[0])
-        end = int(cellarr[2].split('-')[1])
+        if len(cellarr) < 2 or len(cellarr) > 3:
+            raise ValueError(f"Invalid PFF Range string: {cell}")
+        start = int(cellarr[-1].split('-')[0])
+        end = int(cellarr[-1].split('-')[1])
+        hapl = cellarr[1] if len(cellarr) == 3 else None
         # should chr be int'ed as well?
-        return Range(org, cellarr[0], cellarr[1], start, end)
+        return Range(org, cellarr[0], hapl, start, end)
 
     
     def __eq__(l, r):

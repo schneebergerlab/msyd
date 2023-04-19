@@ -24,6 +24,8 @@ len >=/<= INT | true if the record has a length <= or >= than INT on the referen
 contains, cont ORG | true if the record has an entry for the organism ORG. ORG needs to match case with the organism name specified in the TSV!
 containsall, contall ORG1, ORG2, ... | true if the record has an entry for all of ORG1, ORG2, etc.
 containsany, contany ORG1, ORG2, ... | true if the record has an entry for at least one of ORG1, ORG2, etc.
+on CHR | true if the record lies on Chromosome CHR on the reference (CHR needs to match the case used in the PFF File)
+in CHR:START-END | true if the records location on the reference lies on Chromosome CHR between START and END (both integers, CHR needs to match the case used in the PFF File).
 
 
 
