@@ -16,10 +16,10 @@
      id="defs6">
     <clipPath
        clipPathUnits="userSpaceOnUse"
-       id="clipPath22">
+       id="clipPath20">
       <path
          d="M -85.04042,-138.89917 V 79.37114 H 85.04042 v -218.27031 z"
-         id="path20" />
+         id="path18" />
     </clipPath>
   </defs>
   <sodipodi:namedview
@@ -42,192 +42,197 @@
       <g
          id="g12">
         <g
-           id="g14" />
-        <g
-           id="g16">
+           id="g14">
           <g
-             id="g18"
-             clip-path="url(#clipPath22)">
+             id="g16"
+             clip-path="url(#clipPath20)">
             <g
-               id="g24">
+               id="g22">
+              <path
+                 d="M -85.04042,-138.89917 V 79.37114 H 85.04042 v -218.27031 z"
+                 style="fill:#008000;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0.3985;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:0"
+                 id="path24" />
+            </g>
+            <g
+               id="g26">
               <path
                  d="M 85.04042,-141.73404 65.19774,0 C 60.05307,34.69313 53.55077,54.19893 36.85092,85.04042 H -65.19774 c 5.75862,-32.65973 5.75862,-52.38069 0,-85.04042 l -19.84268,-141.73404 z"
+                 style="fill:#333333;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0.3985;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:0"
+                 id="path28" />
+            </g>
+            <g
+               id="g30">
+              <path
+                 d="M 99.21382,-141.73404 H 76.53629 L 62.36288,0 C 56.13911,34.81203 48.93617,54.45628 31.18166,85.04042 h 14.1734 C 64.22545,54.6065 72.0474,35.05249 79.37114,0 Z"
                  style="fill:#808080;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0.3985;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:0"
-                 id="path26" />
+                 id="path32" />
             </g>
             <g
-               id="g28">
+               id="g34">
               <path
-                 d="M 85.04042,-141.73404 65.19774,0 C 60.05307,34.69313 53.55077,54.19893 36.85092,85.04042"
-                 style="fill:none;stroke:#333333;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path30" />
+                 d="m -99.21382,-141.73404 h 22.67753 L -62.36288,0 c 4.00428,33.04997 4.63023,51.79723 2.83442,85.04042 h -14.1734 C -73.01265,51.7565 -74.27,32.89793 -79.37114,0 Z"
+                 style="fill:#808080;fill-opacity:1;fill-rule:nonzero;stroke:#000000;stroke-width:0.3985;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:0"
+                 id="path36" />
             </g>
             <g
-               id="g32">
-              <path
-                 d="M -85.04042,-141.73404 -65.19774,0 c 5.75862,32.65973 5.75862,52.38069 0,85.04042"
-                 style="fill:none;stroke:#333333;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path34" />
-            </g>
-            <g
-               id="g36">
+               id="g38">
               <path
                  d="M 0,-28.3468 V 0 c 0.3162,33.68468 -2.95001,53.27892 -14.17339,85.04042"
                  style="fill:none;stroke:#ffffff;stroke-width:5.66927;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:19.8427, 14.1734;stroke-dashoffset:19.8427;stroke-opacity:1"
-                 id="path38" />
+                 id="path40" />
             </g>
             <g
-               id="g40">
+               id="g42">
               <g
-                 id="g42" />
+                 id="g44" />
               <g
-                 id="g44"
+                 id="g46"
                  transform="matrix(3.5,0,0,3.5,-49.271,8.078)">
                 <g
-                   id="g46">
+                   id="g48">
                   <g
-                     id="g48"
+                     id="g50"
                      transform="translate(-35.768,-146.975)">
                     <text
                        xml:space="preserve"
                        transform="matrix(1,0,0,-1,35.768,146.975)"
                        style="font-variant:normal;font-weight:normal;font-size:9.96264px;font-family:'Gargoyle Mono';-inkscape-font-specification:GargoyleMono-Regular;writing-mode:lr-tb;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
-                       id="text52"><tspan
+                       id="text54"><tspan
                          x="0 5.9785805"
                          y="0"
                          sodipodi:role="line"
-                         id="tspan50">pa</tspan></text>
+                         id="tspan52">pa</tspan></text>
                     <g
-                       id="g54"
+                       id="g56"
                        transform="translate(35.768,146.975)" />
                   </g>
                 </g>
                 <g
-                   id="g56"
+                   id="g58"
                    transform="translate(49.271,-8.078)" />
               </g>
             </g>
             <g
-               id="g58">
+               id="g60">
               <g
-                 id="g60" />
+                 id="g62" />
               <g
-                 id="g62"
+                 id="g64"
                  transform="matrix(3.5,0,0,3.5,7.422,8.078)">
                 <g
-                   id="g64">
+                   id="g66">
                   <g
-                     id="g66"
+                     id="g68"
                      transform="translate(-92.461,-146.975)">
                     <text
                        xml:space="preserve"
                        transform="matrix(1,0,0,-1,92.461,146.975)"
                        style="font-variant:normal;font-weight:normal;font-size:9.96264px;font-family:'Gargoyle Mono';-inkscape-font-specification:GargoyleMono-Regular;writing-mode:lr-tb;fill:#ffffff;fill-opacity:1;fill-rule:nonzero;stroke:none"
-                       id="text70"><tspan
+                       id="text72"><tspan
                          x="0 5.9785805"
                          y="0"
                          sodipodi:role="line"
-                         id="tspan68">sy</tspan></text>
+                         id="tspan70">sy</tspan></text>
                     <g
-                       id="g72"
+                       id="g74"
                        transform="translate(92.461,146.975)" />
                   </g>
                 </g>
                 <g
-                   id="g74"
+                   id="g76"
                    transform="translate(-7.422,-8.078)" />
               </g>
             </g>
             <g
-               id="g76">
+               id="g78">
               <path
                  d="M -56.69362,-141.73404 -44.22093,-28.3468"
                  style="fill:none;stroke:#ffffff;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path78" />
+                 id="path80" />
             </g>
             <g
-               id="g80">
+               id="g82">
               <path
                  d="M 0,-141.73404 V -28.3468"
                  style="fill:none;stroke:#ffffff;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path82" />
+                 id="path84" />
             </g>
             <g
-               id="g84">
+               id="g86">
               <path
                  d="M 56.69362,-141.73404 44.22093,-28.3468"
                  style="fill:none;stroke:#ffffff;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path86" />
+                 id="path88" />
             </g>
             <g
-               id="g88">
+               id="g90">
               <path
                  d="M 54.70912,-128.97806 H 0 -54.70912"
                  style="fill:none;stroke:#00cc33;stroke-width:2.83484;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path90" />
+                 id="path92" />
             </g>
             <g
-               id="g92">
+               id="g94">
               <path
                  d="M 53.57544,-99.21382 H 0 -53.57544"
                  style="fill:none;stroke:#00cc33;stroke-width:2.83484;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path94" />
+                 id="path96" />
             </g>
             <g
-               id="g96">
+               id="g98">
               <path
                  d="m -55.55992,-130.39548 3.82709,34.01651"
                  style="fill:none;stroke:#00cc33;stroke-width:17.2916;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path98" />
+                 id="path100" />
             </g>
             <g
-               id="g100">
+               id="g102">
               <path
                  d="m 55.55992,-130.39548 -3.82709,34.01651"
                  style="fill:none;stroke:#00cc33;stroke-width:17.2916;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path102" />
+                 id="path104" />
             </g>
             <g
-               id="g104">
+               id="g106">
               <path
                  d="m 0,-130.39548 v 32.59909"
                  style="fill:none;stroke:#00cc33;stroke-width:17.2916;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path106" />
+                 id="path108" />
             </g>
             <g
-               id="g108">
+               id="g110">
               <path
                  d="M -42.5202,-48.18947 H 8.50412 L 42.5202,-79.37114"
                  style="fill:none;stroke:#f89c0e;stroke-width:2.83484;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path110" />
+                 id="path112" />
             </g>
             <g
-               id="g112">
+               id="g114">
               <path
                  d="M -45.35506,-78.52077 H 8.50412 l 31.18123,31.46498"
                  style="fill:none;stroke:#f89c0e;stroke-width:2.83484;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path114" />
+                 id="path116" />
             </g>
             <g
-               id="g116">
+               id="g118">
               <path
                  d="m -49.83356,-79.37114 3.74146,34.01608"
                  style="fill:none;stroke:#f89c0e;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path118" />
+                 id="path120" />
             </g>
             <g
-               id="g120">
+               id="g122">
               <path
                  d="M 49.83356,-79.37114 46.0921,-45.35506"
                  style="fill:none;stroke:#f89c0e;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path122" />
+                 id="path124" />
             </g>
             <g
-               id="g124">
+               id="g126">
               <path
                  d="m 0,-79.37114 v 32.59911"
                  style="fill:none;stroke:#f89c0e;stroke-width:17.0083;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1"
-                 id="path126" />
+                 id="path128" />
             </g>
           </g>
         </g>
