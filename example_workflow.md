@@ -33,6 +33,40 @@ $ mv GCA_024498555.1_ASM2449855v1_genomic.fna swe.fna
 $ cd ..
 ```
 
+Some of these assemblies still contain short scaffolds not corresponding to any of the chromosomes:
+
+```
+$ grep -P ">" seqs/*.fna
+seqs/ler.fna:>CM004359.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 1, whole genome shotgun sequence
+seqs/ler.fna:>CM004360.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 2, whole genome shotgun sequence
+seqs/ler.fna:>CM004361.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 3, whole genome shotgun sequence
+seqs/ler.fna:>CM004362.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 4, whole genome shotgun sequence
+seqs/ler.fna:>CM004363.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 5, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000006.1 Arabidopsis thaliana scaffold15_Contig142, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000007.1 Arabidopsis thaliana scaffold15_Contig624, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000008.1 Arabidopsis thaliana scaffold18_size294915, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000009.1 Arabidopsis thaliana scaffold24_size307384, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000010.1 Arabidopsis thaliana scaffold26_size238942, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000011.1 Arabidopsis thaliana scaffold27_size282142, whole genome shotgun sequence
+seqs/ler.fna:>LUHQ01000012.1 Arabidopsis thaliana scaffold29_size187832, whole genome shotgun sequence
+[snip]
+```
+
+As the scaffolds are ordered by size, the chromosomes will always be first.
+We can use `grep` again with the `-n` option to find the starting line of the first non-chromosomal scaffold and then use the `head` command to filter them from the FASTA:
+
+```
+$ grep -n -P ">" seqs/*.fna
+# col and we do not require truncating,
+# for ler the small scaffolds start at line 1442097
+# and for sha at line 1480077
+$ head -n 1442096 seqs/ler.fna > seqs/ler.filtered.fna
+$ mv seqs/ler.filtered.fna seqs/ler.fna
+$ head -n 1480076 seqs/sha.fna > seqs/sha.filtered.fna
+$ mv seqs/sha.filtered.fna seqs/sha.fna
+```
+
+
 In the next step, whole-genome alignments of the query sequences to the reference need to be computed.
 `pasy` can work with alignment files in SAM, BAM and PAF format.
 We choose Columbia as a reference, and align the sequences using `minimap2`:
