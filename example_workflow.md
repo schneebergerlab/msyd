@@ -18,10 +18,10 @@ $ curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/
 # unzip the datasets, move to seqs folder
 $ unzip ./*.zip
 $ mkdir seqs
-$ mv ncbi_datasets/data/*/*.fna seqs/
+$ mv ncbi_dataset/data/*/*.fna seqs/
 
 # remove the zipped files
-$ rm -r ncbi_datasets
+$ rm -r ncbi_dataset
 $ rm *.zip
 
 # rename them to shorter names
@@ -57,7 +57,7 @@ We can use `grep` again with the `-n` option to find the starting line of the fi
 
 ```
 $ grep -n -P ">" seqs/*.fna
-# col and we do not require truncating,
+# col and swe do not require truncating,
 # for ler the small scaffolds start at line 1442097
 # and for sha at line 1480077
 $ head -n 1442096 seqs/ler.fna > seqs/ler.filtered.fna
