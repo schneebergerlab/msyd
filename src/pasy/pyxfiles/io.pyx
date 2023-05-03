@@ -426,7 +426,8 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         int syncounter = 1
 
     if not set(vcfin.header.samples).issubset(orgs):
-        logger.warning("Input VCF contains organisms not in PFF file! Double-Check names used in .tsv. Truncating VCF.")
+        removing = set(vcfin.header.samples).difference(orgs)
+        logger.warning(f"Input VCF contains organisms not in PFF file! Double-Check names used in .tsv. Removing samples {removing} from VCF")
         vcfin.subset_samples(orgs)
 
     # read reference if it hasn't been read already
@@ -669,13 +670,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     logger.info(f"Found samples: {list(lvcf.header.samples)}, {list(rvcf.header.samples)}")
     for sample in rvcf.header.samples:
         if sample in ovcf.header.samples:
-            logger.warning(f"Duplicate sample {sample} encountered in {rf}. Appending filename")
+            logger.warning(f"Duplicate sample '{sample}' encountered in {rf}. Appending filename to sample name.")
             sample += '_'
             sample += rf
         ovcf.header.add_sample(sample)
     for sample in lvcf.header.samples:
         if sample in ovcf.header.samples:
-            logger.warning(f"Duplicate sample {sample} encountered in {lf}. Appending filename")
+            logger.warning(f"Duplicate sample '{sample}' encountered in {lf}. Appending filename to sample name.")
             sample += '_'
             sample += lf
         ovcf.header.add_sample(sample)
@@ -684,8 +685,14 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
     # iterate through the VCFs, merging individual records
     # keeps only records that can be merged
-    lann = next(lvcf)
-    rann = next(rvcf)
+    lann = None
+    rann = None
+    try:
+        lann = next(lvcf)
+        rann = next(rvcf)
+    except StopIteration:
+        logger.error(f"Empty VCF encountered. Not merging!")
+
     try:
         while True:
             # skip until we are at the same position
