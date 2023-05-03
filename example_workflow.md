@@ -88,7 +88,7 @@ $ syri --nc 5 -F P --cigar --dir syri --prefix swe -c alns/swe.paf -r ref.fna -q
 ```
 
 In preparation for running `pasy call`, the input tsv needs to be generated.
-An example TSV that could work with the code snippets above could look something like this:
+An example TSV for the callset prepared in this workflow could look like this:
 
 ```
 $ cat genomes.tsv
@@ -117,6 +117,42 @@ After generating the requisite input, `pasy call` can be run to generate the pan
 $ pasy call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
 ```
 
-Further processing can be done with `pasy view`:
+If we are only interested in pansynteny on Chromosome 3, we can filter the .PFF file calling pasy view.
+In this case, the filtering could also be done using `grep` or `awk`, but `pasy view` is advantageous for more complex filtering.
+A simple expression-based language is used for complex filtering instructions in `pasy`.
+It is described in `view_reference.md`.
+
+```
+# CP116283 is the contig corresponding to chromosome 3 in Col-CC
+$ pasy view -e "on CP116283" -i athalianas.pff -o athalianas-chr3.pff
+```
+
+If we want to have the pansynteny annotations in VCF format, we can just change the file extension passed to `pasy view` or pass the `--ovcf` flag.
+
+```
+$ pasy view -i athalianas-chr3.pff -o athalianas-chr3-syn.vcf
+```
+
+We can also use our pansynteny callset to select variants in pansyntenic regions from a population VCF for which we do not have a assembled genomes.
+As an example, let's download the 1001 genomes project VCF from the EBI:
+
+```
+$ curl https://ftp.ebi.ac.uk/ensemblgenomes/pub/release-56/plants/variation/vcf/arabidopsis_thaliana/arabidopsis_thaliana.vcf.gz -o ensembl_athaliana.vcf.gz
+$ gunzip ensembl_athaliana.vcf.gz
+```
+
+Before we can filter the file, we need to change the contig names used in `athalianas.pff` to chromosome names (at least for the reference).
+We can do this with using `sed` to replace contig IDs with the corresponding chromosome number:
+
+```
+$ sed -e s/CP116280.1/1/ -e s/CP116281.1/2/ -e s/CP116282.1/3/ -e s/CP116283.1/4/ -e s/CP116284.1/5/ athalianas.pff > athalianas-chrnames.pff
+```
 
 
+For this, we can use the `--intersect` flag.
+We can at the same time specify a filtering option using the `-e` flag.
+Filtering will be performed before the VCF subsetting – this can be used to select only core-syntenic regions:
+
+```
+$ pasy view -i athalianas-chrnames.pff -e "deg >= 3" -o pansynt-vars.vcf --intersect ensembl_athaliana.vcf
+```

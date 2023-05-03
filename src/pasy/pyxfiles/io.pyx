@@ -472,7 +472,10 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         
         # add the pansyn region, if specified
         if add_syn_anns:
-            add_syn_ann(syn, vcfout, ref=ref, no=syncounter, add_cigar=add_cigar, add_identity=add_identity)
+            try:
+                add_syn_ann(syn, vcfout, ref=ref, no=syncounter, add_cigar=add_cigar, add_identity=add_identity)
+            except ValueError:
+                logger.error(f"Error adding pansyn annotation for region {syn} to VCF. Check if the chromosome names match!")
             syncounter +=1
 
         # write the small variants in the pansyn region
@@ -832,7 +835,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
     #for samples in [lrec.samples, rrec.samples]:
     for (samples, alleles) in [(lrec.samples, lrec.alleles), (rrec.samples, rrec.alleles)]:
         for sample in samples:
-            if not 'GT' in rec.samples[sample]: # nothing needs updating
+            if not 'GT' in rec.samples[sample] or alleles == None: # nothing needs updating
                 continue
             # apparently pysam treats the genotype specially without documenting that behaviour...
             gt = rec.samples[sample]['GT']
