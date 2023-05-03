@@ -691,7 +691,8 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         lann = next(lvcf)
         rann = next(rvcf)
     except StopIteration:
-        logger.error(f"Empty VCF encountered. Not merging!")
+        logger.error(f"Empty VCF encountered. Outputting empty VCF!")
+        return of
 
     try:
         while True:

@@ -82,9 +82,9 @@ $ minimap2 -cx asm5 --eqx ref.fna seqs/swe.fna > alns/swe.paf
 After the alignments have been made, `syri` needs to be run on each of the alignments:
 
 ```
-$ syri --nc 5 -F P --cigar --dir syri --prefix ler -c alns/ler.paf -r ref.fna -q seqs/ler.fna --lf ler.syri.log
-$ syri --nc 5 -F P --cigar --dir syri --prefix sha -c alns/sha.paf -r ref.fna -q seqs/sha.fna --lf sha.syri.log
-$ syri --nc 5 -F P --cigar --dir syri --prefix swe -c alns/swe.paf -r ref.fna -q seqs/swe.fna --lf swe.syri.log
+$ syri --nc 5 -F P --cigar --dir syri --prefix ler -c alns/ler.paf -r ref.fna -q seqs/ler.fna --lf ler.syri.log --samplename ler
+$ syri --nc 5 -F P --cigar --dir syri --prefix sha -c alns/sha.paf -r ref.fna -q seqs/sha.fna --lf sha.syri.log --samplename sha
+$ syri --nc 5 -F P --cigar --dir syri --prefix swe -c alns/swe.paf -r ref.fna -q seqs/swe.fna --lf swe.syri.log --samplename swe
 ```
 
 In preparation for running `pasy call`, the input tsv needs to be generated.
