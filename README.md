@@ -3,6 +3,7 @@
 ## Installation
 pasy can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
 Requirements for running pasy are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
+They can be installed with `pip install -r requirements.txt`
 
 ## Usage
 
@@ -22,6 +23,7 @@ An example input file might look something like the following:
 
 ```
 $cat genomes.tsv
+[snip]
 #name	aln	syri	vcf
 an1	col_an1.bam	col_an1syri.out	col_an1.vcf
 c24	col_c24.bam	col_c24syri.out	col_c24.vcf
