@@ -1,0 +1,6 @@
+Cython
+pandas
+numpy
+pysam >= 0.21
+# for the ordering functionality
+scipy
