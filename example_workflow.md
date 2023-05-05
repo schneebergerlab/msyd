@@ -1,4 +1,9 @@
 # An example pasy Workflow
+
+This file describes the steps for an example workflow using pasy, described in the image below.
+See also `example_workflow.sh` for a condensed shell script of the same workflow that can be run on the command line.
+
+
 ![Diagram illustrating an example workflow for using pasy](https://github.com/schneebergerlab/pasy/blob/leon/workflow.svg)
 
 In order to use `pasy`, high-quality chromosome-scale genomes are required.
