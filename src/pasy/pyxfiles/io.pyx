@@ -17,7 +17,6 @@ from collections import deque
 import sys
 import os
 import logging
-import psutil
 import pysam
 import re
 import tempfile
@@ -445,7 +444,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     orgsvcf = list(vcfin.header.samples) # select only contained organisms
 
     if coords_in_info and len(orgsvcf) != 1:
-        logger.error("reading coords from INFO only supported for VCFs with exactly one sample!")
+        logger.error("reading coords from INFO only supported for VCFs with exactly one sample! Check if your SyRI installation is up to date!")
         raise ValueError("reading coords from INFO only supported for VCFs with exactly one sample!")
 
     # force indexing to allow for calling fetch later.

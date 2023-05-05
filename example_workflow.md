@@ -15,40 +15,37 @@ $ curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/
 # download the GMI swedish assembly
 $ curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GCA_024498555.1/download?include_annotation_type=GENOME_FASTA&filename=GCA_024498555.1.zip" -H "Accept: application/zip"
 
-# unzip the datasets, move to seqs folder
-$ unzip ./*.zip
-$ mkdir seqs
-$ mv ncbi_dataset/data/*/*.fna seqs/
+# unzip the datasets
+$ unzip "./*.zip"
+$ mv ncbi_dataset/data/*/*.fna ./
 
 # remove the zipped files
 $ rm -r ncbi_dataset
 $ rm *.zip
 
 # rename them to shorter names
-$ cd seqs
 $ mv GCA_001651475.1_Ler_Assembly_genomic.fna ler.fna
 $ mv GCA_028009825.1_Col-CC_genomic.fna col.fna
 $ mv GCA_902460295.1_Arabidopsis_thaliana_Sha_genomic.fna sha.fna
 $ mv GCA_024498555.1_ASM2449855v1_genomic.fna swe.fna
-$ cd ..
 ```
 
 Some of these assemblies still contain short scaffolds not corresponding to any of the chromosomes:
 
 ```
-$ grep -P ">" seqs/*.fna
-seqs/ler.fna:>CM004359.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 1, whole genome shotgun sequence
-seqs/ler.fna:>CM004360.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 2, whole genome shotgun sequence
-seqs/ler.fna:>CM004361.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 3, whole genome shotgun sequence
-seqs/ler.fna:>CM004362.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 4, whole genome shotgun sequence
-seqs/ler.fna:>CM004363.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 5, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000006.1 Arabidopsis thaliana scaffold15_Contig142, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000007.1 Arabidopsis thaliana scaffold15_Contig624, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000008.1 Arabidopsis thaliana scaffold18_size294915, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000009.1 Arabidopsis thaliana scaffold24_size307384, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000010.1 Arabidopsis thaliana scaffold26_size238942, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000011.1 Arabidopsis thaliana scaffold27_size282142, whole genome shotgun sequence
-seqs/ler.fna:>LUHQ01000012.1 Arabidopsis thaliana scaffold29_size187832, whole genome shotgun sequence
+$ grep -P ">" ./*.fna
+ler.fna:>CM004359.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 1, whole genome shotgun sequence
+ler.fna:>CM004360.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 2, whole genome shotgun sequence
+ler.fna:>CM004361.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 3, whole genome shotgun sequence
+ler.fna:>CM004362.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 4, whole genome shotgun sequence
+ler.fna:>CM004363.1 Arabidopsis thaliana ecotype Landsberg erecta chromosome 5, whole genome shotgun sequence
+ler.fna:>LUHQ01000006.1 Arabidopsis thaliana scaffold15_Contig142, whole genome shotgun sequence
+ler.fna:>LUHQ01000007.1 Arabidopsis thaliana scaffold15_Contig624, whole genome shotgun sequence
+ler.fna:>LUHQ01000008.1 Arabidopsis thaliana scaffold18_size294915, whole genome shotgun sequence
+ler.fna:>LUHQ01000009.1 Arabidopsis thaliana scaffold24_size307384, whole genome shotgun sequence
+ler.fna:>LUHQ01000010.1 Arabidopsis thaliana scaffold26_size238942, whole genome shotgun sequence
+ler.fna:>LUHQ01000011.1 Arabidopsis thaliana scaffold27_size282142, whole genome shotgun sequence
+ler.fna:>LUHQ01000012.1 Arabidopsis thaliana scaffold29_size187832, whole genome shotgun sequence
 [snip]
 ```
 
@@ -56,14 +53,14 @@ As the scaffolds are ordered by size, the chromosomes will always be first.
 We can use `grep` again with the `-n` option to find the starting line of the first non-chromosomal scaffold and then use the `head` command to filter them from the FASTA:
 
 ```
-$ grep -n -P ">" seqs/*.fna
+$ grep -n -P ">" ./*.fna
 # col and swe do not require truncating,
 # for ler the small scaffolds start at line 1442097
 # and for sha at line 1480077
-$ head -n 1442096 seqs/ler.fna > seqs/ler.filtered.fna
-$ mv seqs/ler.filtered.fna seqs/ler.fna
-$ head -n 1480076 seqs/sha.fna > seqs/sha.filtered.fna
-$ mv seqs/sha.filtered.fna seqs/sha.fna
+$ head -n 1442096 ler.fna > ler.filtered.fna
+$ mv ler.filtered.fna ler.fna
+$ head -n 1480076 sha.fna > sha.filtered.fna
+$ mv sha.filtered.fna sha.fna
 ```
 
 
@@ -72,19 +69,18 @@ In the next step, whole-genome alignments of the query sequences to the referenc
 We choose Columbia as a reference, and align the sequences using `minimap2`:
 
 ```
-$ mv seqs/col.fna ./ref.fna
-$ mkdir alns
-$ minimap2 -cx asm5 --eqx ref.fna seqs/ler.fna > alns/ler.paf
-$ minimap2 -cx asm5 --eqx ref.fna seqs/sha.fna > alns/sha.paf
-$ minimap2 -cx asm5 --eqx ref.fna seqs/swe.fna > alns/swe.paf
+$ mv col.fna ref.fna
+$ minimap2 -cx asm5 --eqx ref.fna ler.fna > ler.paf
+$ minimap2 -cx asm5 --eqx ref.fna sha.fna > sha.paf
+$ minimap2 -cx asm5 --eqx ref.fna swe.fna > swe.paf
 ```
 
 After the alignments have been made, `syri` needs to be run on each of the alignments:
 
 ```
-$ syri --nc 5 -F P --cigar --dir syri --prefix ler -c alns/ler.paf -r ref.fna -q seqs/ler.fna --lf ler.syri.log --samplename ler
-$ syri --nc 5 -F P --cigar --dir syri --prefix sha -c alns/sha.paf -r ref.fna -q seqs/sha.fna --lf sha.syri.log --samplename sha
-$ syri --nc 5 -F P --cigar --dir syri --prefix swe -c alns/swe.paf -r ref.fna -q seqs/swe.fna --lf swe.syri.log --samplename swe
+$ syri --nc 5 -F P --cigar --prefix ler -c ler.paf -r ref.fna -q ler.fna --lf ler.syri.log --samplename ler
+$ syri --nc 5 -F P --cigar --prefix sha -c sha.paf -r ref.fna -q sha.fna --lf sha.syri.log --samplename sha
+$ syri --nc 5 -F P --cigar --prefix swe -c swe.paf -r ref.fna -q swe.fna --lf swe.syri.log --samplename swe
 ```
 
 In preparation for running `pasy call`, the input tsv needs to be generated.
@@ -93,21 +89,21 @@ An example TSV for the callset prepared in this workflow could look like this:
 ```
 $ cat genomes.tsv
 #name	aln	        syri                vcf
-ler	alns/ler.paf	syri/lersyri.out    syri/lersyri.vcf
-sha	alns/sha.paf	syri/shasyri.out    syri/shasyri.vcf
-swe	alns/swe.paf	syri/swesyri.out    syri/swesyri.vcf
+ler	ler.paf	lersyri.out    lersyri.vcf
+sha	sha.paf	shasyri.out    shasyri.vcf
+swe	swe.paf	swesyri.out    swesyri.vcf
 ``` 
 
 It could be typed out manually, or automatically generated with a bash script:
 
 ```
 #!/bin/sh
-
-echo "#name aln syri    vcf" > all.tsv
-for f in syri/*syri.out
+# \t is the tab character, escaped here because it is converted to spaces by some markdown renderers
+echo "#name\taln\tsyri\tvcf" > genomes.tsv
+for f in *syri.out
 do
 	bs=$(basename $f syri.out)
-	echo "$bs	alns/$bs.paf	syri/${bs}syri.out  syri/${bs}syri.vcf" >> all.tsv
+	echo "$bs\t$bs.pa\t${bs}syri.out\t${bs}syri.vcf" >> genomes.tsv
 done
 ```
 
@@ -123,7 +119,7 @@ A simple expression-based language is used for complex filtering instructions in
 It is described in `view_reference.md`.
 
 ```
-# CP116283 is the contig corresponding to chromosome 3 in Col-CC
+# CP116282 is the id corresponding to chromosome 3 in Col-CC
 $ pasy view -e "on CP116283" -i athalianas.pff -o athalianas-chr3.pff
 ```
 

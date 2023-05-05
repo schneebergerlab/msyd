@@ -118,22 +118,15 @@ def parse_input_tsv(fin):
             continue
 
         cells = line.strip().split('#')[0].split('\t')
-        if len(cells) < 2:
-            logger.error(f"invalid entry in {fin.name}. Skipping line: {line}")
+        if len(cells) < 3:
+            logger.error(f"invalid entry in {fin.name}: '{line}' too short. Skipping!")
             continue
-        elif len(cells) < 3:
-            aln = cells[0].strip()
-            syri = cells[1].strip()
-            logger.warning(f"No organism name specified in {fin.name}, using alignment filename. Offending line: {line}")
-            qry = aln
-            logger.warning(f"No vcf specified in {fin.name}, trying to find syri vcf. Offending line: {line}")
-            vcf = ''.join(syri.split('.')[:-1]) + '.vcf'
         elif len(cells) < 4:
-            aln = cells[0].strip()
-            syri = cells[1].strip()
-            vcf = cells[2].strip()
-            logger.warning(f"No organism name specified in {fin.name}, using alignment filename. Offending line: {line}")
-            qry = aln
+            logger.warning(f"No vcf specified in {fin.name}, trying to find syri vcf. Offending line: {line}")
+            qry = cells[0].strip()
+            aln = cells[1].strip()
+            syri = cells[2].strip()
+            vcf = ''.join(syri.split('.')[:-1]) + '.vcf'
         else:
             if len(cells) > 4:
                 logger.warning(f"More than four columns in {fin.name}, ignoring anything after fourth column")

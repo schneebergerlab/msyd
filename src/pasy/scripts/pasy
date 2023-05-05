@@ -3,4 +3,7 @@
 from pasy.scripts.main import main
 import sys
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    if not (sys.version_info.major >= 3 and sys.version_info.minor >= 8):
+        print("pasy requires at least python 3.8!")
+    else:
+        main(sys.argv[1:])

@@ -2,7 +2,7 @@
 
 ## Installation
 pasy can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
-Requirements for running pasy are `Cython`, `pysam`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
+Requirements for running pasy are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
 
 ## Usage
 
@@ -15,19 +15,20 @@ Many convenient shorthand functions are defined in the `util` module.
 
 This subcommand is used to call pansyntenic regions in a set of genomes.
 It uses the Synteny Intersection Algorithm to identify both core and reference cross synteny, but can optionally be configured to call only core synteny (making it faster particularly when run with many genomes).
-`pasy call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment and SyRI.out file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
+`pasy call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment, SyRI.out and vcf file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
+Optionally, the VCF might be left out, then `pasy` will automatically look for the syri-generated VCF file corresponding to the syri.out file.
 Both files should be using the same reference in all specified genomes.
 An example input file might look something like the following:
 
 ```
 $cat genomes.tsv
-#name	aln	syri
-an1	col_an1.bam	col_an1syri.out
-c24	col_c24.bam	col_c24syri.out
-eri	col_eri.bam	col_erisyri.out
+#name	aln	syri	vcf
+an1	col_an1.bam	col_an1syri.out	col_an1.vcf
+c24	col_c24.bam	col_c24syri.out	col_c24.vcf
+eri	col_eri.bam	col_erisyri.out	col_eri.vcf
 ```
 
-Pansynteny could then be called with `pasy`:
+Pansynteny can then be called with `pasy`:
 ```
 $pasy call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
@@ -35,21 +36,17 @@ $pasy call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamp
 
 `pasy call` takes a number of optional CLI flags, described by calling `pasy call -h`.
 If the -m output is specified with an output vcf, pasy will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
-In order to do this, the input TSV needs to have an additional column specifying the path to the VCF files.
-An example might look like this:
-
-```
-$cat genomes_with_vcf.tsv
-#name	aln	syri	vcf
-an1	col_an1.bam	col_an1syri.out	col_an1.vcf
-c24	col_c24.bam	col_c24syri.out	col_c24.vcf
-eri	col_eri.bam	col_erisyri.out	col_eri.vcf
-```
-
+This functionality only works for VCF files generated with a recent (>=1.6.3.) version of SyRI.
+Also be sure to pass the `--samplename` parameter to syri, preferably using the same name as specified in the .tsv.
 In the call above, the VCF merging functionality could then be enabled:
 ```
 $pasy call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
+
+`pasy call` generates output in Pasy File Format (PFF).
+PFF is a tab-separated format for storing pansynteny annotations and alignments.
+A specification and small example can be seen in `format.md`.
+`pasy view` can be used to export the synteny annotations in a PFF file into a VCF for use with other tools, but `pasy` cannot read pansynteny information from VCF files.
 
 ### `pasy view`
 
