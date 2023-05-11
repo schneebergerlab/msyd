@@ -6,6 +6,8 @@ See also `example_workflow.sh` for a condensed shell script of the same workflow
 
 ![Diagram illustrating an example workflow for using pasy](https://github.com/schneebergerlab/pasy/blob/leon/workflow.svg)
 
+## Running pasy
+
 In order to use `pasy`, high-quality chromosome-scale genomes are required.
 Scaffolding using e.g. RagTag may be necessary.
 For this example workflow, we will be downloading some A. thaliana assemblies from the GenBank database:
@@ -23,10 +25,6 @@ $ curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/
 # unzip the datasets
 $ unzip "./*.zip"
 $ mv ncbi_dataset/data/*/*.fna ./
-
-# remove the zipped files
-$ rm -r ncbi_dataset
-$ rm *.zip
 
 # rename them to shorter names
 $ mv GCA_001651475.1_Ler_Assembly_genomic.fna ler.fna
@@ -117,6 +115,8 @@ After generating the requisite input, `pasy call` can be run to generate the pan
 ```
 $ pasy call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
 ```
+
+## Working with the pasy Output
 
 If we are only interested in pansynteny on Chromosome 3, we can filter the .PFF file calling pasy view.
 In this case, the filtering could also be done using `grep` or `awk`, but `pasy view` is advantageous for more complex filtering.

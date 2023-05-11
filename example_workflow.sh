@@ -15,9 +15,7 @@ curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GC
 unzip "./*.zip"
 mv ncbi_dataset/data/*/*.fna ./
 
-# remove the zipped files
-rm -r ncbi_dataset
-rm *.zip
+## Prepare them for running pasy
 
 # rename them to shorter names
 mv GCA_001651475.1_Ler_Assembly_genomic.fna ler.fna
@@ -34,6 +32,8 @@ mv ler.filtered.fna ler.fna
 head -n 1480076 sha.fna > sha.filtered.fna
 mv sha.filtered.fna sha.fna
 
+
+## Generate inputs for pasy
 
 # generate alignments to col-CC
 mv col.fna ref.fna
@@ -56,6 +56,8 @@ done
 
 # run pasy to call pansynteny
 pasy call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
+
+## work with the output
 
 # CP116282 is the id corresponding to chromosome 3 in Col-CC
 pasy view -e "on CP116283" -i athalianas.pff -o athalianas-chr3.pff
