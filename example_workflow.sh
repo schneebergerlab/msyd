@@ -51,7 +51,7 @@ echo "#name\taln\tsyri\tvcf" > genomes.tsv
 for f in *syri.out
 do
 	bs=$(basename $f syri.out)
-	echo "$bs\t$bs.pa\t${bs}syri.out\t${bs}syri.vcf" >> genomes.tsv
+	echo "$bs\t$bs.paf\t${bs}syri.out\t${bs}syri.vcf" >> genomes.tsv
 done
 
 # run pasy to call pansynteny
