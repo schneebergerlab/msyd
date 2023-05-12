@@ -172,20 +172,32 @@ def get_orgs_from_df(df):
     :param_type df: `pandas.DataFrame`
     :returns: A `set` containing all of the organisms in a DataFrame of `pansyn` objects.
     """
+    if df.empty:
+        logger.error(f"get_orgs_from_df called with empty dataframe: {df}")
+        raise ValueError("DF is empty!")
     return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()), df.iterrows()))
 
 
 def get_len(df):
+    if df.empty:
+        logger.error(f"get_len called with empty dataframe: {df}")
+        raise ValueError("DF is empty!")
     return sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
 
 # the warnings in the two functions below are spurious, see
 # https://github.com/cython/cython/issues/1699
 def tabularize_lens(df):
+    if df.empty:
+        logger.error(f"tabularize_lens called with empty dataframe: {df}")
+        raise ValueError("DF is empty!")
     maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
     return [sum(len(x[1][0].ref) for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
     #return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
 def tabularize_nos(df):
+    if df.empty:
+        logger.error(f"tabularize_nos called with empty dataframe: {df}")
+        raise ValueError("DF is empty!")
     maxdegree = max(x[1][0].get_degree() for x in df.iterrows())
     return [sum(1 for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
 
