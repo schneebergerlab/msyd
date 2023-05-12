@@ -576,6 +576,9 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
 
     for oldrec in oldvcf:
         if oldrec.chrom < syn.ref.chr:
+            if oldrec.chrom not in set(newvcf.header.contigs): # check if chr needs adding
+                #logger.info(f"add_syn_anns_to_vcf Adding {syn.ref.chr} to header")
+                ovcf.header.add_line("##contig=<ID={}>".format(oldref.chrom))
             copy_record(oldrec, newvcf, pid=syncounter-1)
         elif oldrec.start < syn.ref.start:
             copy_record(oldrec, newvcf, pid=syncounter-1)
@@ -699,12 +702,31 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     try:
         while True:
             # skip until we are at the same position
-            if lann.pos < rann.pos or lann.chrom < rann.chrom:
-                copy_record(lann, ovcf) # try also adding non-multigenomic records
+            if lann.chrom != rann.chrom:
+                 # check if chr matches, otherwise skip till end
+                if lann.chrom < rann.chrom:
+                    if lann.chrom not in set(ovcf.header.contigs):
+                        #logger.info(f"merge_vcfs Adding {lann.chrom} to header")
+                        ovcf.header.add_line("##contig=<ID={}>".format(lann.chrom))
+                    # skip till end
+                    while lann.chrom < rann.chrom:
+                        lann = next(lvcf)
+                    continue
+                else:
+                    if rann.chrom not in set(ovcf.header.contigs):
+                        logger.info(f"merge_vcfs Adding {rann.chrom} to header")
+                        ovcf.header.add_line("##contig=<ID={}>".format(rann.chrom))
+                    # skip till end
+                    while rann.chrom < lann.chrom:
+                        rann = next(rvcf)
+                    continue
+
+            elif lann.pos < rann.pos:
+                copy_record(lann, ovcf)
                 lann = next(lvcf)
                 continue
             elif rann.pos < lann.pos or rann.chrom < lann.chrom:
-                copy_record(rann, ovcf) # try also adding non-multigenomic records
+                copy_record(rann, ovcf)
                 rann = next(rvcf)
                 continue
             elif lann.alleles[0] != rann.alleles[0]:
@@ -766,7 +788,7 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile, int pid=0):
     Utility function to copy a record to another VCF, because pysam needs some conversions done.
     """
     if rec.chrom not in set(ovcf.header.contigs):
-        #logger.info(f"copy_record Adding {rec.chrom} to header")
+        logger.info(f"copy_record Adding {rec.chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(rec.chrom))
     new_rec = ovcf.new_record()
     new_rec.pos = rec.pos
@@ -791,7 +813,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
     chrom = lrec.chrom
     # this should not be necessary, but for some reason the chrs do not seem to be added by merging the header?
     if chrom not in set(ovcf.header.contigs):
-        #logger.info(f"merge_vcf_records Adding {chrom} to header")
+        logger.info(f"merge_vcf_records Adding {chrom} to header")
         ovcf.header.add_line("##contig=<ID={}>".format(chrom))
 
     rec.chrom = chrom
