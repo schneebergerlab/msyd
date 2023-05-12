@@ -60,7 +60,7 @@ pasy call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
 ## work with the output
 
 # CP116282 is the id corresponding to chromosome 3 in Col-CC
-pasy view -e "on CP116283" -i athalianas.pff -o athalianas-chr3.pff
+pasy view -e "on CP116283.1" -i athalianas.pff -o athalianas-chr3.pff
 
 # convert to VCF for use in visualization/other software
 pasy view -i athalianas-chr3.pff -o athalianas-chr3-syn.vcf

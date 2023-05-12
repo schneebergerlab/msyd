@@ -125,7 +125,7 @@ It is described in `view_reference.md`.
 
 ```
 # CP116282 is the id corresponding to chromosome 3 in Col-CC
-$ pasy view -e "on CP116283" -i athalianas.pff -o athalianas-chr3.pff
+$ pasy view -e "on CP116283.1" -i athalianas.pff -o athalianas-chr3.pff
 ```
 
 If we want to have the pansynteny annotations in VCF format, we can just change the file extension passed to `pasy view` or pass the `--ovcf` flag.
