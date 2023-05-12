@@ -581,8 +581,8 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
             copy_record(oldrec, newvcf, pid=syncounter-1)
         else:
             # the record is not before the syn
-            copy_record(oldrec, newvcf, pid=syncounter-1)
             add_syn_ann(syn, newvcf, ref=ref, no=syncounter)
+            copy_record(oldrec, newvcf, pid=syncounter)
             syncounter += 1
             try:
                 syn = next(syniter)[1][0]
