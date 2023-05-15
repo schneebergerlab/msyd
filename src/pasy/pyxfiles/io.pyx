@@ -710,6 +710,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         ovcf.header.add_line("##contig=<ID={}>".format(lann.chrom))
                     # skip till end
                     while lann.chrom < rann.chrom:
+                        copy_record(lann, ovcf)
                         lann = next(lvcf)
                     continue
                 else:
@@ -718,6 +719,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                         ovcf.header.add_line("##contig=<ID={}>".format(rann.chrom))
                     # skip till end
                     while rann.chrom < lann.chrom:
+                        copy_record(rann, ovcf)
                         rann = next(rvcf)
                     continue
 
@@ -736,13 +738,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 chrom = lann.chrom
 
                 # extract all records at this position in rann, store in dictionary
-                mapping = dict()
+                mapping = {rann.alleles[0]: rann} if rann.alleles[0] != 'N' else dict()
                 rann = next(rvcf)
                 while rann.pos == pos and rann.chrom == chrom:
                     if rann.alleles[0] == 'N': # to handle NOTAL and HDR records
                         pass
                     elif rann.alleles[0] in mapping:
-                        logger.error(f"Two variants with same reference at same position in same file: {rann}, {mapping[rann.alleles[0]]}.")
+                        logger.error(f"Two variants with same reference at same position in same file({rf.name}): {rann}, {mapping[rann.alleles[0]]}.")
                         #merge_vcf_records(rann, mapping[rann.alleles[0]], ovcf)
                     else:
                         mapping[rann.alleles[0]] = rann
