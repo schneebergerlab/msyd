@@ -17,6 +17,7 @@ from pasy.classes.cigar import Cigar
 from pasy.classes.coords import Pansyn, Range, Position
 
 cdef int MIN_SYN_THRESH = 10
+cdef int MIN_REALIGN_THRESH = 100
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -286,3 +287,114 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
         pansyns = functools.reduce(ovlap, syns)
 
     return pansyns
+
+import mappy as mp
+
+cdef process_gaps(syns, qrynames, fastas):
+    """
+    Function to find gaps between two coresyn regions and realign them to a new reference.
+    Discovers all crosssynteny, hopefully.
+    
+    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes
+    :returns: A DataFrame with the added non-reference crosssynteny
+    """
+    # init stuff
+    ret = pd.DataFrame()
+    n = len(qrynames)
+    if not n == len(fastas):
+        logger.error(f"More/less query names than fastas passed to process_gaps!")
+        raise ValueError("Wrong number of fastas!")
+    
+    # load fasta files
+    fastas = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
+
+    # iterate through each gap between coresyn blocks
+    # call the alignment/ functionality and merge   
+
+    syniter = syn.iterrows()
+    try:
+        syn = next(syniter)[1][0]
+
+        # skip to first core
+        while syn.get_degree() < n:
+            syn = next(syniter)[1][0]
+
+        while True:
+            # find block between two coresyn regions
+            old = syn
+            crosssyns = []
+
+            while syn.get_degree() < n:
+                crosssyns.append(syn)
+                syn = next(syniter)[1][0]
+            # syn must be core now
+
+            int l = syn.start - old.end
+            if l < MIN_REALIGN_THRESH:
+                continue
+
+            # Block has been extracted and is long enough;
+            # extract appropriate sequences, respecting crossyn
+
+            # construct a dictionary containing for each sample a list of intervals that should be realigned
+            intervaldict = {}
+            for org in qrynames:
+                chr = syn.chr # chr must always stay the same
+                int processed = old.ranges_dict[org].end
+                intervallist = []
+                for crosssyn in crosssyns:
+                    if not org in crosssyn.ranges_dict: # no need to add this
+                        continue
+                    synrng = crosssyn.ranges_dict[org]
+                    if synrng.start - processed < MIN_REALIGN_THRESH:
+                        intervallist.append(Range(org, chr, None, processed, synrng.start))
+                        processed = synrng.end # the crosssyn is not realigned
+
+                # see if theres any sequence left to realign after processing the crosssyn regions
+                if syn.start - processed < MIN_REALIGN_THRESH:
+                    intervallist.append(Range(org, chr, None, processed, syn.ranges_dict[org].start))
+
+                if intervallist:
+                    intervaldict[org] = intervallist
+
+
+            # choose a reference as the sample containing the most non-crosssynteny
+            ref = max(map(lambda x: (sum(map(lambda rng: len(rng), x[1])), x[0]), intervaldict.items()))[1]
+
+            # write to file to run minimap2
+            fnfiles = dict()
+            for qry in qrynames:
+                if qry in intervaldict:
+                    outfile = tempfile.NamedTemporaryFile().name
+                    intervals_to_fasta(intervaldict[qry], fastas[qry], outfile)
+                    fnfiles[qry] = outfile
+
+            reffile = fnfiles[ref]
+            del fnfiles[ref]
+
+            # construct alignment index from the reference
+            aligner = mp.Aligner(reffile, preset='asm5') 
+
+            # align to other sequences
+
+
+            # run syri
+
+            # call cross/coresyn
+            # incorporate into output, think about matching with reference
+
+    except StopIteration:
+        pass
+
+cdef intervals_to_fasta(intervals, fasta, outfile):
+    """
+    Takes a list of genomic Ranges, constructs a fasta containing each of the intervals as an individual contig for alignment.
+    """
+    with open(outfile, 'w') as f:
+        for ind, rng in enumerate(intervals):
+            f.write(f'> {rng.chr}:{rng.start}-{rng.end}\n')
+            f.write(fasta.fetch(region=rng.chr, start=rng.start, end=rng.end))
+            f.write('\n')
+
+
+

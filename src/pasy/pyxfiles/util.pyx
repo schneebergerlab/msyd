@@ -108,10 +108,12 @@ def parse_input_tsv(fin):
         syris = deque()     # Lists are too slow appending, using deque instead
         alns = deque()
         vcfs = deque()
+        fastas = deque()
         str qry = ''
         str syri = ''
         str aln = ''
         str vcf = ''
+        str fasta = ''
 
     for line in fin:
         if line[0] == '#' or line.strip() == '':
@@ -129,11 +131,12 @@ def parse_input_tsv(fin):
             vcf = ''.join(syri.split('.')[:-1]) + '.vcf'
         else:
             if len(cells) > 4:
-                logger.warning(f"More than four columns in {fin.name}, ignoring anything after fourth column")
+                logger.warning(f"More than five columns in {fin.name}, ignoring anything after fourth column")
             qry = cells[0].strip()
             aln = cells[1].strip()
             syri = cells[2].strip()
             vcf = cells[3].strip()
+            fasta = cells[4].strip()
 
         # Check that the files are accessible
         if not os.path.isfile(aln):
@@ -142,17 +145,20 @@ def parse_input_tsv(fin):
             raise FileNotFoundError(f"Cannot find file at {syri}. Exiting")
         if not os.path.isfile(vcf):
             raise FileNotFoundError(f"Cannot find file at {vcf}. Exiting")
+        if not os.path.isfile(fasta):
+            raise FileNotFoundError(f"Cannot find file at {fasta}. Exiting")
 
         qrynames.append(qry)
         alns.append(aln)
         syris.append(syri)
         vcfs.append(vcf)
+        fastas.append(fasta)
 
     if len(set(qrynames)) != len(qrynames):
         logger.error(f"Non-unique names in {fin.name}. This will most likely cause issues, proceed with caution!")
 
     fin.close()
-    return (qrynames, syris, alns, vcfs)
+    return (qrynames, syris, alns, vcfs, fasta)
 
 
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information

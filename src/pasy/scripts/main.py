@@ -84,6 +84,7 @@ def main(argv):
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
+        call_parser.add_argument("--all-cross", dest='all_cross', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
 
     # view subparser
@@ -123,8 +124,13 @@ def main(argv):
         parser.print_help()
 
 def call(args):
-    qrynames, syns, alns, vcfs = util.parse_input_tsv(args.infile)
+    qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
+    # find reference synteny
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
+    # use reference synteny as base to identify all haplotypes
+    df = pansyn.realign_gaps(df, qrynames, genomes)
+
+
     if args.print:
         logger.info("Printing sample head to STDOUT")
         print(df.head())
