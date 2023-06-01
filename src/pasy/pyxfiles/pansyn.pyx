@@ -290,6 +290,12 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
 
 import mappy as mp
 import pysam
+import intervaltree
+from collections import deque
+import pandas as pd
+
+cpdef realign(syns, qrynames, fastas):
+    return process_gaps(syns, qrynames, fastas)
 
 cdef process_gaps(syns, qrynames, fastas):
     """
@@ -303,7 +309,7 @@ cdef process_gaps(syns, qrynames, fastas):
     ret = pd.DataFrame()
     n = len(qrynames)
     if not n == len(fastas):
-        logger.error(f"More/less query names than fastas passed to process_gaps!")
+        logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}!")
         raise ValueError("Wrong number of fastas!")
     
     # load fasta files
@@ -319,10 +325,10 @@ cdef process_gaps(syns, qrynames, fastas):
         # skip to first core
         while syn.get_degree() < n:
             syn = next(syniter)[1][0]
+        old = syn
 
         while True:
             # find block between two coresyn regions
-            old = syn
             crosssyns = []
 
             while syn.get_degree() < n:
@@ -330,72 +336,104 @@ cdef process_gaps(syns, qrynames, fastas):
                 syn = next(syniter)[1][0]
             # syn must be core now
 
-            l = syn.start - old.end
-            if l < MIN_REALIGN_THRESH:
+            # preemptively skip regions too small on the reference, if present
+            if syn.ref.start - old.ref.end < MIN_REALIGN_THRESH:
+                syn = next(syniter)[1][0]
                 continue
 
             # Block has been extracted and is long enough;
             # extract appropriate sequences, respecting crossyn
 
+            print(old, syn, syn.ref.start - old.ref.end)
+            print(crosssyns)
+
             # construct a dictionary containing for each sample a list of intervals that should be realigned
-            intervaldict = {}
+            mappingtrees = dict()
+            seqdict = dict()
             for org in qrynames:
-                chr = syn.chr # chr must always stay the same
-                processed = old.ranges_dict[org].end
-                intervallist = []
+                chr = syn.ranges_dict[org].chr # chr must always stay the same
+                pos = 0
+                offset = old.ranges_dict[org].end # offset of the index in the new sequence to the old genome
+                tree = intervaltree.IntervalTree()
+                seq = ''
+                fasta = fastas[org]
                 for crosssyn in crosssyns:
                     if not org in crosssyn.ranges_dict: # no need to add this
                         continue
                     synrng = crosssyn.ranges_dict[org]
-                    if synrng.start - processed < MIN_REALIGN_THRESH:
-                        intervallist.append(Range(org, chr, None, processed, synrng.start))
-                        processed = synrng.end # the crosssyn is not realigned
+                    l = synrng.start - offset # len of the region to be added
+                    if l < MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
+                        offset = synrng.end # skip till the end
+                        continue
+
+                    # add to the intervaltree
+                    print(l, offset, seq)
+                    tree[pos:pos+l] = offset
+                    seq += fasta.fetch(region=chr, start=offset, end=offset+l)
+                    offset += l
+                    pos += l
 
                 # see if theres any sequence left to realign after processing the crosssyn regions
-                if syn.start - processed < MIN_REALIGN_THRESH:
-                    intervallist.append(Range(org, chr, None, processed, syn.ranges_dict[org].start))
+                l = syn.ranges_dict[org].start - offset
+                if l >= MIN_REALIGN_THRESH:
+                    tree[pos:pos+l] = offset
 
-                if intervallist:
-                    intervaldict[org] = intervallist
-
+                if tree:
+                    mappingtrees[org] = tree
+                    seqdict[org] = seq
+                if seq ^ tree:
+                    logger.error(f"Non-empty Tree with Empty seq or the other way round: {tree}, {seq}")
 
             # choose a reference as the sample containing the most non-crosssynteny
-            ref = max(map(lambda x: (sum(map(lambda rng: len(rng), x[1])), x[0]), intervaldict.items()))[1]
+            ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
 
-            # write to file to run minimap2
-            fnfiles = dict()
-            for qry in qrynames:
-                if qry in intervaldict:
-                    outfile = util.gettmpfile()
-                    intervals_to_fasta(intervaldict[qry], fastas[qry], outfile)
-                    fnfiles[qry] = outfile
-
-            reffile = fnfiles[ref]
-            del fnfiles[ref]
+            refseq = seqdict[ref]
+            del seqdict[ref]
 
             # construct alignment index from the reference
-            aligner = mp.Aligner(reffile, preset='asm5') 
+            logger.info("Starting Alignment")
+            aligner = mp.Aligner(seq=refseq, preset='asm5') 
+            alignments = {org: align(aligner, seq, chr) for org, seq in seqdict.items()}
 
-            # align to other sequences
 
 
             # run syri
 
             # call cross/coresyn
             # incorporate into output, think about matching with reference
+            old = syn
+            syn = next(syniter)[1][0]
 
     except StopIteration:
         pass
 
-cdef intervals_to_fasta(intervals, fasta, outfile):
-    """
-    Takes a list of genomic Ranges, constructs a fasta containing each of the intervals as an individual contig for alignment.
-    """
-    with open(outfile, 'w') as f:
-        for ind, rng in enumerate(intervals):
-            f.write(f'> {rng.chr}:{rng.start}-{rng.end}\n')
-            f.write(fasta.fetch(region=rng.chr, start=rng.start, end=rng.end))
-            f.write('\n')
+cdef align(aligner, seq, cid):
+    m = aligner.map(seq)
+    al = deque()
+    # traverse alignments
+    for h in m:
+        al.append([h.r_st+1,
+                   h.r_en,
+                   h.q_st+1,
+                   h.q_en,
+                   h.r_en - h.r_st,
+                   h.q_en - h.q_st,
+                   format((sum([i[0] for i in h.cigar if i[1] == 7]) / sum(
+                       [i[0] for i in h.cigar if i[1] in [1, 2, 7, 8]])) * 100, '.2f'),
+                   1,
+                   h.strand,
+                   h.ctg,
+                   cid,
+                   "".join(map(lambda x: str(x[0]) + 'MIDNSHP=X'[x[1]], h.cigar))
+                   ])
 
-
+    al = pd.DataFrame(al)
+    al[6] = al[6].astype('float')
+    al = al.loc[al[6] > 90]
+    al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
+    al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
+    al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
+    al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    return al
 

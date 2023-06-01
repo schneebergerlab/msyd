@@ -130,11 +130,11 @@ def call(args):
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
     if args.real:
         # use reference synteny as base to identify all haplotypes
-        df = pansyn.realign_gaps(df, qrynames, genomes)
+        df = pansyn.realign(df, qrynames, fastas)
 
     if args.tmp:
-        if not os.path.isdir(tmp):
-            os.makedirs(arg.tmp)
+        if not os.path.isdir(args.tmp):
+            os.makedirs(args.tmp)
         util.TMPDIR = args.tmp
 
     if args.print:

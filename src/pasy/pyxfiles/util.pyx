@@ -177,7 +177,7 @@ def parse_input_tsv(fin):
         logger.error(f"Non-unique names in {fin.name}. This will most likely cause issues, proceed with caution!")
 
     fin.close()
-    return (qrynames, syris, alns, vcfs, fasta)
+    return (qrynames, syris, alns, vcfs, fastas)
 
 
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
