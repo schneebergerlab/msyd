@@ -289,6 +289,7 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     return pansyns
 
 import mappy as mp
+import pysam
 
 cdef process_gaps(syns, qrynames, fastas):
     """
@@ -311,7 +312,7 @@ cdef process_gaps(syns, qrynames, fastas):
     # iterate through each gap between coresyn blocks
     # call the alignment/ functionality and merge   
 
-    syniter = syn.iterrows()
+    syniter = syns.iterrows()
     try:
         syn = next(syniter)[1][0]
 
@@ -329,7 +330,7 @@ cdef process_gaps(syns, qrynames, fastas):
                 syn = next(syniter)[1][0]
             # syn must be core now
 
-            int l = syn.start - old.end
+            l = syn.start - old.end
             if l < MIN_REALIGN_THRESH:
                 continue
 
@@ -340,7 +341,7 @@ cdef process_gaps(syns, qrynames, fastas):
             intervaldict = {}
             for org in qrynames:
                 chr = syn.chr # chr must always stay the same
-                int processed = old.ranges_dict[org].end
+                processed = old.ranges_dict[org].end
                 intervallist = []
                 for crosssyn in crosssyns:
                     if not org in crosssyn.ranges_dict: # no need to add this

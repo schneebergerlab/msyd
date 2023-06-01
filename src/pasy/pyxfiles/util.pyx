@@ -84,7 +84,7 @@ cdef gettmpfile():
         randstr = ''.join(random.choices('abcdefghijklmnopqrstvwxyz', k=6))
         path = f"{TMPDIR}/tmp{randstr}"
         if os.path.isfile(path):
-            logger.error(f'Temp file path already exists: {path}'
+            logger.error(f'Temp file path already exists: {path}')
         open(path, 'w').close() # create the file as empty before returning the path
         return path
 
@@ -148,8 +148,9 @@ def parse_input_tsv(fin):
             syri = cells[2].strip()
             vcf = ''.join(syri.split('.')[:-1]) + '.vcf'
         else:
-            if len(cells) > 4:
+            if len(cells) > 5:
                 logger.warning(f"More than five columns in {fin.name}, ignoring anything after fourth column")
+            
             qry = cells[0].strip()
             aln = cells[1].strip()
             syri = cells[2].strip()
