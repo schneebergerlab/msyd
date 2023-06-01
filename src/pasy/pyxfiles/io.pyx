@@ -743,7 +743,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                     if rann.alleles[0] == 'N': # to handle NOTAL and HDR records
                         pass
                     elif rann.alleles[0] in mapping:
-                        logger.error(f"Two variants with same reference at same position in same file({rf.name}): {rann}, {mapping[rann.alleles[0]]}.")
+                        logger.error(f"Two variants with same reference at same position in same file({rf}): {rann}, {mapping[rann.alleles[0]]}.")
                         #merge_vcf_records(rann, mapping[rann.alleles[0]], ovcf)
                     else:
                         mapping[rann.alleles[0]] = rann

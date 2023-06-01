@@ -77,12 +77,12 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     return returnVal
 
 
-cdef gettmpfile():
+def gettmpfile():
     if not TMPDIR:
-        return tempfile.NamedTemporarzFile().name
+        return tempfile.NamedTemporaryFile().name
     else:
         randstr = ''.join(random.choices('abcdefghijklmnopqrstvwxyz', k=6))
-        path = f"{TMPDIR}/tmp{randstr}"
+        path = f"{TMPDIR}{os.sep}tmp{randstr}"
         if os.path.isfile(path):
             logger.error(f'Temp file path already exists: {path}')
         open(path, 'w').close() # create the file as empty before returning the path
