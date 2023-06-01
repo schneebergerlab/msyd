@@ -365,7 +365,7 @@ cdef process_gaps(syns, qrynames, fastas):
             fnfiles = dict()
             for qry in qrynames:
                 if qry in intervaldict:
-                    outfile = tempfile.NamedTemporaryFile().name
+                    outfile = util.gettmpfile()
                     intervals_to_fasta(intervaldict[qry], fastas[qry], outfile)
                     fnfiles[qry] = outfile
 

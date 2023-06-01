@@ -11,7 +11,10 @@ import os
 import io
 import logging
 import re
+import tempfile
+import random
 
+cdef TMPDIR = None
 
 class CustomFormatter(logging.Formatter):
     '''
@@ -73,7 +76,22 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
 
+
+cdef gettmpfile():
+    if not TMPDIR:
+        return tempfile.NamedTemporarzFile().name
+    else:
+        randstr = ''.join(random.choices('abcdefghijklmnopqrstvwxyz', k=6))
+        path = f"{TMPDIR}/tmp{randstr}"
+        if os.path.isfile(path):
+            logger.error(f'Temp file path already exists: {path}'
+        open(path, 'w').close() # create the file as empty before returning the path
+        return path
+
+
+#############################################
 # everything above this doesn't depend on pasy
+#############################################
 
 import pasy.pansyn as pansyn
 from pasy.classes.cigar import Cigar

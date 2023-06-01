@@ -19,7 +19,6 @@ import os
 import logging
 import pysam
 import re
-import tempfile
 from gc import collect
 
 from cython.operator cimport dereference as deref, preincrement as inc
@@ -402,7 +401,7 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
 cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike], add_syn_anns=False, no_complex=False):
-    tmpfiles = [tempfile.NamedTemporaryFile().name for _ in vcfs]
+    tmpfiles = [util.gettmpfile() for _ in vcfs]
 
     for i in range(len(vcfs)):
         logger.info(f"Filtering {vcfs[i]}")
@@ -537,7 +536,7 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
         merge_vcfs(vcfs[0], vcfs[1], opath)
         return
 
-    tmpfiles = [tempfile.NamedTemporaryFile().name for _ in range(2, len(vcfs))] # the first two and last vcfs don't need to be stored as tempfiles
+    tmpfiles = [util.gettmpfile() for _ in range(2, len(vcfs))] # the first two and last vcfs don't need to be stored as tempfiles
     merge_vcfs(vcfs[0], vcfs[1], tmpfiles[0])
     for i in range(1, len(vcfs)-2):
         merge_vcfs(tmpfiles[i-1], vcfs[i+1], tmpfiles[i])

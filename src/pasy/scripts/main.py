@@ -15,7 +15,7 @@ import pandas as pd
 
 import argparse
 import sys
-import tempfile
+import os
 
 """
 This file serves as the main entrypoint for the pasy CLI.
@@ -84,8 +84,9 @@ def main(argv):
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
-        call_parser.add_argument("--all-cross", dest='all_cross', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
+        call_parser.add_argument("--realign-cross", "-r", dest='real', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
+    call_parser.add_argument("--tempdir", "-t", dest='tmp', required=False, type=str, help="Path to a directory to be used for storing temporary files. If the path does not exist, it will be created!")
 
     # view subparser
     view_parser = subparsers.add_parser("view",
@@ -120,16 +121,21 @@ def main(argv):
     if args.func:
         args.func(args)
     else:
-        logger.info("No subcommand specified, priting help message.")
+        logger.info("No subcommand specified, printing help message.")
         parser.print_help()
 
 def call(args):
     qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
     # find reference synteny
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
-    # use reference synteny as base to identify all haplotypes
-    df = pansyn.realign_gaps(df, qrynames, genomes)
+    if args.real:
+        # use reference synteny as base to identify all haplotypes
+        df = pansyn.realign_gaps(df, qrynames, genomes)
 
+    if args.tmp:
+        if not os.path.isdir(tmp):
+            os.makedirs(arg.tmp)
+        util.TMPDIR = args.tmp
 
     if args.print:
         logger.info("Printing sample head to STDOUT")
@@ -157,7 +163,7 @@ def call(args):
 
         logger.info(vcfs)
 
-        tmpfile = tempfile.NamedTemporaryFile().name
+        tmpfile = util.gettmpfile()
         logger.info(f"Merging VCFs, saving to {tmpfile}")
         io.reduce_vcfs(vcfs, tmpfile)
 
