@@ -1,0 +1,6 @@
+# This file contains a list of jokes to be output by msyd.
+# jokes are separated by a line consisting of '==='
+# lines starting with # are ignored (comments)
+What do you call two guy best friends who love math?
+Algebros
+===
