@@ -293,6 +293,14 @@ import pysam
 import intervaltree
 from collections import deque
 import pandas as pd
+import os
+import numpy as np
+import multiprocessing
+from functools import partial
+
+from syri.pyxFiles.synsearchFunctions import syri, mergeOutputFiles, outSyn
+from syri.tdfunc import getCTX
+from syri.writeout import getsrtable
 
 cpdef realign(syns, qrynames, fastas):
     return process_gaps(syns, qrynames, fastas)
@@ -345,6 +353,13 @@ cdef process_gaps(syns, qrynames, fastas):
                 syn = next(syniter)[1][0]
                 continue
 
+            # between chromosomes, there isn't a single gap
+            if syn.ref.chr != old.ref.chr:
+                old = syn
+                syn = next(syniter)[1][0]
+                continue
+
+
             # Block has been extracted and is long enough;
             # extract appropriate sequences, respecting crossyn
 
@@ -372,7 +387,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
                     #print(l, offset, seq)
                     # add to the intervaltree
-                    tree[pos:pos+l] = offset
+                    tree[pos:pos+l] = offset - pos # subtract starting position of the interval in collated sequence, as it will be readded later
                     seq += fasta.fetch(region=chr, start=offset, end=offset+l)
                     offset += l
                     pos += l
@@ -403,6 +418,9 @@ cdef process_gaps(syns, qrynames, fastas):
             print('ref:', ref)
             print('On ref:', syn.ref.chr, start, end, end - start)
             print({org:len(seq) for org, seq in seqdict.items()})
+            #for org in seqdict:
+            #    if len(seqdict[org]) < 300:
+            #        print(org, ':', seqdict[org])
 
             refseq = seqdict[ref]
             del seqdict[ref]
@@ -410,20 +428,25 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # construct alignment index from the reference
             logger.info("Starting Alignment")
-            aligner = mp.Aligner(seq=refseq, preset='asm5') 
+            aligner = mp.Aligner(seq=refseq)#, preset='asm5') 
             alignments = {org: align(aligner, seq, chr) for org, seq in seqdict.items()}
             logger.info(f"None in Alignments: {[org for org in alignments if alignments[org] is None]}")
 
 
             # run syri
+            syris = {org:getsyriout(alignments[org], CWD=util.TMPDIR if util.TMPDIR else '/tmp/') for org in alignments if alignments[org] is None}
 
-            # call cross/coresyn
-            # incorporate into output, think about matching with reference
+            for org in syris:
+                # adjust positions to reference using offsets stored in trees
+
+            # call cross/coresyn, probably won't need to remove overlap
+            # incorporate into output
+            # has to be sorted, how to do this?
             old = syn
             syn = next(syniter)[1][0]
 
-    except StopIteration:
-        pass
+    except StopIteration as e:
+        logger.warning('Stopped iteration: {e}')
 
 cdef align(aligner, seq, cid):
     m = aligner.map(seq)
@@ -459,21 +482,13 @@ cdef align(aligner, seq, cid):
 
 
 cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
-    from syri.pyxFiles.synsearchFunctions import syri, mergeOutputFiles, outSyn
-    from syri.tdfunc import getCTX
-    from syri.writeout import getsrtable
-    from os import remove
-    from numpy import unique
-    from multiprocessing import Pool
-    from functools import partial
-
     BRT = 20
     TUC = 1000
     TUP = 0.5
     T = 50
 
-    chrs = list(unique(coords.aChr))
-    with Pool(processes=N) as pool:
+    chrs = list(np.unique(coords.aChr))
+    with multiprocessing.Pool(processes=N) as pool:
         pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, tdgl=TD,tdolp=TDOLP), chrs)
 
     # Merge output of all chromosomes
@@ -489,9 +504,10 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     if not K:
         for fin in ["synOut.txt", "invOut.txt", "TLOut.txt", "invTLOut.txt", "dupOut.txt", "invDupOut.txt", "ctxOut.txt", "sv.txt", "notAligned.txt", "snps.txt"]:
             try:
-                remove(CWD+PR+fin)
+                os.remove(CWD+PR+fin)
             except OSError as e:
                 if e.errno != 2:    # 2 is the error number when no such file or directory is present https://docs.python.org/2/library/errno.html
                     raise
     return o
+
 
