@@ -229,7 +229,7 @@ cdef remove_overlap(syn):
 
 def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
     """
-    Finds core and cross-syntenic regions in the input files, depending on if the parameter `only_core` is `True` or `False`.
+    Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
     Uses either SYNAL or SYN regions as annotated by SyRI, controlled by the parameter `SYNAL`.
     In the case of SYN regions, alignment-based length calculation is not (yet) supported and `alns` is ignored.

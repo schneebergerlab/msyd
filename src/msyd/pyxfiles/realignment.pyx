@@ -149,19 +149,28 @@ cdef process_gaps(syns, qrynames, fastas):
             del seqdict[ref]
 
 
+            if len(seqdict) < 1: # do not align if only one sequence is left
+                old = syn
+                syn = next(syniter)[1][0]
+                continue
+
             # construct alignment index from the reference
             logger.info("Starting Alignment")
             aligner = mp.Aligner(seq=refseq)#, preset='asm5') 
-            alignments = {org: align(aligner, seq, chr) for org, seq in seqdict.items()}
-            logger.info(f"None in Alignments: {[org for org in alignments if alignments[org] is None]}")
+            alns = {org: align_concatseqs(aligner, seq, chr, mappingtrees[org]) for org, seq in seqdict.items()}
+            logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None or alns[org].empty]}")
+            print(ref, refseq)
+            print(seqdict)
 
 
             # run syri
-            cwd = util.TMPDIR if util.TMPDIR else '/tmp/'
-            syris = {org:getsyriout(alignments[org], PR='', CWD=cwd) for org in alignments if alignments[org] != None}
+            cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
+            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None and not alns[org].empty}
+            # skip regions that were skipped or could not be aligned
 
             for org in syris:
-                pass
+                print(syris[org].head())
+                print(alns[org].head())
                 # adjust positions to reference using offsets stored in trees
 
             # call cross/coresyn, probably won't need to remove overlap
@@ -171,11 +180,15 @@ cdef process_gaps(syns, qrynames, fastas):
             syn = next(syniter)[1][0]
 
     except StopIteration as e:
-        logger.warning('Stopped iteration: {e}')
+        logger.warning(f'Stopped iteration: {e}')
 
     return ret
 
-cdef align(aligner, seq, cid):
+cdef align_concatseqs(aligner, seq, cid, tree):
+    """
+    Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome
+    Will split alignments spanning multiple offsets (WIP!).
+    """
     m = aligner.map(seq)
     al = deque()
     # traverse alignments
