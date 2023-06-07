@@ -156,16 +156,16 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # construct alignment index from the reference
             logger.info("Starting Alignment")
-            aligner = mp.Aligner(seq=refseq)#, preset='asm5') 
+            aligner = mp.Aligner(seq=refseq, preset='asm5') 
             alns = {org: align_concatseqs(aligner, seq, chr, mappingtrees[org]) for org, seq in seqdict.items()}
-            logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None or alns[org].empty]}")
-            print(ref, refseq)
-            print(seqdict)
+            logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
+            #print(ref, refseq)
+            #print(seqdict)
 
 
             # run syri
             cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
-            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None and not alns[org].empty}
+            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
             # skip regions that were skipped or could not be aligned
 
             for org in syris:
@@ -190,6 +190,7 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     Will split alignments spanning multiple offsets (WIP!).
     """
     m = aligner.map(seq)
+    #print([str(x) for x in m])
     al = deque()
     # traverse alignments
     for h in m:
@@ -211,14 +212,18 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     al = pd.DataFrame(al)
     if al.empty:
         return None
+    print("We got alignment!")
     al[6] = al[6].astype('float')
-    al = al.loc[al[6] > 90]
+    print(al[6])
+    #al = al.loc[al[6] > 90]
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    return al
+    if al.empty:
+        print("We lost our alignment :/")
+    return None if al.empty else al
 
 
 cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
@@ -226,10 +231,12 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     TUC = 1000
     TUP = 0.5
     T = 50
+    invgl = 1000000
 
     chrs = list(np.unique(coords.aChr))
     with multiprocessing.Pool(processes=N) as pool:
-        pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, tdgl=TD,tdolp=TDOLP), chrs)
+        pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
+    #def syri(chromo, threshold, coords, cwdPath, bRT, prefix, tUC, tUP, invgl, tdgl, tdolp):
 
     # Merge output of all chromosomes
     mergeOutputFiles(chrs, CWD, PR)
