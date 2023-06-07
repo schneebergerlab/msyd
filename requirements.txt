@@ -4,3 +4,7 @@ numpy
 pysam >= 0.21
 # for the ordering functionality
 scipy
+# for the realignment functionality
+mappy
+intervaltree
+syri

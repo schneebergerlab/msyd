@@ -5,6 +5,7 @@ import msyd.util as util
 import msyd.io as io
 import msyd.imputation as imputation
 import msyd.pansyn as pansyn
+import msyd.realignment as realignment
 from msyd.classes.coords import Range
 
 import msyd.scripts.ordering as ordering
@@ -130,7 +131,7 @@ def call(args):
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
     if args.real:
         # use reference synteny as base to identify all haplotypes
-        df = pansyn.realign(df, qrynames, fastas)
+        df = realignment.realign(df, qrynames, fastas)
 
     if args.tmp:
         if not os.path.isdir(args.tmp):
