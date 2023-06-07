@@ -194,14 +194,16 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     al = deque()
     # traverse alignments
     for h in m:
+        #print(h.mapq)
         al.append([h.r_st+1,
                    h.r_en,
                    h.q_st+1,
                    h.q_en,
                    h.r_en - h.r_st,
                    h.q_en - h.q_st,
-                   format((sum([i[0] for i in h.cigar if i[1] == 7]) / (0.01 + sum(
-                       [i[0] for i in h.cigar if i[1] in [1, 2, 7, 8]]))) * 100, '.2f'),
+                   #h.mapq, # use instead of the thing below, as that assumes CIGAR strings not using M tags
+                   format((sum([i[0] for i in h.cigar if i[1] == 7 or i[1] == 0]) / (0.01 + sum(
+                       [i[0] for i in h.cigar if i[1] in [0, 1, 2, 7, 8]]))) * 100, '.2f'),
                    1,
                    h.strand,
                    h.ctg,
@@ -212,9 +214,8 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     al = pd.DataFrame(al)
     if al.empty:
         return None
-    print("We got alignment!")
-    al[6] = al[6].astype('float')
     print(al[6])
+    al[6] = al[6].astype('float')
     al = al.loc[al[6] > 90] # this is filtering out all alignments
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
@@ -224,8 +225,6 @@ cdef align_concatseqs(aligner, seq, cid, tree):
 
     #TODO use tree to remap!
 
-    if al.empty:
-        print("We lost our alignment :/")
     return None if al.empty else al
 
 
