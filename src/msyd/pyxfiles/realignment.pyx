@@ -215,12 +215,15 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     print("We got alignment!")
     al[6] = al[6].astype('float')
     print(al[6])
-    #al = al.loc[al[6] > 90]
+    al = al.loc[al[6] > 90] # this is filtering out all alignments
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+
+    #TODO use tree to remap!
+
     if al.empty:
         print("We lost our alignment :/")
     return None if al.empty else al
