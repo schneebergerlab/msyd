@@ -6,9 +6,9 @@
 
 from collections import defaultdict
 
-from pasy.pansyn import Range, Pansyn
-from pasy.classes.vars import SNV
-import pasy.util as util
+from msyd.pansyn import Range, Pansyn
+from msyd.classes.vars import SNV
+import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 

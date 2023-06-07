@@ -6,11 +6,11 @@ import os
 import gzip
 import platform
 
-import pasy.util as util
+import msyd.util as util
 
-from pasy.pansyn import *
-from pasy.classes.coords import Range, Pansyn
-from pasy.classes.cigar import Cigar
+from msyd.pansyn import *
+from msyd.classes.coords import Range, Pansyn
+from msyd.classes.cigar import Cigar
 
 
 reffwd = set(['M', 'D', 'N', '=', 'X'])

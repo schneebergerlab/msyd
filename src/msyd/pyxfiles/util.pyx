@@ -90,13 +90,13 @@ def gettmpfile():
 
 
 #############################################
-# everything above this doesn't depend on pasy
+# everything above this doesn't depend on msyd
 #############################################
 
-import pasy.pansyn as pansyn
-from pasy.classes.cigar import Cigar
-from pasy.classes.coords import Pansyn, Range
-import pasy.io
+import msyd.pansyn as pansyn
+from msyd.classes.cigar import Cigar
+from msyd.classes.coords import Pansyn, Range
+import msyd.io
 
 
 
@@ -183,13 +183,13 @@ def parse_input_tsv(fin):
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
 # For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
-    return pasy.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
+    return msyd.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    return pasy.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
+    return msyd.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
 def coresyn_from_lists(syns, alns, **kwargs):
-    return pasy.find_multisyn(syns, alns, only_core=True, **kwargs)
+    return msyd.find_multisyn(syns, alns, only_core=True, **kwargs)
 def crosssyn_from_lists(syns, alns, **kwargs):
-    return pasy.find_multisyn(syns, alns, only_core=False, **kwargs)
+    return msyd.find_multisyn(syns, alns, only_core=False, **kwargs)
 
 def get_orgs_from_df(df):
     """Small utility function to get all organism from a DataFrame of `Pansyn` objects.
@@ -253,7 +253,7 @@ def siprefix(x: int):
 def get_call_stats(syns, alns, **kwargs):
     """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats
     """
-    df = pasy.find_multisyn(syns, alns, **kwargs)
+    df = msyd.find_multisyn(syns, alns, **kwargs)
     return get_stats(df)
 
 
@@ -435,13 +435,13 @@ def pff_to_file(df, path):
     """Convenience wrapper for to_format to save to a file directly
     """
     with open(path, 'wt') as f:
-        pasy.io.to_pff(df, f)
+        msyd.io.to_pff(df, f)
 
 def pff_to_string(df, save_cigars=False):
     """Convenience wrapper for to_format, saves to a stringbuffer, returns the string.
     Mainly meant for printing small-ish callsets.
     """
     with io.StringIO() as buf:
-        pasy.io.to_pff(df, buf, save_cigars=save_cigars)
+        msyd.io.to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 

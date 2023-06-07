@@ -8,8 +8,8 @@ import functools
 #import cython
 import logging
 
-from pasy.classes.cigar import Cigar
-import pasy.util as util
+from msyd.classes.cigar import Cigar
+import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -31,7 +31,7 @@ class Position:
         return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
 
     def to_pff(self):
-        """Transform this `Position` into pasy file format
+        """Transform this `Position` into pansynteny file format
         """
         return f"{self.chr}:{self.haplo}:{self.pos}"
 
@@ -70,7 +70,7 @@ class Range:
         return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
 
     def to_pff(self):
-        """Transform this `Range` into the format specified by pasy
+        """Transform this `Range` into the form specified by PFF
         """
         return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
 

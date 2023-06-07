@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import pasy.util as util
-import pasy.io as io
-import pasy.imputation as imputation
-import pasy.pansyn as pansyn
-from pasy.classes.coords import Range
+import msyd.util as util
+import msyd.io as io
+import msyd.imputation as imputation
+import msyd.pansyn as pansyn
+from msyd.classes.coords import Range
 
-import pasy.scripts.ordering as ordering
+import msyd.scripts.ordering as ordering
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -18,20 +18,20 @@ import sys
 import os
 
 """
-This file serves as the main entrypoint for the pasy CLI.
+This file serves as the main entrypoint for the msyd CLI.
 """
 
 def main(argv):
 
     parser = argparse.ArgumentParser(description="""
-    pasy is a tool for identifying and processing pansynteny.
-    pasy consists of a Python library and a CLI interface.\n
+    msyd is a tool for identifying and processing pansynteny.
+    msyd consists of a Python library and a CLI interface.\n
     The CLI interface consists of multiple subcommands, described briefly below.\n
-    For more information, see the documentation and subparser help messages accessed by calling pasy [subparser] -h.
+    For more information, see the documentation and subparser help messages accessed by calling msyd [subparser] -h.
     """)
     parser.set_defaults(func=None, cores=1)
 
-    subparsers = parser.add_subparsers()#description="See also pasy [subparser] -h:") # title/description?
+    subparsers = parser.add_subparsers()#description="See also msyd [subparser] -h:") # title/description?
     # ordering parser
     order_parser = subparsers.add_parser("order",
         help="Determine a suitable ordering for plotting from a pansynteny callset.",
@@ -52,7 +52,7 @@ def main(argv):
     #    help="Filter a VCF file to only contain annotations in pansyntenic regions",
     #    description="""
     #    Used for filtering VCF files to only contain calls in pansyntenic regions.
-    #    Can be run on pff files processed with pasy view.
+    #    Can be run on pff files processed with msyd view.
     #    """)
     #filter_parser.set_defaults(func=filter)
     #filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
@@ -110,7 +110,7 @@ def main(argv):
     merge_parser = subparsers.add_parser("merge",
         help="Merge different VCFs",
         description="""
-        Exposes the optional VCF merging functionality in pasy call directly.
+        Exposes the optional VCF merging functionality in msyd call directly.
         Mainly for testing and debugging purposes
         """)
     merge_parser.set_defaults(func=merge)
@@ -144,7 +144,7 @@ def call(args):
     print(util.get_stats(df))
 
     # save output
-    logger.info(f"Saving pasy calls to PFF at {args.pff.name}")
+    logger.info(f"Saving msyd calls to PFF at {args.pff.name}")
     io.save_to_pff(df, args.pff, save_cigars=args.cigars)
 
     # if specified, merge the VCFs

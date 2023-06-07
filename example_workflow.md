@@ -1,14 +1,14 @@
-# An example pasy Workflow
+# An example msyd Workflow
 
-This file describes the steps for an example workflow using pasy, described in the image below.
+This file describes the steps for an example workflow using msyd, described in the image below.
 See also `example_workflow.sh` for a condensed shell script of the same workflow that can be run on the command line.
 
 
-![Diagram illustrating an example workflow for using pasy](https://github.com/schneebergerlab/pasy/blob/leon/workflow.svg)
+![Diagram illustrating an example workflow for using msyd](https://github.com/schneebergerlab/msyd/blob/leon/workflow.svg)
 
-## Running pasy
+## Running msyd
 
-In order to use `pasy`, high-quality chromosome-scale genomes are required.
+In order to use `msyd`, high-quality chromosome-scale genomes are required.
 Scaffolding using e.g. RagTag may be necessary.
 For this example workflow, we will be downloading some A. thaliana assemblies from the GenBank database:
 
@@ -68,7 +68,7 @@ $ mv sha.filtered.fna sha.fna
 
 
 In the next step, whole-genome alignments of the query sequences to the reference need to be computed.
-`pasy` can work with alignment files in SAM, BAM and PAF format.
+`msyd` can work with alignment files in SAM, BAM and PAF format.
 We choose Columbia as a reference, and align the sequences using `minimap2`:
 
 ```
@@ -86,7 +86,7 @@ $ syri --nc 5 -F P --cigar --prefix sha -c sha.paf -r ref.fna -q sha.fna --lf sh
 $ syri --nc 5 -F P --cigar --prefix swe -c swe.paf -r ref.fna -q swe.fna --lf swe.syri.log --samplename swe
 ```
 
-In preparation for running `pasy call`, the input tsv needs to be generated.
+In preparation for running `msyd call`, the input tsv needs to be generated.
 An example TSV for the callset prepared in this workflow could look like this:
 
 ```
@@ -110,28 +110,28 @@ do
 done
 ```
 
-After generating the requisite input, `pasy call` can be run to generate the pansynteny callset:
+After generating the requisite input, `msyd call` can be run to generate the pansynteny callset:
 
 ```
-$ pasy call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
+$ msyd call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
 ```
 
-## Working with the pasy Output
+## Working with the msyd Output
 
-If we are only interested in pansynteny on Chromosome 3, we can filter the .PFF file calling pasy view.
-In this case, the filtering could also be done using `grep` or `awk`, but `pasy view` is advantageous for more complex filtering.
-A simple expression-based language is used for complex filtering instructions in `pasy`.
+If we are only interested in pansynteny on Chromosome 3, we can filter the .PFF file calling msyd view.
+In this case, the filtering could also be done using `grep` or `awk`, but `msyd view` is advantageous for more complex filtering.
+A simple expression-based language is used for complex filtering instructions in `msyd`.
 It is described in `view_reference.md`.
 
 ```
 # CP116282 is the id corresponding to chromosome 3 in Col-CC
-$ pasy view -e "on CP116283.1" -i athalianas.pff -o athalianas-chr3.pff
+$ msyd view -e "on CP116283.1" -i athalianas.pff -o athalianas-chr3.pff
 ```
 
-If we want to have the pansynteny annotations in VCF format, we can just change the file extension passed to `pasy view` or pass the `--ovcf` flag.
+If we want to have the pansynteny annotations in VCF format, we can just change the file extension passed to `msyd view` or pass the `--ovcf` flag.
 
 ```
-$ pasy view -i athalianas-chr3.pff -o athalianas-chr3-syn.vcf
+$ msyd view -i athalianas-chr3.pff -o athalianas-chr3-syn.vcf
 ```
 
 We can also use our pansynteny callset to select variants in pansyntenic regions from a population VCF for which we do not have a assembled genomes.
@@ -155,5 +155,5 @@ We can at the same time specify a filtering option using the `-e` flag.
 Filtering will be performed before the VCF subsetting – this can be used to select only core-syntenic regions:
 
 ```
-$ pasy view -i athalianas-chrnames.pff -e "deg >= 3" -o pansynt-vars.vcf --intersect ensembl_athaliana.vcf
+$ msyd view -i athalianas-chrnames.pff -e "deg >= 3" -o pansynt-vars.vcf --intersect ensembl_athaliana.vcf
 ```

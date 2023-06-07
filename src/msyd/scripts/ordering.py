@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as spclhier
 
-import pasy.util as util
-from pasy.classes.coords import Range
+import msyd.util as util
+from msyd.classes.coords import Range
 
 logger = util.CustomFormatter.getlogger(__name__)
 

@@ -24,9 +24,9 @@ digraph example{
 		node[shape=box];
 		aligner [label=<Whole-Genome alignment<br/>e.g. <b>minimap2, NUCmer</b>>]
 		SyRI [label=<Synteny calling<br/><b>SyRI</b>>];
-		call [label=<Call pansyntenic regions<br/><b>pasy call</b>>];
+		call [label=<Call pansyntenic regions<br/><b>msyd call</b>>];
 		callers [label="Other variant calling pipeline", fontname="Times-Italic", style=dashed];
-		view [label=<Filter pansyntenic regions<br/><b>pasy view</b>>, style=dashed];
+		view [label=<Filter pansyntenic regions<br/><b>msyd view</b>>, style=dashed];
 	}
 
 	subgraph cluster2{

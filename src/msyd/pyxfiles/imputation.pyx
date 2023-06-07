@@ -3,9 +3,9 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-from pasy.classes.cigar import Cigar#, cig_clips, cig_aln_types
-import pasy.classes as classes
-import pasy.util as util
+from msyd.classes.cigar import Cigar#, cig_clips, cig_aln_types
+import msyd.classes as classes
+import msyd.util as util
 
 # redeclare, as cdefs can apparently not be imported
 cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])

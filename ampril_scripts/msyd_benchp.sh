@@ -7,6 +7,6 @@ do
 	do
 		bsub -q multicore20 -n$c -R"span[hosts=1] rusage[mem=8000]" -M320000 \
 		-oo benchp_$c_$n.log -eo benchp_$c_$n.err \
-		"pasy call -i ./full.tsv -c $c -o /dev/null"
+		"msyd call -i ./full.tsv -c $c -o /dev/null"
 	done
 done

@@ -15,7 +15,7 @@ curl -OJX GET "https://api.ncbi.nlm.nih.gov/datasets/v2alpha/genome/accession/GC
 unzip "./*.zip"
 mv ncbi_dataset/data/*/*.fna ./
 
-## Prepare them for running pasy
+## Prepare them for running msyd
 
 # rename them to shorter names
 mv GCA_001651475.1_Ler_Assembly_genomic.fna ler.fna
@@ -33,7 +33,7 @@ head -n 1480076 sha.fna > sha.filtered.fna
 mv sha.filtered.fna sha.fna
 
 
-## Generate inputs for pasy
+## Generate inputs for msyd
 
 # generate alignments to col-CC
 mv col.fna ref.fna
@@ -54,16 +54,16 @@ do
 	echo "$bs\t$bs.paf\t${bs}syri.out\t${bs}syri.vcf" >> genomes.tsv
 done
 
-# run pasy to call pansynteny
-pasy call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
+# run msyd to call pansynteny
+msyd call -i genomes.tsv -o athalianas.pff -m athalianas.vcf -r ref.fna
 
 ## work with the output
 
 # CP116282 is the id corresponding to chromosome 3 in Col-CC
-pasy view -e "on CP116283.1" -i athalianas.pff -o athalianas-chr3.pff
+msyd view -e "on CP116283.1" -i athalianas.pff -o athalianas-chr3.pff
 
 # convert to VCF for use in visualization/other software
-pasy view -i athalianas-chr3.pff -o athalianas-chr3-syn.vcf
+msyd view -i athalianas-chr3.pff -o athalianas-chr3-syn.vcf
 
 ## download 1001 genome project VCF, filter for vars in pansyntenic regions
 
@@ -74,4 +74,4 @@ gunzip ensembl_athaliana.vcf.gz
 sed -e s/CP116280.1/1/ -e s/CP116281.1/2/ -e s/CP116282.1/3/ -e s/CP116283.1/4/ -e s/CP116284.1/5/ athalianas.pff > athalianas-chrnames.pff
 
 # filter for variants in pansyntenic regions!
-pasy view -i athalianas-chrnames.pff -e "deg >= 3" -o pansynt-vars.vcf --intersect ensembl_athaliana.vcf
+msyd view -i athalianas-chrnames.pff -e "deg >= 3" -o pansynt-vars.vcf --intersect ensembl_athaliana.vcf

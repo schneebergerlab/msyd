@@ -1,23 +1,23 @@
-# pasy
+# msyd
 
 ## Installation
-pasy can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
-Requirements for running pasy are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
+msyd can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
+Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
 They can be installed with `pip install -r requirements.txt`
 
 ## Usage
 
 Pansyn can be used as either a Python library or a CLI tool.
 Pansyn can identify pansyntenic regions in a set of genomes aligned to a common reference, manipulate pansynteny callset files and determine a suitable ordering for plotting synteny between the genomes with `plotsr`.
-The different functionalities of pasy are separated into modules for the python library and subcommands for the CLI interface.
+The different functionalities of msyd are separated into modules for the python library and subcommands for the CLI interface.
 Many convenient shorthand functions are defined in the `util` module.
 
-### `pasy call`
+### `msyd call`
 
 This subcommand is used to call pansyntenic regions in a set of genomes.
 It uses the Synteny Intersection Algorithm to identify both core and reference cross synteny, but can optionally be configured to call only core synteny (making it faster particularly when run with many genomes).
-`pasy call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment, SyRI.out and vcf file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
-Optionally, the VCF might be left out, then `pasy` will automatically look for the syri-generated VCF file corresponding to the syri.out file.
+`msyd call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment, SyRI.out and vcf file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
+Optionally, the VCF might be left out, then `msyd` will automatically look for the syri-generated VCF file corresponding to the syri.out file.
 Both files should be using the same reference in all specified genomes.
 An example input file might look something like the following:
 
@@ -30,33 +30,33 @@ c24	col_c24.bam	col_c24syri.out	col_c24.vcf
 eri	col_eri.bam	col_erisyri.out	col_eri.vcf
 ```
 
-Pansynteny can then be called with `pasy`:
+Pansynteny can then be called with `msyd`:
 ```
-$pasy call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
+$msyd call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
 
 
-`pasy call` takes a number of optional CLI flags, described by calling `pasy call -h`.
-If the -m output is specified with an output vcf, pasy will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
+`msyd call` takes a number of optional CLI flags, described by calling `msyd call -h`.
+If the -m output is specified with an output vcf, msyd will merge VCF files of each organism againt the reference into one large, multi-genomic VCF File.
 This functionality only works for VCF files generated with a recent (>=1.6.3.) version of SyRI.
 Also be sure to pass the `--samplename` parameter to syri, preferably using the same name as specified in the .tsv.
 In the call above, the VCF merging functionality could then be enabled:
 ```
-$pasy call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
+$msyd call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
 
-`pasy call` generates output in Pasy File Format (PFF).
+`msyd call` generates output in Pasy File Format (PFF).
 PFF is a tab-separated format for storing pansynteny annotations and alignments.
 A specification and small example can be seen in `format.md`.
-`pasy view` can be used to export the synteny annotations in a PFF file into a VCF for use with other tools, but `pasy` cannot read pansynteny information from VCF files.
+`msyd view` can be used to export the synteny annotations in a PFF file into a VCF for use with other tools, but `msyd` cannot read pansynteny information from VCF files.
 
-### `pasy view`
+### `msyd view`
 
 The `view` subparser is used for operating on PFF files.
 This command can also be used to convert output to VCF format (losing alignment information in the process); this requires a file containing the reference genomes.
-`pasy view` uses a custom expression language to allow complex filtering operations on PFF files.
+`msyd view` uses a custom expression language to allow complex filtering operations on PFF files.
 Filtering expressions are constructed from two main building blocks: primitive and derived terms.
-Primitive terms include e.g. filtering for the degree of a pasy region (`deg >= 5`), for whether it exists in a query sequence (`contains sample01`) or its position on the reference (`in Chr1:x:200-500`).
+Primitive terms include e.g. filtering for the degree of a msyd region (`deg >= 5`), for whether it exists in a query sequence (`contains sample01`) or its position on the reference (`in Chr1:x:200-500`).
 There are two primitive terms that take multiple arguments (`contains all` and `contains any`).
 In this case, the arguments are separated by a `,`. Any whitespace near the `,` is ignored.
 Example: `contains any sample01, sample02,sample05`.
@@ -65,7 +65,7 @@ If a derived term consists of multiple terms, these need to be put in brackets.
 Example derived terms include `(deg >= 5) and (contains sample02)` or `not on Chr2`.
 
 Internally, the expression is first parsed recursively into a lambda expression by `util.compile_filter`.
-`util.filter_pansyns` then evaluates this for every pasy region object, keeping only those for which the expression evaluates to `True`.
+`util.filter_pansyns` then evaluates this for every msyd region object, keeping only those for which the expression evaluates to `True`.
 For users of the python API, `filter_pansyns` can also be called with any custom lambda expression.
 
 For a complete reference of the filtering language, see `view_reference.md`
@@ -74,21 +74,21 @@ If the `--intersect` option is passed with a VCF file, a VCF file containing onl
 If `-e` is also specified, the filtering will be performed before the intersection.
 An example usecase would be to only get pansyntenic SNPs from Chr. 8:
 ```
-pasy view -e 'on Chr8' -i calls.pff -e --intersect snps.vcf
+msyd view -e 'on Chr8' -i calls.pff -e --intersect snps.vcf
 ```
 
-### `pasy order`
+### `msyd order`
 
-`pasy` can try to determine a suitable ordering for plotting a set of genomes once pansynteny has been called in that set.
+`msyd` can try to determine a suitable ordering for plotting a set of genomes once pansynteny has been called in that set.
 The ordering functionality takes a pansynteny callset in PFF format as input (specified with `-i`) and prints the optimal ordering to stdout.
-The organisms are given with the name that was specified in the input file to `pasy call`.
+The organisms are given with the name that was specified in the input file to `msyd call`.
 
 The ordering is determined by performing single-linkage hierarchical clustering followed by leaf-order optimization (as implemented in `scipy`) according to the amount of shared pairwise pansynteny.
-It is intended for within-species order determination; determining the optimal ordering for a particular region of the genome can be accomplished by filtering the PFF file using `pasy view`.
+It is intended for within-species order determination; determining the optimal ordering for a particular region of the genome can be accomplished by filtering the PFF file using `msyd view`.
 The algorithm may not produce suitable output if used on regions with little synteny.
 
-## Example pasy workflow
+## Example msyd workflow
 
-![Diagram illustrating an example workflow for using pasy](https://github.com/schneebergerlab/pasy/blob/leon/workflow.svg)
+![Diagram illustrating an example workflow for using msyd](https://github.com/schneebergerlab/msyd/blob/leon/workflow.svg)
 
-Useful scripts for using `pasy` may be seen in the `hgsv\_scripts`, `drosophila\_scripts`, `ampsynth\_scripts` directories.
+Useful scripts for using `msyd` may be seen in the `hgsv\_scripts`, `drosophila\_scripts`, `ampsynth\_scripts` directories.
