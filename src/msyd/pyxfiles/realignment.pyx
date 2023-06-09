@@ -168,9 +168,9 @@ cdef process_gaps(syns, qrynames, fastas):
             syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
             # skip regions that were skipped or could not be aligned
 
-            for org in syris:
-                print(syris[org].head())
-                print(alns[org].head())
+            #for org in syris:
+            #    print(syris[org].head())
+            #    print(alns[org].head())
                 # adjust positions to reference using offsets stored in trees
 
             # call cross/coresyn, probably won't need to remove overlap
@@ -189,12 +189,13 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome
     Will split alignments spanning multiple offsets (WIP!).
     """
-    m = aligner.map(seq)
+    m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     #print([str(x) for x in m])
     al = deque()
     # traverse alignments
     for h in m:
         #print(h.mapq)
+        #print(h.cigar)
         al.append([h.r_st+1,
                    h.r_en,
                    h.q_st+1,
@@ -202,8 +203,8 @@ cdef align_concatseqs(aligner, seq, cid, tree):
                    h.r_en - h.r_st,
                    h.q_en - h.q_st,
                    #h.mapq, # use instead of the thing below, as that assumes CIGAR strings not using M tags
-                   format((sum([i[0] for i in h.cigar if i[1] == 7 or i[1] == 0]) / (0.01 + sum(
-                       [i[0] for i in h.cigar if i[1] in [0, 1, 2, 7, 8]]))) * 100, '.2f'),
+                   format((sum([i[0] for i in h.cigar if i[1] == 7]) / sum(
+                       [i[0] for i in h.cigar if i[1] in [0, 1, 2, 7, 8]])) * 100, '.2f'),
                    1,
                    h.strand,
                    h.ctg,
@@ -214,7 +215,7 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     al = pd.DataFrame(al)
     if al.empty:
         return None
-    print(al[6])
+    #print(al[6])
     al[6] = al[6].astype('float')
     al = al.loc[al[6] > 90] # this is filtering out all alignments
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
@@ -222,6 +223,7 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    print(al[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
 
     #TODO use tree to remap!
 
