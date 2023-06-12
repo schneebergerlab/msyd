@@ -12,7 +12,6 @@ import intervaltree
 
 from collections import deque
 import os
-import multiprocessing
 from functools import partial
 
 from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn
@@ -93,7 +92,7 @@ cdef process_gaps(syns, qrynames, fastas):
             mappingtrees = dict()
             seqdict = dict()
             for org in qrynames:
-                chr = syn.ranges_dict[org].chr # chr must always stay the same
+                chrom = syn.ranges_dict[org].chr # chr must always stay the same
                 pos = 0
                 offset = old.ranges_dict[org].end # offset of the index in the new sequence to the old genome
                 tree = intervaltree.IntervalTree()
@@ -111,7 +110,7 @@ cdef process_gaps(syns, qrynames, fastas):
                     #print(l, offset, seq)
                     # add to the intervaltree
                     tree[pos:pos+l] = offset - pos # subtract starting position of the interval in collated sequence, as it will be readded later
-                    seq += fasta.fetch(region=chr, start=offset, end=offset+l)
+                    seq += fasta.fetch(region=chrom, start=offset, end=offset+l)
                     offset += l
                     pos += l
 
@@ -119,7 +118,7 @@ cdef process_gaps(syns, qrynames, fastas):
                 l = syn.ranges_dict[org].start - offset
                 if l >= MIN_REALIGN_THRESH:
                     tree[pos:pos+l] = offset
-                    seq += fasta.fetch(region=chr, start=offset, end=offset+l)
+                    seq += fasta.fetch(region=chrom, start=offset, end=offset+l)
 
                 if tree and seq:
                     mappingtrees[org] = tree
@@ -157,7 +156,7 @@ cdef process_gaps(syns, qrynames, fastas):
             # construct alignment index from the reference
             logger.info("Starting Alignment")
             aligner = mp.Aligner(seq=refseq, preset='asm5') 
-            alns = {org: align_concatseqs(aligner, seq, chr, mappingtrees[org]) for org, seq in seqdict.items()}
+            alns = {org: align_concatseqs(aligner, seq, chrom, mappingtrees[org]) for org, seq in seqdict.items()}
             logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
             #print(ref, refseq)
             #print(seqdict)
@@ -168,9 +167,9 @@ cdef process_gaps(syns, qrynames, fastas):
             syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
             # skip regions that were skipped or could not be aligned
 
-            #for org in syris:
-            #    print(syris[org].head())
-            #    print(alns[org].head())
+            for org in syris:
+                print(syris[org].head())
+                print(alns[org].head())
                 # adjust positions to reference using offsets stored in trees
 
             # call cross/coresyn, probably won't need to remove overlap
@@ -186,8 +185,9 @@ cdef process_gaps(syns, qrynames, fastas):
 
 cdef align_concatseqs(aligner, seq, cid, tree):
     """
-    Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome
-    Will split alignments spanning multiple offsets (WIP!).
+    Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
+    Both sequences should be on the same chromosomes.
+    TODO make it split alignments spanning multiple offsets?
     """
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     #print([str(x) for x in m])
@@ -207,7 +207,7 @@ cdef align_concatseqs(aligner, seq, cid, tree):
                        [i[0] for i in h.cigar if i[1] in [0, 1, 2, 7, 8]])) * 100, '.2f'),
                    1,
                    h.strand,
-                   h.ctg,
+                   cid,
                    cid,
                    "".join(map(lambda x: str(x[0]) + 'MIDNSHP=X'[x[1]], h.cigar))
                    ])
@@ -237,16 +237,21 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     T = 50
     invgl = 1000000
 
-    chrs = list(np.unique(coords.aChr))
-    with multiprocessing.Pool(processes=N) as pool:
-        pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
-    #def syri(chromo, threshold, coords, cwdPath, bRT, prefix, tUC, tUP, invgl, tdgl, tdolp):
+    #chrs = list(np.unique(coords.aChr))
+    assert(len(list(np.unique(coords.aChr))) == 1)
+    chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
+    syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
 
-    # Merge output of all chromosomes
-    mergeOutputFiles(chrs, CWD, PR)
+    #with multiprocessing.Pool(processes=N) as pool:
+    #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
+
+
+    #TODO if runtime a problem: redo syri call to only call synteny => maybe configurable?
+    # Merge output of all chromosomes – still necessary for some reason
+    mergeOutputFiles([chrom], CWD, PR)
 
     #Identify cross-chromosomal events in all chromosomes simultaneously
-    getCTX(coords, CWD, chrs, T, BRT, PR, TUC, TUP, N, TD, TDOLP)
+    getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
 
     # Recalculate syntenic blocks by considering the blocks introduced by CX events
     outSyn(CWD, T, PR)
