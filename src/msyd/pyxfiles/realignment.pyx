@@ -19,6 +19,7 @@ from syri.tdfunc import getCTX
 from syri.writeout import getsrtable
 
 import msyd.util as util
+import msyd.classes.cigar as cigar
 
 
 cdef int MIN_REALIGN_THRESH = 100
@@ -146,6 +147,8 @@ cdef process_gaps(syns, qrynames, fastas):
 
             refseq = seqdict[ref]
             del seqdict[ref]
+            reftree = mappingtrees[ref]
+            del mappingtrees[ref]
 
 
             if len(seqdict) < 1: # do not align if only one sequence is left
@@ -156,7 +159,7 @@ cdef process_gaps(syns, qrynames, fastas):
             # construct alignment index from the reference
             logger.info("Starting Alignment")
             aligner = mp.Aligner(seq=refseq, preset='asm5') 
-            alns = {org: align_concatseqs(aligner, seq, chrom, mappingtrees[org]) for org, seq in seqdict.items()}
+            alns = {org: align_concatseqs(aligner, seq, chrom, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
             logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
             #print(ref, refseq)
             #print(seqdict)
@@ -164,12 +167,12 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # run syri
             cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
-            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
+            #syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
             # skip regions that were skipped or could not be aligned
 
-            for org in syris:
-                print(syris[org].head())
-                print(alns[org].head())
+            #for org in syris:
+            #    print(syris[org].head())
+            #    print(alns[org].head())
                 # adjust positions to reference using offsets stored in trees
 
             # call cross/coresyn, probably won't need to remove overlap
@@ -183,7 +186,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
     return ret
 
-cdef align_concatseqs(aligner, seq, cid, tree):
+cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
@@ -194,30 +197,73 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     al = deque()
     # traverse alignments
     for h in m:
+        rstart: int = h.r_st + 1
+        rend: int = h.r_en
+        qstart: int = h.q_st + 1
+        qend: int = h.q_en
+        cg = cigar.cigar_from_bam(h.cigar)
         #print(h.mapq)
-        #print(h.cigar)
-        al.append([h.r_st+1,
-                   h.r_en,
-                   h.q_st+1,
-                   h.q_en,
-                   h.r_en - h.r_st,
-                   h.q_en - h.q_st,
-                   #h.mapq, # use instead of the thing below, as that assumes CIGAR strings not using M tags
-                   format((sum([i[0] for i in h.cigar if i[1] == 7]) / sum(
-                       [i[0] for i in h.cigar if i[1] in [0, 1, 2, 7, 8]])) * 100, '.2f'),
-                   1,
-                   h.strand,
-                   cid,
-                   cid,
-                   "".join(map(lambda x: str(x[0]) + 'MIDNSHP=X'[x[1]], h.cigar))
-                   ])
+
+        rstartov = list(reftree[rstart])[0]
+        qstartov = list(qrytree[qstart])[0]
+
+        # simply append alignment if there is only one offset
+        # as this happens quite often, this should save a lot of time
+        if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
+            roff = rstartov.data
+            qoff = qstartov.data
+            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1, h.strand, cid, cid, cg.to_string()])
+            continue
+
+
+        refoffsets = sorted(reftree[rstart:rend])
+        qryoffsets = sorted(qrytree[qstart:qend])
+        print(refoffsets, qryoffsets)
+
+        for rint in refoffsets:
+            print("rint:", rint)
+            # drop from the alignment everything before the current interval
+            start = max(rint.begin, rstart)
+            qstartdelta, cg = cg.get_removed(start - rstart)
+            rstart = start
+
+            # drop everything after the current interval
+            end = min(rint.end, rend)
+            print(end, rend)
+            qenddelta, rcg = cg.get_removed(rend - end, start=False)
+
+            # transform coordinates with the offset/alignment information, return 
+            roffset = rint.data
+
+            for qint in sorted(qrytree[qstart + qstartdelta:qend - qenddelta]):
+                print("qint:", qint)
+                start = max(qint.begin, qstart)
+                # drop from the alignment everything before the current interval
+                rstartdelta, qcg = rcg.get_removed(start - qstart - qstartdelta, ref=False)
+
+                end = min(qint.end, qend)
+                # drop everything after the current interval
+                renddelta, qcg = qcg.get_removed(end - qint.end, start=False, ref=False)
+
+                # transform coordinates with the offset/alignment information, return 
+                qoffset = qint.data
+                rlen = rend - renddelta - rstart - rstartdelta
+                qlen = qend - qenddelta - qstart - qstartdelta
+                if rlen < MIN_REALIGN_THRESH or qlen < MIN_REALIGN_THRESH:
+                    print("very small:", rlen, qlen)
+
+                al.append([rstart + rstartdelta + roffset, rend - renddelta + roffset,
+                           qstart + qstartdelta + qoffset, qend - qenddelta + qoffset,
+                           rlen, qlen, qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
+
+
 
     al = pd.DataFrame(al)
     if al.empty:
         return None
     #print(al[6])
-    al[6] = al[6].astype('float')
-    al = al.loc[al[6] > 90] # this is filtering out all alignments
+    #al[6] = al[6].astype('float')
+    al = al.loc[al[6] > 90]
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
@@ -228,6 +274,38 @@ cdef align_concatseqs(aligner, seq, cid, tree):
     #TODO use tree to remap!
 
     return None if al.empty else al
+
+cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
+    """DEPRECATED
+    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
+    """
+    start = max(interval.start, rstart)
+    # drop from the alignment everything before the current interval
+    qstartdelta, curcg = cg.get_removed(start - rstart)
+
+    # drop everything after the current interval
+    end = min(interval.end, rend)
+    qenddelta, retcg = curcg.get_removed(rend - end, start=False)
+
+    # transform coordinates with the offset/alignment information, return 
+    offset = interval.data
+    return (start + offset, end + offset, qstart + qstartdelta, qend - qenddelta, retcg)
+
+cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
+    """DEPRECATED
+    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the query with the offset incorporated
+    """
+    start = max(interval.start, qstart)
+    # drop from the alignment everything before the current interval
+    rstartdelta, curcg = cg.get_removed(start - qstart, ref=False)
+
+    end = min(interval.end, qend)
+    # drop everything after the current interval
+    renddelta, retcg = curcg.get_removed(end - interval.end, start=False, ref=False)
+
+    # transform coordinates with the offset/alignment information, return 
+    offset = interval.data
+    return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
 
 cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
