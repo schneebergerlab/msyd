@@ -33,6 +33,8 @@ cdef c_cig_types = set([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D
 cdef c_cig_aln_types = set([ord('M'), ord('X'), ord('=')])
 cdef c_cig_clips = set([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
+cdef bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
+
 cdef retup = r"(\d+)([=XIDMNSHP])"
 
 # declared outside of Cigar to be accessible from python, might move back later
@@ -54,7 +56,21 @@ cpdef cigar_from_string(str cg):
     return Cigar.__new__(Cigar, tups)
 
 # maybe implement cigar_from_full_string?
-    
+cpdef cigar_from_bam(bam):    
+    """
+    Takes a List of Cigar tuples with BAM codes as input, returns as a Cigar struct.
+    """
+    cdef vector[Cigt] tups = vector[Cigt]()
+    # preallocate assuming on average each tuple has two digit length
+    # maybe try being more optimistic and assuming three-digit length
+    tups.reserve(len(bam))
+
+    for tup in bam:
+        assert(0 < tup[1] and tup[1] < 9)
+        tups.push_back(Cigt(tup[0], bam_code_map[tup[1]]))
+ 
+    return Cigar.__new__(Cigar, tups)
+
 # small struct to contain the length and type of a cigar tuple
 cdef packed struct Cigt:
 #cdef struct Cigt: # slower
