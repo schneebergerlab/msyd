@@ -197,15 +197,16 @@ cdef class Cigar:
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
-        if self.tups.empty():
-            logger.error("Trying to remove from an empty Cigar!")
-            raise ValueError("empty Cigar!")
 
         if n == 0: # shortcut for a common path
             if only_pos:
                 return 0
             else:
                 return (0, self)
+        # deleting from an empty record is fine, so long as 0 is deleted
+        if self.tups.empty():
+            logger.error("Trying to remove from an empty Cigar!")
+            raise ValueError("empty Cigar!")
         
         cdef:
             unsigned int ind = 0 # position currently being evaluated for skipping
