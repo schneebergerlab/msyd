@@ -105,12 +105,13 @@ cdef process_gaps(syns, qrynames, fastas):
                     synrng = crosssyn.ranges_dict[org]
                     l = synrng.start - offset # len of the region to be added
                     if l < MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
+                        #TODO add Ns in place of known haplotype maybe
                         offset = synrng.end # skip till the end
                         continue
 
                     #print(l, offset, seq)
                     # add to the intervaltree
-                    tree[pos:pos+l] = offset - pos # subtract starting position of the interval in collated sequence, as it will be readded later
+                    tree[pos:pos+l] = offset
                     seq += fasta.fetch(region=chrom, start=offset, end=offset+l)
                     offset += l
                     pos += l
@@ -197,12 +198,14 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
     al = deque()
     # traverse alignments
     for h in m:
-        rstart: int = h.r_st + 1
+        rstart: int = h.r_st
         rend: int = h.r_en
-        qstart: int = h.q_st + 1
+        qstart: int = h.q_st
         qend: int = h.q_en
         cg = cigar.cigar_from_bam(h.cigar)
         #print(h.mapq)
+
+        # TODO maybe handle inverted alignments?
 
         rstartov = list(reftree[rstart])[0]
         qstartov = list(qrytree[qstart])[0]
@@ -219,42 +222,66 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
         refoffsets = sorted(reftree[rstart:rend])
         qryoffsets = sorted(qrytree[qstart:qend])
         print(refoffsets, qryoffsets)
-
         for rint in refoffsets:
-            print("rint:", rint)
-            # drop from the alignment everything before the current interval
-            start = max(rint.begin, rstart)
-            qstartdelta, cg = cg.get_removed(start - rstart)
-            rstart = start
+            print(rint, rstart, rend, cg.get_len(), qstart, qend, cg.get_len(ref=False))
+            print(rint.begin - rstart, rend - rint.end, cg.get_len())
+            # subset alignment to this reference offset interval
+            qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
+            qendel, rcg = rcg.get_removed(max(rend - rint.end, 0), start=False)
+            print(rint, rcg.get_len())
+            for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
+                # subset to the query offset, respecting the subsetting done so far
+                print(qint, qstdel, qendel)
+                print(qint.begin - qstdel, qend - qendel - qint.end, rcg.get_len(ref=False))
+                rstdel, qcg = rcg.get_removed(max(qend - qendel - qint.begin, 0), ref=False)
+                #rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
+                rendel, qcg = qcg.get_removed(max(qend - qint.end + qendel, 0), ref=False, start=False)
+                print(qcg.get_len())
 
-            # drop everything after the current interval
-            end = min(rint.end, rend)
-            print(end, rend)
-            qenddelta, rcg = cg.get_removed(rend - end, start=False)
+                print([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
+                           qint.data, qint.data + qint.end - qint.begin,
+                           min(rend, rint.end) - rendel - rstdel, qint.end - qint.begin,
+                           qcg.get_identity()*100])
+                al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
+                           qint.data, qint.data + min(qendel, qint.end),
+                           min(rend, rint.end) - rendel - rstdel, min(qendel, qint.end),
+                           qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
 
-            # transform coordinates with the offset/alignment information, return 
-            roffset = rint.data
+        #for rint in refoffsets:
+        #    print("rint:", rint)
+        #    # drop from the alignment everything before the current interval
+        #    start = max(rint.begin, rstart)
+        #    qstartdelta, cg = cg.get_removed(start - rstart)
+        #    print("start, rstart, qstartdelta", start, rstart, qstartdelta)
+        #    rstart = start
 
-            for qint in sorted(qrytree[qstart + qstartdelta:qend - qenddelta]):
-                print("qint:", qint)
-                start = max(qint.begin, qstart)
-                # drop from the alignment everything before the current interval
-                rstartdelta, qcg = rcg.get_removed(start - qstart - qstartdelta, ref=False)
+        #    # drop everything after the current interval
+        #    end = min(rint.end, rend)
+        #    qenddelta, rcg = cg.get_removed(rend - end, start=False)
+        #    roffset = rint.data
+        #    print("end, rend, qenddelta, roffset", end, rend, qenddelta, roffset)
 
-                end = min(qint.end, qend)
-                # drop everything after the current interval
-                renddelta, qcg = qcg.get_removed(end - qint.end, start=False, ref=False)
+        #    for qint in sorted(qrytree[qstart + qstartdelta:qend - qenddelta]):
+        #        print("qint:", qint)
+        #        start = max(qint.begin - qstartdelta, 0)
+        #        # drop from the alignment everything before the current interval
+        #        rstartdelta, qcg = rcg.get_removed(start, ref=False)
+        #        print("start, rstartdelta", start, rstartdelta)
 
-                # transform coordinates with the offset/alignment information, return 
-                qoffset = qint.data
-                rlen = rend - renddelta - rstart - rstartdelta
-                qlen = qend - qenddelta - qstart - qstartdelta
-                if rlen < MIN_REALIGN_THRESH or qlen < MIN_REALIGN_THRESH:
-                    print("very small:", rlen, qlen)
+        #        end = min(qint.end, qend)
+        #        # drop everything after the current interval
+        #        renddelta, qcg = qcg.get_removed(end - qint.end, start=False, ref=False)
 
-                al.append([rstart + rstartdelta + roffset, rend - renddelta + roffset,
-                           qstart + qstartdelta + qoffset, qend - qenddelta + qoffset,
-                           rlen, qlen, qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
+        #        # transform coordinates with the offset/alignment information, return 
+        #        qoffset = qint.data
+        #        rlen = rend - renddelta - rstart - rstartdelta
+        #        qlen = qend - qenddelta - qstart - qstartdelta
+        #        if rlen < MIN_REALIGN_THRESH or qlen < MIN_REALIGN_THRESH:
+        #            print("very small:", rlen, qlen)
+
+        #        al.append([rstart + rstartdelta + roffset, rend - renddelta + roffset,
+        #                   qstart + qstartdelta + qoffset, qend - qenddelta + qoffset,
+        #                   rlen, qlen, qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
 
 
 
