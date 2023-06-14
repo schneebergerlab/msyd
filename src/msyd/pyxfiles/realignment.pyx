@@ -232,10 +232,10 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
             for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
                 # subset to the query offset, respecting the subsetting done so far
                 print(qint, qstdel, qendel)
-                print(qint.begin - qstdel, qend - qendel - qint.end, rcg.get_len(ref=False))
-                rstdel, qcg = rcg.get_removed(max(qend - qendel - qint.begin, 0), ref=False)
-                #rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
+                print(qint.begin - qstdel - qstart, qend - qendel - qint.end, rcg.get_len(ref=False))
+                rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
                 rendel, qcg = qcg.get_removed(max(qend - qint.end + qendel, 0), ref=False, start=False)
+
                 print(qcg.get_len())
 
                 print([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
