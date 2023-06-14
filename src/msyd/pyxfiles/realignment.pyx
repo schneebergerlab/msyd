@@ -219,29 +219,26 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
             continue
 
 
-        refoffsets = sorted(reftree[rstart:rend])
-        qryoffsets = sorted(qrytree[qstart:qend])
-        print(refoffsets, qryoffsets)
-        for rint in refoffsets:
-            print(rint, rstart, rend, cg.get_len(), qstart, qend, cg.get_len(ref=False))
-            print(rint.begin - rstart, rend - rint.end, cg.get_len())
+        for rint in sorted(reftree[rstart:rend]):
+            #print(rint, rstart, rend, cg.get_len(), qstart, qend, cg.get_len(ref=False))
+            #print(rint.begin - rstart, rend - rint.end, cg.get_len())
             # subset alignment to this reference offset interval
             qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
             qendel, rcg = rcg.get_removed(max(rend - rint.end, 0), start=False)
-            print(rint, rcg.get_len())
+            #print(rint, rcg.get_len())
             for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
                 # subset to the query offset, respecting the subsetting done so far
-                print(qint, qstdel, qendel)
-                print(qint, qint.begin - qstdel - qstart, qend - qendel - qint.end, rcg.get_len(ref=False))
+                #print(qint, qstdel, qendel)
+                #print(qint, qint.begin - qstdel - qstart, qend - qendel - qint.end, rcg.get_len(ref=False))
                 rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
                 rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
 
-                print(qcg.get_len())
+                #print(qcg.get_len())
 
-                print([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
-                           qint.data, qint.data + qint.end - qint.begin,
-                           min(rend, rint.end) - rendel - rstdel, qint.end - qint.begin,
-                           qcg.get_identity()*100])
+                #print([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
+                #           qint.data, qint.data + qint.end - qint.begin,
+                #           min(rend, rint.end) - rendel - rstdel, qint.end - qint.begin,
+                #           qcg.get_identity()*100])
                 al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
                            qint.data, qint.data + min(qendel, qint.end),
                            min(rend, rint.end) - rendel - rstdel, min(qendel, qint.end),
