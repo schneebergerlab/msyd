@@ -203,6 +203,8 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
         qend: int = h.q_en
         cg = cigar.cigar_from_bam(h.cigar)
         #print(h.mapq)
+        if rstart > rend:
+            logger.error(h)
 
         # TODO maybe handle inverted alignments?
 
@@ -214,34 +216,24 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
-            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1, h.strand, cid, cid, cg.to_string()])
+            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, cid, cid, cg.to_string()])
             continue
 
 
         for rint in sorted(reftree[rstart:rend]):
-            #print(rint, rstart, rend, cg.get_len(), qstart, qend, cg.get_len(ref=False))
-            #print(rint.begin - rstart, rend - rint.end, cg.get_len())
             # subset alignment to this reference offset interval
             qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
             qendel, rcg = rcg.get_removed(max(rend - rint.end, 0), start=False)
-            #print(rint, rcg.get_len())
             for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
                 # subset to the query offset, respecting the subsetting done so far
-                #print(qint, qstdel, qendel)
-                #print(qint, qint.begin - qstdel - qstart, qend - qendel - qint.end, rcg.get_len(ref=False))
                 rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
                 rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
 
-                #print(qcg.get_len())
-
-                #print([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
-                #           qint.data, qint.data + qint.end - qint.begin,
-                #           min(rend, rint.end) - rendel - rstdel, qint.end - qint.begin,
-                #           qcg.get_identity()*100])
+                #TODO maybe filter out small alignments here?
                 al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel, min(qend, qint.end) - max(qstart, qint.begin),
-                           qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
+                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart > qend else -1, cid, cid, qcg.to_string()])
 
         #for rint in refoffsets:
         #    print("rint:", rint)
