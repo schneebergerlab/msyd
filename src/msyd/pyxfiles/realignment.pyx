@@ -168,13 +168,12 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # run syri
             cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
-            #syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
+            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
             # skip regions that were skipped or could not be aligned
 
-            #for org in syris:
-            #    print(syris[org].head())
-            #    print(alns[org].head())
-                # adjust positions to reference using offsets stored in trees
+            for org in syris:
+                print(syris[org].head())
+                print(alns[org].head())
 
             # call cross/coresyn, probably won't need to remove overlap
             # incorporate into output
@@ -240,8 +239,8 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
                 #           min(rend, rint.end) - rendel - rstdel, qint.end - qint.begin,
                 #           qcg.get_identity()*100])
                 al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
-                           qint.data, qint.data + min(qendel, qint.end),
-                           min(rend, rint.end) - rendel - rstdel, min(qendel, qint.end),
+                           qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
+                           min(rend, rint.end) - rendel - rstdel, min(qend, qint.end) - max(qstart, qint.begin),
                            qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
 
         #for rint in refoffsets:
@@ -293,7 +292,7 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    print(al[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
+    #print(al[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
 
     #TODO use tree to remap!
 
@@ -341,6 +340,7 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
 
     #chrs = list(np.unique(coords.aChr))
     assert(len(list(np.unique(coords.aChr))) == 1)
+    print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden']])#, 'cigar']])
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
     syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
 
