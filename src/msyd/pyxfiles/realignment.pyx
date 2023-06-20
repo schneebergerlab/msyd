@@ -161,6 +161,13 @@ cdef process_gaps(syns, qrynames, fastas):
             logger.info("Starting Alignment")
             aligner = mp.Aligner(seq=refseq, preset='asm5') 
             alns = {org: align_concatseqs(aligner, seq, chrom, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
+
+            # filter out alignments only containing inversions
+            for org in alns:
+                if alns[org] is not None and all(alns[org].bDir == -1):
+                    logger.warning(f"{org} is None in alns or only contains inverted alignments: \n{alns[org]}")
+                    alns[org] = None
+
             logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
             #print(ref, refseq)
             #print(seqdict)
@@ -204,9 +211,9 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
         cg = cigar.cigar_from_bam(h.cigar)
         #print(h.mapq)
         if rstart > rend:
-            logger.error(h)
-
-        # TODO maybe handle inverted alignments?
+            logger.error(f"Inverted on Reference: {h}")
+            continue
+            # shouldn't ever occur, TODO maybe handle anyway?
 
         rstartov = list(reftree[rstart])[0]
         qstartov = list(qrytree[qstart])[0]
@@ -233,7 +240,7 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
                 al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel, min(qend, qint.end) - max(qstart, qint.begin),
-                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart > qend else -1, cid, cid, qcg.to_string()])
+                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, cid, cid, qcg.to_string()])
 
         #for rint in refoffsets:
         #    print("rint:", rint)
@@ -332,7 +339,7 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
 
     #chrs = list(np.unique(coords.aChr))
     assert(len(list(np.unique(coords.aChr))) == 1)
-    print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden']])#, 'cigar']])
+    print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])#, 'cigar']])
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
     syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
 
