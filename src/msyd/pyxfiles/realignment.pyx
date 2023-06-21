@@ -175,12 +175,14 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # run syri
             cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
-            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}
-            # skip regions that were skipped or could not be aligned
+            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None and any(alns[org].bDir == 1)}
+            # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
             for org in syris:
-                print(syris[org].head())
-                print(alns[org].head())
+                if syris[org] is not None:
+                    print("===", org, "against", ref,"===")
+                    print(syris[org].head())
+                    print(alns[org].head())
 
             # call cross/coresyn, probably won't need to remove overlap
             # incorporate into output
@@ -339,9 +341,13 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
 
     #chrs = list(np.unique(coords.aChr))
     assert(len(list(np.unique(coords.aChr))) == 1)
-    print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])#, 'cigar']])
+    #print(coords[['aChr', 'aStart', 'aEnd', 'aLen', 'bChr', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])#, 'cigar']])
+
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
-    syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
+    if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
+        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
+        logger.error("syri call failed, returning None!")
+        return None
 
     #with multiprocessing.Pool(processes=N) as pool:
     #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
