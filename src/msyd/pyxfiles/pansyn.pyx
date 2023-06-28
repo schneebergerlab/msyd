@@ -164,6 +164,8 @@ def match_synal(syn, aln, ref='a'):
     refchr = ref + "chr"
     refstart = ref + "start"
     refend = ref + "end"
+    print(syn.head())
+    print(aln.columns)
 
     synr = next(syniter)[1]
     alnr = next(alniter)[1]
@@ -240,7 +242,7 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syns = io.extract_syri_regions_to_list(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
+    syns = io.extract_syri_regions_to_list_from_files(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
@@ -281,6 +283,8 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     return reduce_find_overlaps(syns, cores, **kwargs)
 
 def reduce_find_overlaps(syns, cores, **kwargs):
+    if len(syns) == 0:
+        return None
     pansyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)
     if cores > 1:

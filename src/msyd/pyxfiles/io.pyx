@@ -896,8 +896,12 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
 
     ovcf.write(rec)
 
+cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+    raw, chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
+    return extract_syri_regions(raw, ref=ref, anns=anns, reforg=reforg, qryorg=qryorg)
 
-cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+
+cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
     """
@@ -914,11 +918,10 @@ cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry
     qryend = qry + "end"
 
     buf = deque()
-    raw, chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
-    raw = pd.concat([raw.loc[raw['type'] == ann] for ann in anns])
+    merged = pd.concat([rawsyriout.loc[rawsyriout['type'] == ann if 'type' in rawsyriout.columns else rawsyriout['vartype'] == ann] for ann in anns]) # different syri versions seem to use different names for the type
     # if implementing filtering later, filter here
 
-    for row in raw.iterrows():
+    for row in merged.iterrows():
         row = row[1]
         buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
             Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
@@ -926,13 +929,13 @@ cpdef extract_syri_regions(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry
 
     return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
 
-def extract_syri_regions_to_list(fins, qrynames, cores=1, **kwargs):
+def extract_syri_regions_to_list_from_files(fins, qrynames, cores=1, **kwargs):
     """
     `extract_syri_regions`, but for processing a list of inputs
     """
     if len(fins) != len(qrynames):
         logger.error(f"Infiles and qrynames lists lengths not matching. Offending lists: {fins} and {qrynames}")
-    partial = lambda x, qryname: extract_syri_regions(x, qryorg=qryname, **kwargs)
+    partial = lambda x, qryname: extract_syri_regions_from_file(x, qryorg=qryname, **kwargs)
 
     if cores == 1:
         syns = [partial(fin, qryname) for fin, qryname in zip(fins, qrynames)]

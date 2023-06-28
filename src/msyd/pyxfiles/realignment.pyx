@@ -20,6 +20,8 @@ from syri.writeout import getsrtable
 
 import msyd.util as util
 import msyd.classes.cigar as cigar
+import msyd.pansyn as pansyn
+import msyd.io as io
 
 
 cdef int MIN_REALIGN_THRESH = 100
@@ -181,12 +183,33 @@ cdef process_gaps(syns, qrynames, fastas):
             for org in syris:
                 if syris[org] is not None:
                     print("===", org, "against", ref,"===")
-                    print(syris[org].head())
-                    print(alns[org].head())
+                    print(syris[org])
+                    print(syris[org].filter(axis='index', like='SYNAL'))
+            for org in alns:
+                if alns[org] is not None:
+                    # the code in pansyn uses all lower-case column names
+                    alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
+
+            syns = [pansyn.match_synal(
+                        io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
+                        alns[org])#, ref=ref)
+                    for org in syris if syris[org] is not None]
+            # should be sorted already
+
+            #TODO does this need match_synal? probably!
+
+            print(syns) # should be sorted
+            # remove_overlaps not needed, I think
+            if len(syns) == 0:
+                old = syn
+                syn = next(syniter)[1][0]
+                continue
+
+            pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
+            print(pansyns)
 
             # call cross/coresyn, probably won't need to remove overlap
             # incorporate into output
-            # has to be sorted, how to do this?
             old = syn
             syn = next(syniter)[1][0]
 
