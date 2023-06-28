@@ -278,6 +278,9 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
         logger.info("reading in PFF for incremental calling")
         syns.append(io.read_pff(base))
 
+    return reduce_find_overlaps(syns, cores, **kwargs)
+
+def reduce_find_overlaps(syns, cores, **kwargs):
     pansyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)
     if cores > 1:
