@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from scipy.stats import *
 
-from datetime import datetime
 from multiprocessing import Pool
 from functools import partial
 from collections import deque, defaultdict, OrderedDict
@@ -21,11 +20,7 @@ import pysam
 import re
 from gc import collect
 
-from cython.operator cimport dereference as deref, preincrement as inc
-from libcpp.map cimport map as cpp_map
-from libcpp.deque cimport deque as cpp_deq
 cimport numpy as np
-cimport cython
 
 from msyd.classes.coords import Range
 from msyd.classes.coords import Pansyn
