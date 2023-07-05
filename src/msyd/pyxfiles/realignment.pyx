@@ -13,6 +13,9 @@ import intervaltree
 from collections import deque
 import os
 from functools import partial
+from io import StringIO
+
+cimport libc
 
 from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn
 from syri.tdfunc import getCTX
@@ -354,7 +357,6 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     offset = interval.data
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
-
 cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     BRT = 20
     TUC = 1000
@@ -367,9 +369,14 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     #print(coords[['aChr', 'aStart', 'aEnd', 'aLen', 'bChr', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])#, 'cigar']])
 
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
-    if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
+
+    syriret = -1
+    
+    syriret = syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
+
+    if syriret == -1:
         print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-        logger.error("syri call failed, returning None!")
+        logger.error("syri call failed, printing stderr from syri call and exiting!")
         return None
 
     #with multiprocessing.Pool(processes=N) as pool:

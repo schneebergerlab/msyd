@@ -164,8 +164,6 @@ def match_synal(syn, aln, ref='a'):
     refchr = ref + "chr"
     refstart = ref + "start"
     refend = ref + "end"
-    print(syn.head())
-    print(aln.columns)
 
     synr = next(syniter)[1]
     alnr = next(alniter)[1]
