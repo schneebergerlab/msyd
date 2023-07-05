@@ -87,7 +87,7 @@ def main(argv):
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
     call_parser.add_argument("--realign-cross", "-ali", dest='real', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
-    call_parser.add_argument("--tempdir", "-t", dest='tmp', required=False, type=str, help="Path to a directory to be used for storing temporary files. If the path does not exist, it will be created!")
+    call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
 
     # view subparser
     view_parser = subparsers.add_parser("view",
@@ -119,16 +119,16 @@ def main(argv):
     merge_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the merged VCF.")
 
     realign_parser = subparsers.add_parser("realign",
-        help="Iteratively realign a set of genomes based on a PFF file"
+        help="Iteratively realign a set of genomes based on a PFF file",
         description="""
         Exposes the realignment functionality in msyd call directly.
         Useful for realigning only a specific region by prefiltering the PFF.
         """)
     realign_parser.set_defaults(func=realign)
     realign_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
-    realign_parser.add_argument("-o", dest='pff', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
+    realign_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
     realign_parser.add_argument("-t", dest='tsvfile', required=True, type=argparse.FileType('r'), help="TSV containing the sample names and path to genome fastas.")
-    realign_parser.add_argument("--tempdir", "-t", dest='tmp', required=False, type=str, help="Path to a directory to be used for storing temporary files. If the path does not exist, it will be created!")
+    realign_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     realign_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
 
     args = parser.parse_args(argv)
@@ -229,7 +229,8 @@ def view(args):
 
 def realign(args):
     logger.info(f"realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
-    qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
+    qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
+    syns = io.read_pff(args.infile)
     resyns = realignment.realign(syns, qrynames, fastas)
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
 
