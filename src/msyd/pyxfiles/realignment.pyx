@@ -15,8 +15,6 @@ import os
 from functools import partial
 from io import StringIO
 
-cimport libc
-
 from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn
 from syri.tdfunc import getCTX
 from syri.writeout import getsrtable
@@ -187,11 +185,11 @@ cdef process_gaps(syns, qrynames, fastas):
                 if syris[org] is not None:
                     print("===", org, "against", ref,"===")
                     print(syris[org])
-                    print(syris[org].filter(axis='index', like='SYNAL'))
-            for org in alns:
-                if alns[org] is not None:
+                    #print(syris[org].filter(axis='index', like='SYNAL'))
+
                     # the code in pansyn uses all lower-case column names
                     alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
+                    print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
 
             syns = [pansyn.match_synal(
                         io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
@@ -199,9 +197,7 @@ cdef process_gaps(syns, qrynames, fastas):
                     for org in syris if syris[org] is not None]
             # should be sorted already
 
-            #TODO does this need match_synal? probably!
-
-            print(syns) # should be sorted
+            print([syn.head() for syn in syns]) # should be sorted
             # remove_overlaps not needed, I think
             if len(syns) == 0:
                 old = syn
@@ -225,7 +221,7 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
-    TODO make it split alignments spanning multiple offsets?
+    Splits alignments that span multiple offsets into one alignment per offset
     """
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     #print([str(x) for x in m])
@@ -265,11 +261,14 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
                 rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
 
                 #TODO maybe filter out small alignments here?
-                al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel,
+                print("r:", rint.data, rstart, rend, rint.begin, rint.end, rendel, rstdel, qcg.get_len(ref=True))
+                print("q:", qint.data, qstart, qend, qint.begin, qint.end, qendel, qstdel, qcg.get_len(ref=False))
+                al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
-                           min(rend, rint.end) - rendel - rstdel, min(qend, qint.end) - max(qstart, qint.begin),
+                           min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
                            qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, cid, cid, qcg.to_string()])
 
+        ## old implementation, not actually faster and maybe broken
         #for rint in refoffsets:
         #    print("rint:", rint)
         #    # drop from the alignment everything before the current interval

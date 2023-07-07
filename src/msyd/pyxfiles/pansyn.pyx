@@ -26,6 +26,7 @@ def find_overlaps(left, right, only_core=False):
     It runs in O(len(left) + len(right)).
     """
     ret = deque()
+    #print("l:", left, "r:", right)
 
     if len(right) == 0:
         logger.error("find_overlap called with no pansyn regions (right)!")
@@ -83,7 +84,7 @@ def find_overlaps(left, right, only_core=False):
                 # add the region up to the overlap if it is large enough
                 intstart = max(starting.ref.start, cov + 1) # start of the non-overlapping region of interest
                 if not only_core and ovstart - intstart >= MIN_SYN_THRESH:
-                    add_filtered(starting.drop(intstart - starting.ref.start, 1 + starting.ref.end - ovstart))
+                    add_filtered(starting.drop(intstart - starting.ref.start, starting.ref.end - ovstart))
 
                 # add overlap region
                 add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
@@ -122,7 +123,9 @@ def find_overlaps(left, right, only_core=False):
             if not only_core and l.ref.chr == r.ref.chr: # the loop ended after an overlap call
                 # everything up to cov is covered, and starting is guaranteed to be fully covered
                 ending = l if l.ref.end > r.ref.end else r
-                add_filtered(ending.drop(max(0, 1 + cov - ending.ref.start), 0))
+                #print(cov, ending.ref, ending.ref.end - ending.ref.start, {org:cg.get_len(ref=True) for org, cg in ending.cigars_dict.items()})
+                if ending.ref.end - cov >= MIN_SYN_THRESH: # check if there is still something to add; if so, add it
+                    add_filtered(ending.drop(max(0, cov - ending.ref.start), 0))
 
             break
 
@@ -177,6 +180,7 @@ def match_synal(syn, aln, ref='a'):
                 #rng.end = rng.start + cg.get_len(ref=False) -1
                 ## debugging output
                 if not len(rng) == cg.get_len(ref=False):
+                    #print(len(rng), cg.get_len(ref=False))
                     #logger.warning(f"cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
                     #logger.warning(f"Cigar is: {cg}")
                     #logger.warning("Adjusting to cg length")
