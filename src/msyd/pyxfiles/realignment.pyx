@@ -261,8 +261,8 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
                 rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
 
                 #TODO maybe filter out small alignments here?
-                print("r:", rint.data, rstart, rend, rint.begin, rint.end, rendel, rstdel, qcg.get_len(ref=True))
-                print("q:", qint.data, qstart, qend, qint.begin, qint.end, qendel, qstdel, qcg.get_len(ref=False))
+                #print("r:", rint.data, rstart, rend, rint.begin, rint.end, rendel, rstdel, qcg.get_len(ref=True))
+                #print("q:", qint.data, qstart, qend, qint.begin, qint.end, qendel, qstdel, qcg.get_len(ref=False))
                 al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),

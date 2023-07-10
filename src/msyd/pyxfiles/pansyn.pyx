@@ -16,7 +16,7 @@ import msyd.classes as classes
 from msyd.classes.cigar import Cigar
 from msyd.classes.coords import Pansyn, Range, Position
 
-cdef int MIN_SYN_THRESH = 10
+cdef int MIN_SYN_THRESH = 30
 
 logger = util.CustomFormatter.getlogger(__name__)
 
