@@ -117,7 +117,7 @@ cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
                     synrng = crosssyn.ranges_dict[org]
                     l = synrng.start - offset # len of the region to be added
                     if l < MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
-                        #TODO add Ns in place of known haplotype maybe
+                        #MAYBE add Ns in place of known haplotype
                         offset = synrng.end # skip till the end
                         continue
 
