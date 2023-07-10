@@ -31,16 +31,16 @@ logger = util.CustomFormatter.getlogger(__name__)
 cpdef realign(syns, qrynames, fastas):
     return process_gaps(syns, qrynames, fastas)
 
-cdef process_gaps(syns, qrynames, fastas):
+cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all crosssynteny, hopefully.
     
-    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes
+    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names. `globalref` encodes the name of the reference annotated to the coresyn regions.
     :returns: A DataFrame with the added non-reference crosssynteny
     """
     # init stuff
-    ret = pd.DataFrame()
+    ret = deque()#pd.DataFrame()
     n = len(qrynames)
     if not n == len(fastas):
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}!")
@@ -58,6 +58,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
         # skip to first core
         while syn.get_degree() < n:
+            ret.append(syn)
             syn = next(syniter)[1][0]
         old = syn
 
@@ -67,8 +68,11 @@ cdef process_gaps(syns, qrynames, fastas):
 
             while syn.get_degree() < n:
                 crosssyns.append(syn)
+                # crosssyns are added later, after we've found out whether we should save them first or the new crossyns
+                #ret.append(syn) # also add crosssyns to output
                 syn = next(syniter)[1][0]
             # syn must be core now
+            #globalref = syn.ref.org
 
             # start and end of the non-ref region, on the reference
             end = syn.ref.start
@@ -76,12 +80,15 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # preemptively skip regions too small on the reference, if present
             if end - start < MIN_REALIGN_THRESH:
+                ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
             # between chromosomes, there isn't a single gap
             if syn.ref.chr != old.ref.chr:
+                logger.error("Chr case found: {syn.ref}, {old.ref}")
                 old = syn
+                ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
@@ -91,6 +98,8 @@ cdef process_gaps(syns, qrynames, fastas):
 
             #print(old, syn, syn.ref.start - old.ref.end)
             #print(crosssyns)
+
+            ##TODO parallelise everything after this, enable nogil
 
             # construct a dictionary containing for each sample a list of intervals that should be realigned
             mappingtrees = dict()
@@ -137,6 +146,7 @@ cdef process_gaps(syns, qrynames, fastas):
             if not seqdict: # if all sequences have been discarded, skip realignment
                 logger.info("Not aligning, not enough non-reference sequence found!")
                 old = syn
+                ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
@@ -157,6 +167,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
             if len(seqdict) < 1: # do not align if only one sequence is left
                 old = syn
+                ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
@@ -189,7 +200,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
                     # the code in pansyn uses all lower-case column names
                     alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
-                    print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
+                    #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
 
             syns = [pansyn.match_synal(
                         io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
@@ -197,25 +208,64 @@ cdef process_gaps(syns, qrynames, fastas):
                     for org in syris if syris[org] is not None]
             # should be sorted already
 
-            print([syn.head() for syn in syns]) # should be sorted
+            #print([syn.head() for syn in syns]) # should be sorted
             # remove_overlaps not needed, I think
             if len(syns) == 0:
                 old = syn
+                ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
             pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
-            print(pansyns)
+            
+            # Add all crosssyns with alphabetical sorting by reference name
+            if ref < globalref:
+                ret.extend(crosssyns)
+                for psyn in pansyns.iterrows():
+                    ret.append(psyn[1][0])
+            else:
+                for psyn in pansyns.iterrows():
+                    ret.append(psyn[1][0])
+                ret.extend(crosssyns)
+
+            #TODO reimplement with alphabetical sorting
+            # comment out, can't sort between different references
+            ## Add new pansyns to output together with old crosssyns
+            ## keep output sorted
+            #if crosssyns and not pansyns.empty:
+            #    psit = pansyns.iterrows()
+            #    ps = next(psit)[1][0]
+            #    csit = iter(crosssyns)
+            #    cs = next(csit)
+            #    try:
+            #        if cs < ps:
+            #            ret.append(cs)
+            #            cs = next(csit)
+            #        else:
+            #            ret.append(ps)
+            #            ps = next(psit)[0][1]
+            #    except StopIteration:
+            #        # find out which case was found last, add remaining pansyns
+            #        if cs < ps:
+            #            ret.append(ps)
+            #            for ps in psit:
+            #                ret.append(psit)
+            #        else:
+            #            ret.append(cs)
+            #            for cs in csit:
+            #                ret.append(csit)
+
 
             # call cross/coresyn, probably won't need to remove overlap
             # incorporate into output
             old = syn
+            ret.append(syn)
             syn = next(syniter)[1][0]
 
     except StopIteration as e:
         logger.warning(f'Stopped iteration: {e}')
 
-    return ret
+    return pd.DataFrame(list(ret))
 
 cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
     """
