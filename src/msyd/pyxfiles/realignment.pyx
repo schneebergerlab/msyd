@@ -10,7 +10,7 @@ import mappy as mp
 import pysam
 import intervaltree
 
-from collections import deque
+from collections import deque, defaultdict
 import os
 from functools import partial
 from io import StringIO
@@ -31,12 +31,12 @@ logger = util.CustomFormatter.getlogger(__name__)
 cpdef realign(syns, qrynames, fastas):
     return process_gaps(syns, qrynames, fastas)
 
-cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
+cdef process_gaps(syns, qrynames, fastas):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all crosssynteny, hopefully.
     
-    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names. `globalref` encodes the name of the reference annotated to the coresyn regions.
+    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names.
     :returns: A DataFrame with the added non-reference crosssynteny
     """
     # init stuff
@@ -62,17 +62,20 @@ cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
             syn = next(syniter)[1][0]
         old = syn
 
+        crosssyns = dict()
+
         while True:
             # find block between two coresyn regions
-            crosssyns = []
+            crosssyns = dict()
 
-            while syn.get_degree() < n:
-                crosssyns.append(syn)
-                # crosssyns are added later, after we've found out whether we should save them first or the new crossyns
-                #ret.append(syn) # also add crosssyns to output
+            refcrosssyns = []
+            while syn.get_degree() < n: # might mess up sorting if input is already (partially) realigned; TODO maybe add check?
+                refcrosssyns.append(syn)
                 syn = next(syniter)[1][0]
+
+            crosssyns[old.ref.org] = refcrosssyns
+
             # syn must be core now
-            #globalref = syn.ref.org
 
             # start and end of the non-ref region, on the reference
             end = syn.ref.start
@@ -101,47 +104,15 @@ cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
 
             ##TODO parallelise everything after this, enable nogil
 
-            # construct a dictionary containing for each sample a list of intervals that should be realigned
-            mappingtrees = dict()
-            seqdict = dict()
-            for org in qrynames:
-                chrom = syn.ranges_dict[org].chr # chr must always stay the same
-                pos = 0
-                offset = old.ranges_dict[org].end # offset of the index in the new sequence to the old genome
-                tree = intervaltree.IntervalTree()
-                seq = ''
-                fasta = fastas[org]
-                for crosssyn in crosssyns:
-                    if not org in crosssyn.ranges_dict: # no need to add this
-                        continue
-                    synrng = crosssyn.ranges_dict[org]
-                    l = synrng.start - offset # len of the region to be added
-                    if l < MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
-                        #MAYBE add Ns in place of known haplotype
-                        offset = synrng.end # skip till the end
-                        continue
 
-                    #print(l, offset, seq)
-                    # add to the intervaltree
-                    tree[pos:pos+l] = offset
-                    seq += fasta.fetch(region=chrom, start=offset, end=offset+l)
-                    offset += l
-                    pos += l
-
-                # see if theres any sequence left to realign after processing the crosssyn regions
-                l = syn.ranges_dict[org].start - offset
-                if l >= MIN_REALIGN_THRESH:
-                    tree[pos:pos+l] = offset
-                    seq += fasta.fetch(region=chrom, start=offset, end=offset+l)
-
-                if tree and seq:
-                    mappingtrees[org] = tree
-                    seqdict[org] = seq
-                elif seq or tree:
-                    logger.error(f"Non-empty Tree with empty seq or the other way round: {tree}, {seq}")
-                else:
-                    pass
-                    #logger.info(f"Leaving out {org}")
+            # construct a mapping tree and concatenate all the sequences contained within
+            mappingtrees = construct_mappingtrees(crosssyns, old, syn)
+            seqdict = {org:''.join([
+                        fastas[org].fetch(region = syn.ranges_dict[org].chr,
+                            start = interval.data,
+                            end = interval.data + interval.end - interval.begin)
+                        for interval in mappingtrees[org]])
+                for org in mappingtrees}
 
             if not seqdict: # if all sequences have been discarded, skip realignment
                 logger.info("Not aligning, not enough non-reference sequence found!")
@@ -155,109 +126,73 @@ cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
             print('ref:', ref)
             print('On ref:', syn.ref.chr, start, end, end - start)
             print({org:len(seq) for org, seq in seqdict.items()})
-            #for org in seqdict:
-            #    if len(seqdict[org]) < 300:
             #        print(org, ':', seqdict[org])
 
-            refseq = seqdict[ref]
-            del seqdict[ref]
-            reftree = mappingtrees[ref]
-            del mappingtrees[ref]
+            while len(seqdict) > 2: # realign until there is only one sequence left
+                refseq = seqdict[ref]
+                del seqdict[ref]
+                reftree = mappingtrees[ref]
+                del mappingtrees[ref]
+
+                # construct alignment index from the reference
+                logger.info("Starting Alignment")
+                aligner = mp.Aligner(seq=refseq, preset='asm5') 
+                alns = {org: align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
+
+                # filter out alignments only containing inversions
+                for org in alns:
+                    if alns[org] is not None and all(alns[org].bDir == -1):
+                        logger.warning(f"{org} is None in alns or only contains inverted alignments: \n{alns[org]}")
+                        alns[org] = None
+
+                logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
+                #print(ref, refseq)
+                #print(seqdict)
 
 
-            if len(seqdict) < 1: # do not align if only one sequence is left
-                old = syn
-                ret.append(syn)
-                syn = next(syniter)[1][0]
-                continue
+                # run syri
+                cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
+                syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}# and any(alns[org].bDir == 1)}
+                # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
-            # construct alignment index from the reference
-            logger.info("Starting Alignment")
-            aligner = mp.Aligner(seq=refseq, preset='asm5') 
-            alns = {org: align_concatseqs(aligner, seq, chrom, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
+                for org in syris:
+                    if syris[org] is not None:
+                        print("===", org, "against", ref,"===")
+                        print(syris[org])
+                        #print(syris[org].filter(axis='index', like='SYNAL'))
 
-            # filter out alignments only containing inversions
-            for org in alns:
-                if alns[org] is not None and all(alns[org].bDir == -1):
-                    logger.warning(f"{org} is None in alns or only contains inverted alignments: \n{alns[org]}")
-                    alns[org] = None
+                        # the code in pansyn uses all lower-case column names
+                        alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
+                        #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
 
-            logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
-            #print(ref, refseq)
-            #print(seqdict)
-
-
-            # run syri
-            cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
-            syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None and any(alns[org].bDir == 1)}
-            # skip regions that were skipped or could not be aligned, or only contain inverted alignments
-
-            for org in syris:
-                if syris[org] is not None:
-                    print("===", org, "against", ref,"===")
-                    print(syris[org])
-                    #print(syris[org].filter(axis='index', like='SYNAL'))
-
-                    # the code in pansyn uses all lower-case column names
-                    alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
-                    #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
-
-            syns = [pansyn.match_synal(
-                        io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
-                        alns[org])#, ref=ref)
-                    for org in syris if syris[org] is not None]
-            # should be sorted already
-
-            #print([syn.head() for syn in syns]) # should be sorted
-            # remove_overlaps not needed, I think
-            if len(syns) == 0:
-                old = syn
-                ret.append(syn)
-                syn = next(syniter)[1][0]
-                continue
-
-            pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
+                syns = [pansyn.match_synal(
+                            io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
+                            alns[org])#, ref=ref)
+                        for org in syris if syris[org] is not None]
             
-            # Add all crosssyns with alphabetical sorting by reference name
-            if ref < globalref:
-                ret.extend(crosssyns)
+                if len(syns) == 0:
+                    continue
+
+                # syns should be sorted
+                pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
+
+                # remove the new pansyn regions from the interval trees
                 for psyn in pansyns.iterrows():
-                    ret.append(psyn[1][0])
-            else:
-                for psyn in pansyns.iterrows():
-                    ret.append(psyn[1][0])
-                ret.extend(crosssyns)
+                    psyn = psyn[1][0]
+                    for org, rng in psyn.ranges_dict.items():
+                        pass
+                        
 
-            #TODO reimplement with alphabetical sorting
-            # comment out, can't sort between different references
-            ## Add new pansyns to output together with old crosssyns
-            ## keep output sorted
-            #if crosssyns and not pansyns.empty:
-            #    psit = pansyns.iterrows()
-            #    ps = next(psit)[1][0]
-            #    csit = iter(crosssyns)
-            #    cs = next(csit)
-            #    try:
-            #        if cs < ps:
-            #            ret.append(cs)
-            #            cs = next(csit)
-            #        else:
-            #            ret.append(ps)
-            #            ps = next(psit)[0][1]
-            #    except StopIteration:
-            #        # find out which case was found last, add remaining pansyns
-            #        if cs < ps:
-            #            ret.append(ps)
-            #            for ps in psit:
-            #                ret.append(psit)
-            #        else:
-            #            ret.append(cs)
-            #            for cs in csit:
-            #                ret.append(csit)
+                
+                # Add all crosssyns with alphabetical sorting by reference name
+                crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
 
 
-            # call cross/coresyn, probably won't need to remove overlap
-            # incorporate into output
+            # incorporate into output DF, sorted alphabetically by ref name
+            # does nothing if no crossyn was found
+            for org in sorted(crosssyns.keys()):
+                ret.extend(crosssyns[org])
+            # continue checking the next coresyn gap
             old = syn
             ret.append(syn)
             syn = next(syniter)[1][0]
@@ -267,7 +202,42 @@ cdef process_gaps(syns, qrynames, fastas, globalref='ref'):
 
     return pd.DataFrame(list(ret))
 
-cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
+
+
+
+cdef construct_mappingtrees(crosssyns, old, syn):
+    """
+    Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign
+
+    """
+    mappingtrees = defaultdict(intervaltree.IntervalTree)
+    posdict = defaultdict(lambda: 0) # stores the current position in each org
+    offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
+    for reforg in crosssyns:
+        for crosssyn in crosssyns[reforg]:
+            for org, rng in crosssyn.ranges_dict.items():
+                l = rng.start - offsetdict[org] # len of the region to be added
+                if l < MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
+                    offsetdict[org] = rng.end # skip till the end
+                    continue
+                # add to the intervaltree
+                mappingtrees[org][posdict[org]:posdict[org]+l] = offsetdict[org]
+                offsetdict[org] += l
+                posdict[org] += l
+
+        ## commented out, this check is done elsewhere and we might want to use the reforg as well
+        #if reforg in mappingtrees: # no ref org should be realigned
+        #    del mappingtrees[reforg]
+
+
+    # see if theres any sequence left to realign after processing the crosssyn regions
+    for org, offset in offsetdict.items():
+        l = syn.ranges_dict[org].start - offset
+        if l >= MIN_REALIGN_THRESH:
+            mappingtrees[org][posdict[org]:posdict[org]+l] = offset
+    return mappingtrees
+
+cdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
@@ -297,7 +267,7 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
-            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, cid, cid, cg.to_string()])
+            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()])
             continue
 
 
@@ -316,7 +286,7 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
                 al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
-                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, cid, cid, qcg.to_string()])
+                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()])
 
         ## old implementation, not actually faster and maybe broken
         #for rint in refoffsets:
@@ -353,7 +323,7 @@ cdef align_concatseqs(aligner, seq, cid, reftree, qrytree):
 
         #        al.append([rstart + rstartdelta + roffset, rend - renddelta + roffset,
         #                   qstart + qstartdelta + qoffset, qend - qenddelta + qoffset,
-        #                   rlen, qlen, qcg.get_identity()*100, 1, h.strand, cid, cid, qcg.to_string()])
+        #                   rlen, qlen, qcg.get_identity()*100, 1, h.strand, rcid, qcid, qcg.to_string()])
 
 
 
@@ -413,10 +383,7 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     T = 50
     invgl = 1000000
 
-    #chrs = list(np.unique(coords.aChr))
-    assert(len(list(np.unique(coords.aChr))) == 1)
-    #print(coords[['aChr', 'aStart', 'aEnd', 'aLen', 'bChr', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])#, 'cigar']])
-
+    #assert(len(list(np.unique(coords.aChr))) == 1)
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
 
     syriret = -1
