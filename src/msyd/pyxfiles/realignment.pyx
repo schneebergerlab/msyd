@@ -181,11 +181,30 @@ cdef process_gaps(syns, qrynames, fastas):
                     psyn = psyn[1][0]
                     for org, rng in psyn.ranges_dict.items():
                         pass
-                        
-
                 
                 # Add all crosssyns with alphabetical sorting by reference name
                 crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
+
+                # recalculate mappingtrees from current crosssyns to remove newly found cross synteny
+                # TODO maybe in future directly remove, might be more efficient
+                #logger.error(f"before realigning! {mappingtrees}")
+                mappingtrees = construct_mappingtrees(crosssyns, old, syn)
+
+                # remove all orgs that have already been used as a reference
+                for reforg in crosssyns:
+                    if reforg in mappingtrees:
+                        del mappingtrees[reforg]
+
+                seqdict = {org:''.join([
+                            fastas[org].fetch(region = syn.ranges_dict[org].chr,
+                                start = interval.data,
+                                end = interval.data + interval.end - interval.begin)
+                            for interval in mappingtrees[org]])
+                    for org in mappingtrees}
+
+                if not seqdict: # if all sequences have been discarded, finish realignment
+                    break
+                #logger.error(f"realigning! {mappingtrees}")
 
 
             # incorporate into output DF, sorted alphabetically by ref name
@@ -225,17 +244,15 @@ cdef construct_mappingtrees(crosssyns, old, syn):
                 offsetdict[org] += l
                 posdict[org] += l
 
-        ## commented out, this check is done elsewhere and we might want to use the reforg as well
-        #if reforg in mappingtrees: # no ref org should be realigned
-        #    del mappingtrees[reforg]
-
-
-    # see if theres any sequence left to realign after processing the crosssyn regions
+    # see if there's any sequence left to realign after processing the crosssyn regions
     for org, offset in offsetdict.items():
         l = syn.ranges_dict[org].start - offset
         if l >= MIN_REALIGN_THRESH:
             mappingtrees[org][posdict[org]:posdict[org]+l] = offset
     return mappingtrees
+
+
+
 
 cdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
     """
