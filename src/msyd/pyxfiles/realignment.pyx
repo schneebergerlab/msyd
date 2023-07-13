@@ -15,6 +15,11 @@ import os
 from functools import partial
 from io import StringIO
 
+cimport libc.stdio as cio
+cimport posix.unistd as unistd
+
+
+
 from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn
 from syri.tdfunc import getCTX
 from syri.writeout import getsrtable
@@ -115,7 +120,7 @@ cdef process_gaps(syns, qrynames, fastas):
                 for org in mappingtrees}
 
             if not seqdict: # if all sequences have been discarded, skip realignment
-                logger.info("Not aligning, not enough non-reference sequence found!")
+                #logger.info("Not aligning, not enough non-reference sequence found!")
                 old = syn
                 ret.append(syn)
                 syn = next(syniter)[1][0]
@@ -123,9 +128,9 @@ cdef process_gaps(syns, qrynames, fastas):
 
             # choose a reference as the sample containing the most non-crosssynteny
             ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
-            print('ref:', ref)
-            print('On ref:', syn.ref.chr, start, end, end - start)
-            print({org:len(seq) for org, seq in seqdict.items()})
+            #print('ref:', ref)
+            #print('On ref:', syn.ref.chr, start, end, end - start)
+            #print({org:len(seq) for org, seq in seqdict.items()})
             #        print(org, ':', seqdict[org])
 
             while len(seqdict) > 2: # realign until there is only one sequence left
@@ -135,7 +140,7 @@ cdef process_gaps(syns, qrynames, fastas):
                 del mappingtrees[ref]
 
                 # construct alignment index from the reference
-                logger.info("Starting Alignment")
+                #logger.info("Starting Alignment")
                 aligner = mp.Aligner(seq=refseq, preset='asm5') 
                 alns = {org: align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
 
@@ -145,7 +150,7 @@ cdef process_gaps(syns, qrynames, fastas):
                         logger.warning(f"{org} is None in alns or only contains inverted alignments: \n{alns[org]}")
                         alns[org] = None
 
-                logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
+                #logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
                 #print(ref, refseq)
                 #print(seqdict)
 
@@ -157,8 +162,8 @@ cdef process_gaps(syns, qrynames, fastas):
 
                 for org in syris:
                     if syris[org] is not None:
-                        print("===", org, "against", ref,"===")
-                        print(syris[org])
+                        #print("===", org, "against", ref,"===")
+                        #print(syris[org])
                         #print(syris[org].filter(axis='index', like='SYNAL'))
 
                         # the code in pansyn uses all lower-case column names
@@ -184,10 +189,10 @@ cdef process_gaps(syns, qrynames, fastas):
                 
                 # Add all crosssyns with alphabetical sorting by reference name
                 crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
+                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} to {ref}. Found {util.siprefix(sum([len(x.ref) for x in crosssyns[ref]]))} of new cross-synteny.")
 
                 # recalculate mappingtrees from current crosssyns to remove newly found cross synteny
                 # TODO maybe in future directly remove, might be more efficient
-                #logger.error(f"before realigning! {mappingtrees}")
                 mappingtrees = construct_mappingtrees(crosssyns, old, syn)
 
                 # remove all orgs that have already been used as a reference
@@ -204,7 +209,6 @@ cdef process_gaps(syns, qrynames, fastas):
 
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
-                #logger.error(f"realigning! {mappingtrees}")
 
 
             # incorporate into output DF, sorted alphabetically by ref name
@@ -393,7 +397,7 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     offset = interval.data
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
-cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
+cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=True):
     BRT = 20
     TUC = 1000
     TUP = 0.5
@@ -405,12 +409,12 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
 
     syriret = -1
     
-    syriret = syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
+    cdef int oldstderr = -1
+    if redir_stderr:
+        oldstderr = unistd.dup(unistd.STDERR_FILENO)
+        cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
 
-    if syriret == -1:
-        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-        logger.error("syri call failed, printing stderr from syri call and exiting!")
-        return None
+    syriret = syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
 
     #with multiprocessing.Pool(processes=N) as pool:
     #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
@@ -427,6 +431,18 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False):
     outSyn(CWD, T, PR)
 
     o = getsrtable(CWD, PR)
+
+    if redir_stderr:
+        unistd.dup2(oldstderr, unistd.STDERR_FILENO)
+
+    if syriret == -1:
+        logger.error("syri call failed on input:")
+        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
+        if redir_stderr:
+            logger.error(f"syri stderr in '{CWD}/stderr'")
+        return None
+
+
     if not K:
         for fin in ["synOut.txt", "invOut.txt", "TLOut.txt", "invTLOut.txt", "dupOut.txt", "invDupOut.txt", "ctxOut.txt", "sv.txt", "notAligned.txt", "snps.txt"]:
             try:
