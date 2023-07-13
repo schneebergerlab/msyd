@@ -126,14 +126,16 @@ cdef process_gaps(syns, qrynames, fastas):
                 syn = next(syniter)[1][0]
                 continue
 
-            # choose a reference as the sample containing the most non-crosssynteny
-            ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
-            #print('ref:', ref)
-            #print('On ref:', syn.ref.chr, start, end, end - start)
-            #print({org:len(seq) for org, seq in seqdict.items()})
-            #        print(org, ':', seqdict[org])
 
             while len(seqdict) > 2: # realign until there is only one sequence left
+                # choose a reference as the sample containing the most non-crosssynteny
+                ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
+
+                #print('ref:', ref)
+                #print('On ref:', syn.ref.chr, start, end, end - start)
+                #print({org:len(seq) for org, seq in seqdict.items()})
+                #        print(org, ':', seqdict[org])
+
                 refseq = seqdict[ref]
                 del seqdict[ref]
                 reftree = mappingtrees[ref]
