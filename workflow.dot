@@ -1,15 +1,17 @@
 digraph example{
+	graph[compound=true, fontname="Noto Sans"];
 	//rankdir = LR
 	// input files
 	subgraph cluster1{
 			label="Input genomes";
 			fontname="Times-Bold";
-			ref[label=<Reference sample<br/><i>FASTA</i>>, style=filled];
-			Q2[label=<Query 2<br/><i>FASTA</i>>];
 			Q1[label=<Query 1<br/><i>FASTA</i>>];
 			Q4[label=<Query 4<br/><i>FASTA</i>>];
 			Q3[label=<Query 3<br/><i>FASTA</i>>];
+			Q2[label=<Query 2<br/><i>FASTA</i>>];
+			{rank=same; Q1 -> Q2 -> Q3 -> Q4 [style=invis]};
 	}
+	ref[label=<Reference genome<br/><i>FASTA</i>>, style=filled];
 
 	{
 		// intermediate files
@@ -26,18 +28,17 @@ digraph example{
 		SyRI [label=<Synteny calling<br/><b>SyRI</b>>];
 		call [label=<Call pansyntenic regions<br/><b>msyd call</b>>];
 		callers [label="Other variant calling pipeline", fontname="Times-Italic", style=dashed];
-		view [label=<Filter pansyntenic regions<br/><b>msyd view</b>>, style=dashed];
 	}
 
 	subgraph cluster2{
 		// output files
 		label="Output files";
 		fontname="Times-Bold";
-		labelloc=b;
+		labelloc=t;
 		node[style=bold];
 		vcf [label=<merged VCF<br/><i>VCF</i>>];
 		pff [label=<pansynteny call file<br/><i>PFF</i>>];
-		filtered [label=<pansyntenic variants<br/>(optionally filtered)<br/><i>VCF</i>>];
+		//filtered [label=<pansyntenic variants<br/>(optionally filtered)<br/><i>VCF</i>>];
 	}
 
 	Q1 -> aligner;
@@ -54,10 +55,25 @@ digraph example{
 	vcfs -> call -> vcf;
 	syriout -> call;
 	alns -> call;
+	Q4 -> call [ltail=cluster1];
+
+
+	subgraph cluster3{
+		label="Further processing";
+		fontname="Times-Bold";
+		labelloc=b;
+		node[shape=box];
+		view [label=<Filter pansyntenic regions<br/><b>msyd view</b>>];
+		order [label=<Suggest an ordering for plotting<br/><b>msyd order</b>>];
+		realign [label=<Realign non-coresynteny<br/> to call additional crosssynteny<br/><b>msyd realign</b>>];
+
+		node[shape=round]
+	}
 
 	pff -> view -> pff;
-	vcf -> view [style=dashed];
-	vcfs -> view -> filtered;
+	pff -> order;
+	pff -> realign -> pff;
+	Q1 -> realign [ltail=cluster1];
 
 
 
