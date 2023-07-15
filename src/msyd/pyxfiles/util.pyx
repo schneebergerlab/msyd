@@ -248,7 +248,7 @@ def siprefix(x: int):
     elif x >= 1E3:
         return f"{x/1E3:.2f} kbp"
     else:
-        return f"{x} bp"
+        return f"{x:.2f} bp"
 
 def get_call_stats(syns, alns, **kwargs):
     """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats

@@ -31,6 +31,7 @@ import msyd.io as io
 
 
 cdef int MIN_REALIGN_THRESH = 100
+cdef int MAX_REALIGN = 0
 logger = util.CustomFormatter.getlogger(__name__)
 
 cpdef realign(syns, qrynames, fastas):
@@ -128,6 +129,9 @@ cdef process_gaps(syns, qrynames, fastas):
 
 
             while len(seqdict) > 2: # realign until there is only one sequence left
+                if MAX_REALIGN > 0 and len(crosssyns) > MAX_REALIGN:
+                    break
+
                 # choose a reference as the sample containing the most non-crosssynteny
                 ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
 
@@ -191,7 +195,8 @@ cdef process_gaps(syns, qrynames, fastas):
                 
                 # Add all crosssyns with alphabetical sorting by reference name
                 crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
-                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} to {ref}. Found {util.siprefix(sum([len(x.ref) for x in crosssyns[ref]]))} of new cross-synteny.")
+                added = sum([len(x.ref) for x in crosssyns[ref]])
+                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(crosssyns))}) of cross-synteny.")
 
                 # recalculate mappingtrees from current crosssyns to remove newly found cross synteny
                 # TODO maybe in future directly remove, might be more efficient
