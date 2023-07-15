@@ -131,6 +131,13 @@ def main(argv):
     realign_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     realign_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
 
+    fact_parser = subparsers.add_parser("fact",
+        help="Give a fact about birds or non-birds!",
+        description="""
+            Written in a duck-typed language!
+        """)
+    order_parser.set_defaults(func=order)
+
     args = parser.parse_args(argv)
     if args.func:
         args.func(args)
@@ -233,6 +240,21 @@ def realign(args):
     syns = io.read_pff(args.infile)
     resyns = realignment.realign(syns, qrynames, fastas)
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
+
+def fact(args):
+    # print out a fact!
+    import random
+    with open("PATHTOJOKEFILE", 'r') as f:
+        facts = []
+        seq = ''
+        #TODO implement tagging
+        for line in f.readlines():
+            if line[0] == '#':
+                continue
+            elif line == '===':
+                facts.append(seq)
+                seq = ''
+        print(random.choice(facts))
 
 def plot(args):
     """Deprecated/internal, DO NOT USE
