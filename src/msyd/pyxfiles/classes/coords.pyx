@@ -279,6 +279,14 @@ class Pansyn:
         Convenience function to concatenate two `Pansyn` objects.
         Uses a shallow copy of the cigar/range to stay without side effects.
         """
+        # if this is or other is an empty pansyn, return early
+        if not other.ranges_dict:
+            return self
+        elif not self.ranges_dict:
+            ret = copy.copy(other)
+            ret.ref = self.ref # not sure if necessary, but doesn't hurt I guess
+            return ret
+
         rngs = copy.copy(self.ranges_dict)
         rngs.update(other.ranges_dict)
 
@@ -333,7 +341,7 @@ class Pansyn:
                         logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
                         continue
                 except ValueError:
-                    logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
+                    logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
                     continue
                 ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 cigars_dict[org] = cg
