@@ -239,6 +239,7 @@ def realign(args):
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
     syns = io.read_pff(args.infile)
     resyns = realignment.realign(syns, qrynames, fastas)
+    print(util.get_stats(resyns))
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
 
 def fact(args):
