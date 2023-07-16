@@ -96,6 +96,7 @@ cdef process_gaps(syns, qrynames, fastas):
                 continue
 
             # between chromosomes, there isn't a single gap
+            #print(f"Chrs: {syn.ref.chr}, {old.ref.chr}")
             if syn.ref.chr != old.ref.chr:
                 logger.error("Chr case found: {syn.ref}, {old.ref}")
                 old = syn
@@ -228,9 +229,12 @@ cdef process_gaps(syns, qrynames, fastas):
             old = syn
             ret.append(syn)
             syn = next(syniter)[1][0]
+            #print(old, syn)
 
     except StopIteration as e:
         logger.warning(f'Stopped iteration: {e}')
+
+    print("reached")
 
     return pd.DataFrame(list(ret))
 
@@ -416,18 +420,26 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
     #assert(len(list(np.unique(coords.aChr))) == 1)
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
 
-    syriret = -1
-    
     cdef int oldstderr = -1
     if redir_stderr:
         oldstderr = unistd.dup(unistd.STDERR_FILENO)
         cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
 
-    syriret = syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP)
+    # handle errors by return value; allows only showing output if there is a problem
+    # python errors coming after an error here will have normal stderr
+    if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
+        if redir_stderr:
+            logger.error("Redirecting stderr to console again")
+            unistd.close(unistd.STDERR_FILENO)
+            unistd.dup2(oldstderr, unistd.STDERR_FILENO)
+        logger.error("syri call failed on input:")
+        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
+        if redir_stderr:
+            logger.error(f"syri stderr in '{CWD}/stderr'")
+        return None
 
     #with multiprocessing.Pool(processes=N) as pool:
     #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
-
 
     #TODO if runtime a problem: redo syri call to only call synteny => maybe configurable?
     # Merge output of all chromosomes – still necessary for some reason
@@ -442,14 +454,8 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
     o = getsrtable(CWD, PR)
 
     if redir_stderr:
+        unistd.close(unistd.STDERR_FILENO)
         unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-
-    if syriret == -1:
-        logger.error("syri call failed on input:")
-        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-        if redir_stderr:
-            logger.error(f"syri stderr in '{CWD}/stderr'")
-        return None
 
 
     if not K:
