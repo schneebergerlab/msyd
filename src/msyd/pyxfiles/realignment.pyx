@@ -74,8 +74,9 @@ cdef process_gaps(syns, qrynames, fastas):
             # find block between two coresyn regions
             crosssyns = dict()
 
+            # store crosssyn-regions, to be added once we know if we need to realign
             refcrosssyns = []
-            while syn.get_degree() < n: # might mess up sorting if input is already (partially) realigned; TODO maybe add check?
+            while syn.get_degree() < n:
                 refcrosssyns.append(syn)
                 syn = next(syniter)[1][0]
 
@@ -90,6 +91,7 @@ cdef process_gaps(syns, qrynames, fastas):
             # preemptively skip regions too small on the reference, if present
             if end - start < MIN_REALIGN_THRESH:
                 ret.append(syn)
+                old = syn
                 syn = next(syniter)[1][0]
                 continue
 
