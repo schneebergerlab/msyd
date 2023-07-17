@@ -410,7 +410,7 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     offset = interval.data
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
-cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=True):
+cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
     BRT = 20
     TUC = 1000
     TUP = 0.5
@@ -422,6 +422,8 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
 
     cdef int oldstderr = -1
     if redir_stderr:
+        #cio.fclose(cio.stderr)
+        #cio.stderr = cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
         oldstderr = unistd.dup(unistd.STDERR_FILENO)
         cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
 
@@ -430,6 +432,8 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
     if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
         if redir_stderr:
             logger.error("Redirecting stderr to console again")
+            #cio.fclose(cio.stderr)
+            #cio.stderr = oldstderr
             unistd.close(unistd.STDERR_FILENO)
             unistd.dup2(oldstderr, unistd.STDERR_FILENO)
         logger.error("syri call failed on input:")
@@ -454,6 +458,8 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
     o = getsrtable(CWD, PR)
 
     if redir_stderr:
+        #cio.fclose(cio.stderr)
+        #cio.stderr = oldstderr
         unistd.close(unistd.STDERR_FILENO)
         unistd.dup2(oldstderr, unistd.STDERR_FILENO)
 
