@@ -30,11 +30,17 @@ import msyd.pansyn as pansyn
 import msyd.io as io
 
 
-cdef int MIN_REALIGN_THRESH = 100
-cdef int MAX_REALIGN = 0
+cdef int _MIN_REALIGN_THRESH = 100
+cdef int _MAX_REALIGN = 0
 logger = util.CustomFormatter.getlogger(__name__)
 
-cpdef realign(syns, qrynames, fastas):
+cpdef realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None):
+    if _MIN_REALIGN_THRESH >= 0:
+        global _MIN_REALIGN_THRESH
+        _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
+    if _MAX_REALIGN >= 0:
+        global _MAX_REALIGN
+        _MAX_REALIGN = int(MAX_REALIGN)
     return process_gaps(syns, qrynames, fastas)
 
 cdef process_gaps(syns, qrynames, fastas):
@@ -89,7 +95,7 @@ cdef process_gaps(syns, qrynames, fastas):
             start = old.ref.end
 
             # preemptively skip regions too small on the reference, if present
-            if end - start < MIN_REALIGN_THRESH:
+            if end - start < _MIN_REALIGN_THRESH:
                 ret.append(syn)
                 old = syn
                 syn = next(syniter)[1][0]
@@ -132,7 +138,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
 
             while len(seqdict) > 2: # realign until there is only one sequence left
-                if MAX_REALIGN > 0 and len(crosssyns) > MAX_REALIGN:
+                if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
                     break
 
                 # choose a reference as the sample containing the most non-crosssynteny
@@ -253,7 +259,7 @@ cdef construct_mappingtrees(crosssyns, old, syn):
         for crosssyn in crosssyns[reforg]:
             for org, rng in crosssyn.ranges_dict.items():
                 l = rng.start - offsetdict[org] # len of the region to be added
-                if l < MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
+                if l < _MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
                     offsetdict[org] = rng.end # skip till the end
                     continue
                 # add to the intervaltree
@@ -264,7 +270,7 @@ cdef construct_mappingtrees(crosssyns, old, syn):
     # see if there's any sequence left to realign after processing the crosssyn regions
     for org, offset in offsetdict.items():
         l = syn.ranges_dict[org].start - offset
-        if l >= MIN_REALIGN_THRESH:
+        if l >= _MIN_REALIGN_THRESH:
             mappingtrees[org][posdict[org]:posdict[org]+l] = offset
     return mappingtrees
 
@@ -352,7 +358,7 @@ cdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
         #        qoffset = qint.data
         #        rlen = rend - renddelta - rstart - rstartdelta
         #        qlen = qend - qenddelta - qstart - qstartdelta
-        #        if rlen < MIN_REALIGN_THRESH or qlen < MIN_REALIGN_THRESH:
+        #        if rlen < _MIN_REALIGN_THRESH or qlen < _MIN_REALIGN_THRESH:
         #            print("very small:", rlen, qlen)
 
         #        al.append([rstart + rstartdelta + roffset, rend - renddelta + roffset,

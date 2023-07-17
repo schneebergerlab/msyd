@@ -85,9 +85,11 @@ def main(argv):
     call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
-    call_parser.add_argument("--realign", "-ali", dest='real', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
+    call_parser.add_argument("--realign", "-ali", dest='realign', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
+    call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
+    call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
 
     # view subparser
     view_parser = subparsers.add_parser("view",
@@ -130,6 +132,8 @@ def main(argv):
     realign_parser.add_argument("-t", dest='tsvfile', required=True, type=argparse.FileType('r'), help="TSV containing the sample names and path to genome fastas.")
     realign_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     realign_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
+    realign_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
+    realign_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
 
     fact_parser = subparsers.add_parser("fact",
         help="Give a fact about birds or non-birds!",
@@ -149,9 +153,9 @@ def call(args):
     qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
     # find reference synteny
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
-    if args.real:
+    if args.realign:
         # use reference synteny as base to identify all haplotypes
-        df = realignment.realign(df, qrynames, fastas)
+        df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign)
 
     if args.tmp:
         if not os.path.isdir(args.tmp):
@@ -238,7 +242,7 @@ def realign(args):
     logger.info(f"realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
     syns = io.read_pff(args.infile)
-    resyns = realignment.realign(syns, qrynames, fastas)
+    resyns = realignment.realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign)
     print(util.get_stats(resyns))
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
 
