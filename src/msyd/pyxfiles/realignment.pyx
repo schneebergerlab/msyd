@@ -35,10 +35,10 @@ cdef int _MAX_REALIGN = 0
 logger = util.CustomFormatter.getlogger(__name__)
 
 cpdef realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None):
-    if _MIN_REALIGN_THRESH >= 0:
+    if MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
-    if _MAX_REALIGN >= 0:
+    if MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
     return process_gaps(syns, qrynames, fastas)
