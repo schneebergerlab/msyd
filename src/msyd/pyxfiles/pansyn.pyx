@@ -30,10 +30,12 @@ def find_overlaps(left, right, only_core=False):
 
     if len(right) == 0:
         logger.error("find_overlap called with no pansyn regions (right)!")
-        raise ValueError("right is empty!")
+        #raise ValueError("right is empty!")
+        return None
     if len(left) == 0:
         logger.error("find_overlap called with no pansyn regions (left)!")
-        raise ValueError("left is empty!")
+        #raise ValueError("left is empty!")
+        return None
 
     rit = right.iterrows()
     lit = left.iterrows()
@@ -295,6 +297,7 @@ def reduce_find_overlaps(syns, cores, **kwargs):
     if cores > 1:
         pansyns = util.parallel_reduce(ovlap, syns, cores)
     else:
+        print(syns)
         pansyns = functools.reduce(ovlap, syns)
 
     return pansyns

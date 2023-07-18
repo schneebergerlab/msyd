@@ -162,7 +162,7 @@ cdef process_gaps(syns, qrynames, fastas):
                 # filter out alignments only containing inversions
                 for org in alns:
                     if alns[org] is not None and all(alns[org].bDir == -1):
-                        logger.warning(f"{org} is None in alns or only contains inverted alignments: \n{alns[org]}")
+                        logger.warning(f"{org} in alns only contains inverted alignments: \n{alns[org]}")
                         alns[org] = None
 
                 #logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
@@ -177,13 +177,14 @@ cdef process_gaps(syns, qrynames, fastas):
 
                 for org in syris:
                     if syris[org] is not None:
-                        #print("===", org, "against", ref,"===")
+                        #print("===", org, mappingtrees[org][0], "against", ref, reftree[0], reftree[-1], "===")
                         #print(syris[org])
                         #print(syris[org].filter(axis='index', like='SYNAL'))
 
                         # the code in pansyn uses all lower-case column names
                         alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
                         #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
+                        #print(mappingtrees[org])
 
                 syns = [pansyn.match_synal(
                             io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
@@ -196,16 +197,14 @@ cdef process_gaps(syns, qrynames, fastas):
                 # syns should be sorted
                 pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
 
-                # remove the new pansyn regions from the interval trees
-                for psyn in pansyns.iterrows():
-                    psyn = psyn[1][0]
-                    for org, rng in psyn.ranges_dict.items():
-                        pass
-                
+                # no need to recalculate the tree if no pansynteny was found
+                if pansyns is None or pansyns.empty:
+                    continue
+
                 # Add all crosssyns with alphabetical sorting by reference name
                 crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
                 added = sum([len(x.ref) for x in crosssyns[ref]])
-                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(crosssyns))}) of cross-synteny.")
+                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(crosssyns))}) of cross-synteny.")
 
                 # recalculate mappingtrees from current crosssyns to remove newly found cross synteny
                 # TODO maybe in future directly remove, might be more efficient
@@ -240,8 +239,6 @@ cdef process_gaps(syns, qrynames, fastas):
     except StopIteration as e:
         logger.warning(f'Stopped iteration: {e}')
 
-    print("reached")
-
     return pd.DataFrame(list(ret))
 
 
@@ -249,8 +246,9 @@ cdef process_gaps(syns, qrynames, fastas):
 
 cdef construct_mappingtrees(crosssyns, old, syn):
     """
-    Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign
-
+    Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
+    Crosssyns need to be sorted by position on reference.
+    For each tree, the sequence in genome `org` at position `tree[pos].data - tree[pos].begin + pos` corresponds to the position `pos` in the synthetic query sequence.
     """
     mappingtrees = defaultdict(intervaltree.IntervalTree)
     posdict = defaultdict(lambda: 0) # stores the current position in each org
@@ -258,14 +256,24 @@ cdef construct_mappingtrees(crosssyns, old, syn):
     for reforg in crosssyns:
         for crosssyn in crosssyns[reforg]:
             for org, rng in crosssyn.ranges_dict.items():
+                #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
                 l = rng.start - offsetdict[org] # len of the region to be added
-                if l < _MIN_REALIGN_THRESH: # the allowed region is too small to add to realign
-                    offsetdict[org] = rng.end # skip till the end
+                if l < 0: # improper sorting – skip
                     continue
-                # add to the intervaltree
-                mappingtrees[org][posdict[org]:posdict[org]+l] = offsetdict[org]
-                offsetdict[org] += l
-                posdict[org] += l
+
+                # check if this interval would be redundant
+                prev = list(mappingtrees[org][posdict[org]-1]) # will be empty if tree is empty
+                if prev and posdict[org] + prev[0].data == offsetdict[org]:
+                    # extend the previous interval instead
+                    del mappingtrees[org][posdict[org]-1]
+                    posdict[org] += l
+                    mappingtrees[org][prev[0].begin:posdict[org]] = prev[0].data
+                elif l > _MIN_REALIGN_THRESH: # otherwise add to the tree if it's large enough
+                    mappingtrees[org][posdict[org]:posdict[org]+l] = offsetdict[org]
+                    posdict[org] += l
+
+                # all up to the end of this region has been added
+                offsetdict[org] = rng.end
 
     # see if there's any sequence left to realign after processing the crosssyn regions
     for org, offset in offsetdict.items():
