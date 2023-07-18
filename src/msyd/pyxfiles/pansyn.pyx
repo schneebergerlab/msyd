@@ -297,7 +297,6 @@ def reduce_find_overlaps(syns, cores, **kwargs):
     if cores > 1:
         pansyns = util.parallel_reduce(ovlap, syns, cores)
     else:
-        print(syns)
         pansyns = functools.reduce(ovlap, syns)
 
     return pansyns
