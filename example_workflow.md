@@ -4,7 +4,7 @@ This file describes the steps for an example workflow using msyd, described in t
 See also `example_workflow.sh` for a condensed shell script of the same workflow that can be run on the command line.
 
 
-![Diagram illustrating an example workflow for using msyd](https://github.com/schneebergerlab/msyd/blob/leon/workflow.svg)
+![Diagram illustrating an example workflow for using msyd](https://github.com/schneebergerlab/msyd/blob/master/img/workflow.svg)
 
 ## Running msyd
 
