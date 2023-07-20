@@ -1,7 +1,7 @@
 # msyd
 
 msyd is still under active development, so expect some bugs and changes!
-In particular, the PFF format is not yet stable, while the core synteny identification is stable and the realignment.
+In particular, the PFF format is not yet stable, while the core synteny identification is stable and the realignment is implemented, but still being tested.
 If in doubt about the behaviour of msyd or how it might change, feel free to reach out by opening an issue!
 
 ## Installation
