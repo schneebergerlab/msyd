@@ -918,6 +918,7 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
 
     for row in merged.iterrows():
         row = row[1]
+        # removed util.chrom_to_int, was causing problems
         buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
             Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
             ])

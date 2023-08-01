@@ -240,7 +240,7 @@ def get_stats(df):
     ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\tAvg. Length\n" + "\n".join([f"{i + 1}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
     return ret
 
-def siprefix(x: int):
+def siprefix(x):
     if x >= 1E9:
         return f"{x/1E9:.2f} Gbp"
     elif x >= 1E6:
@@ -444,4 +444,19 @@ def pff_to_string(df, save_cigars=False):
     with io.StringIO() as buf:
         msyd.io.to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
+
+cpdef chrom_to_int(chrom):
+    """
+    Util function to ensure the Chr is an integer value.
+    :param chrom: Chr specification to input. Can be either a string of the form 'ChrX' or an int (the int will be returned as-is).
+    :type chrom: str or int
+    :returns: Chr number as an int
+    :rtype: int
+    """
+    if type(chrom) is int:
+        return chrom
+    elif type(chrom) is str:
+        return int(chrom[3:])
+    else:
+        raise ValueError(f"{chrom} is neither int nor str!")
 

@@ -59,7 +59,7 @@ class Position:
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 #@cython.total_ordering
 class Range:
-    def __init__(self, org:str, chr:int, haplo:str, start: int, end: int):
+    def __init__(self, org:str, chr:str, haplo:str, start: int, end: int):
         self.org = org
         self.chr = chr
         self.haplo = haplo
@@ -98,7 +98,7 @@ class Range:
         start = int(cellarr[-1].split('-')[0])
         end = int(cellarr[-1].split('-')[1])
         hapl = cellarr[1] if len(cellarr) == 3 else None
-        chrom = cellarr[0] if cellarr[0] is int else int(cellarr[0][3:])
+        chrom = cellarr[0] #util.chrom_to_int(cellarr[0])
         # should chr be int'ed as well?
         return Range(org, chrom, hapl, start, end)
 
