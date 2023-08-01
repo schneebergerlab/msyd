@@ -9,15 +9,13 @@ It is intended to be straightforward both for human and automatic parsing.
 ## Spec
 - A PFF file consists of a body and a header, and is tab-separated
 - the header starts with '\#ANN' and contains the names of all organisms in the callset, separated by tabs
-- If a reference was used, it is considered part of the callset and given first in the header. It should be named 'ref'.
+- The first column should contain the name of the reference that region was aligned to for calling. The column should be named 'ref'.
 - Each row stores one annotation across the set of organisms
 - An annotation consists of an annotation type and a list of ranges for each organism, separated by ;
-- A range consists of a chromosome number and haplotype character separated by : from each other and the start and end positions separated by -, and optionally a list of alignment specifiers, separated by ,s
+- A range consists of an optional sample name specifier, a chromosome number and haplotype character separated by : from each other and the start and end positions separated by -, and optionally a CIGAR string describing the alignment, separated by a ,
+- For the range in the `ref` column, the sample name specifier is required
 - x represents an unknown haplotype; X represents a locus in all haplotypes
 - A range can contain whitespace characters that are not TAB at arbitrary positions; they are removed during parsing
-- An alignment is specified by first providing the organism, then the 1-based index of the range in that organism's field to which this range has been aligned and finally the alignment in CIGAR format, all separated by :
-- If a reference is specified and the alignment is to the reference and the reference field only has one range, just the CIGAR string can be given instead.
-- For any given CIGAR string, the reference is the organism corresponding specified by the alignment specifier and the query is the column the CIGAR string occurs at.
 - A range is inverted if the start position is lower than the end position.
 - In this case, any alignments referring to this range have this sequence reversed
 – the SNP annotation is treated in a special manner:

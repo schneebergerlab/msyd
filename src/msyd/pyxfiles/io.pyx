@@ -1056,7 +1056,7 @@ cpdef save_to_pff(df, buf, save_cigars=True):
     for row in df.iterrows():
         pansyn = row[1][0]
         buf.write("\nSYN\t") # only handle SYNs for now
-        buf.write(pansyn.ref.to_pff())
+        buf.write(pansyn.ref.to_pff_org())
         for org in orgs:
             buf.write("\t")
             if org in pansyn.ranges_dict:

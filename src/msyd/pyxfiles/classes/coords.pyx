@@ -74,6 +74,12 @@ class Range:
         """
         return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
 
+    def to_pff_org(self):
+        """Transform this `Range` into the form specified by PFF, with the sample name being prepended as specified for the realigned reference haplotype
+        """
+        return f"{self.org}:{self.chr}:{self.haplo}:{self.start}-{self.end}"
+
+
     def read_pff(org:str, cell: str):
         """Parse a Range in PFF format
         PFF format is :-separated and must contain the chromosome first, then followed by a haplotype (optional) and a start and end position separated by -.
@@ -82,14 +88,19 @@ class Range:
         Examples: Chr1:mat:1000-2000, Chr3:10000-50000
         """
         #TODO error handling in here
+        #print(cell)
         cellarr = cell.split(':')
-        if len(cellarr) < 2 or len(cellarr) > 3:
+        if len(cellarr) < 2 or len(cellarr) > 4:
             raise ValueError(f"Invalid PFF Range string: {cell}")
+        if len(cellarr) == 4: # if a ref name is specified in the cell, that overrides the argument
+            org = cellarr[0]
+            cellarr = cellarr[1:]
         start = int(cellarr[-1].split('-')[0])
         end = int(cellarr[-1].split('-')[1])
         hapl = cellarr[1] if len(cellarr) == 3 else None
+        chrom = cellarr[0] if cellarr[0] is int else int(cellarr[0][3:])
         # should chr be int'ed as well?
-        return Range(org, cellarr[0], hapl, start, end)
+        return Range(org, chrom, hapl, start, end)
 
     
     def __eq__(l, r):
