@@ -169,6 +169,9 @@ cdef process_gaps(syns, qrynames, fastas):
                 #print(ref, refseq)
                 #print(seqdict)
 
+                #TODO try out making all regions to be realigned into genome with one chr for each region
+                # then running one alignment & syri call for each synthetic genome
+                # => directly catches translocations/duplications I think?
 
                 # run syri
                 cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
