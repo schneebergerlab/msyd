@@ -1045,29 +1045,86 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_pff(df, buf, save_cigars=True):
+cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     """Takes a df containing `Pansyn` objects and writes them in pansynteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
     # output organisms in lexicalic ordering
     orgs = sorted(util.get_orgs_from_df(df))
-    buf.write("#ANN\tref\t")
+    cdef:
+        int n = len(orgs)
+        int corecounter = 1
+        int mericounter = 1
+        int coreend = 0
+        str corechr = ''
+
+    buf.write("#CHR\tSTART\tEND\tANN\t")
     buf.write("\t".join(orgs))
+    buf.write("\n")
 
-    for row in df.iterrows():
-        pansyn = row[1][0]
-        buf.write("\nSYN\t") # only handle SYNs for now
-        buf.write(pansyn.ref.to_pff_org())
-        for org in orgs:
-            buf.write("\t")
-            if org in pansyn.ranges_dict:
-                buf.write(pansyn.ranges_dict[org].to_pff())
-                if save_cigars and pansyn.cigars_dict:
-                    buf.write(",")
-                    buf.write(pansyn.cigars_dict[org].to_string())
-            else:
-                buf.write(".")
+    syniter = df.iterrows()
 
+    while True:
+        mesyns = []
+        refmesyns = []
+        syn = None
+        try:
+            syn = next(syniter)[1][0]
+            # get all mesyns, separate by those having a position on reference and those that don't
+            while syn.get_degree() < n:
+                if syn.ref.org == "ref":
+                    refmesyns.append(syn)
+                else:
+                    mesyns.append(syn)
+                syn = next(syniter)[1][0]
+        except StopIteration: # try/catch block internal, so things still get written after we run out of pansyn regions
+            pass
+
+        # first, write non-ref-position merisynteny
+        # write to the first position it can be
+        # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
+        if collapse_mesyn:
+            if mesyns: # do not add anything if mesyns is empty
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERISYN{mericounter}-{mericounter+len(mesyns)-1}", '']))
+                write_pansyns(mesyns, buf, orgs)
+                mericounter += len(mesyns)
+        else:
+            for mesyn in mesyns:
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERISYN{mericounter}", '']))
+                write_pansyns([mesyn], buf, orgs)
+                mericounter += 1
+
+        # write mesyn regions that have a position on reference at their appropriate position
+        for refmesyn in refmesyns:
+            ref = refmesyn.ref
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERISYN{mericounter}", '']))
+            write_pansyns([refmesyn], buf, orgs)
+            mericounter += 1
+
+        # write coresyn region
+        ref = syn.ref
+        coreend = ref.end
+        corechr = ref.chr
+        buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", '']))
+        write_pansyns([syn], buf, orgs)
+        corecounter += 1
+
+    buf.write("\n")
+    buf.flush()
+
+cdef write_pansyns(pansyns, buf, orgs):
+    """Function to write a set of pansyns in a single PFF-style annotation to buf.
+    Does not write the BED-like first part of the annotation.
+    :param pansyns: list of pansyn objects to write
+    :param buf: buffer to write to
+    :param orgs: ordering of organisms to use (should be sorted)
+    """
+    buf.write('\t'.join(
+        [';'.join(
+            [','.join([pansyn.ranges_dict[org].to_pff(), pansyn.ref.org]) # <range>,<haplotype organism>
+             if org in pansyn.ranges_dict else '-' for pansyn in pansyns]) # if the haplotype isn't syntenic to an organism, put a minus
+         for org in orgs])
+      )
     buf.write("\n")
 
 cpdef read_pff(f):
