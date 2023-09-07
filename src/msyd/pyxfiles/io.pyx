@@ -1109,6 +1109,8 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
             buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", '']))
             write_pansyns([syn], buf, orgs)
             corecounter += 1
+        else:
+            break
 
     buf.write("\n")
     buf.flush()
