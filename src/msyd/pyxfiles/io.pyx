@@ -1102,12 +1102,13 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
             mericounter += 1
 
         # write coresyn region
-        ref = syn.ref
-        coreend = ref.end
-        corechr = ref.chr
-        buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", '']))
-        write_pansyns([syn], buf, orgs)
-        corecounter += 1
+        if syn:
+            ref = syn.ref
+            coreend = ref.end
+            corechr = ref.chr
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", '']))
+            write_pansyns([syn], buf, orgs)
+            corecounter += 1
 
     buf.write("\n")
     buf.flush()
