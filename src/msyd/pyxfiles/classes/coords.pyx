@@ -28,12 +28,14 @@ class Position:
         self.pos = pos
 
     def __repr__(self):
-        return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
+        #return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
+        return f"Position({self.org}, {self.chr}, {self.pos})"
 
     def to_pff(self):
         """Transform this `Position` into pansynteny file format
         """
-        return f"{self.chr}:{self.haplo}:{self.pos}"
+        #return f"{self.chr}:{self.haplo}:{self.pos}"
+        return f"{self.chr}:{self.pos}"
 
     def __eq__(l, r):
         if not isinstance(r, Position):
@@ -67,17 +69,20 @@ class Range:
         self.end = end # inclusive
 
     def __repr__(self):
-        return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
+        #return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
+        return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
 
     def to_pff(self):
         """Transform this `Range` into the form specified by PFF
         """
-        return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
+        #return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
+        return f"{self.chr}:{self.start}-{self.end}"
 
     def to_pff_org(self):
         """Transform this `Range` into the form specified by PFF, with the sample name being prepended as specified for the realigned reference haplotype
         """
-        return f"{self.org}:{self.chr}:{self.haplo}:{self.start}-{self.end}"
+        #return f"{self.org}:{self.chr}:{self.haplo}:{self.start}-{self.end}"
+        return f"{self.org}:{self.chr}:{self.start}-{self.end}"
 
 
     def read_pff(org:str, cell: str):
