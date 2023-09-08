@@ -145,6 +145,7 @@ def main(argv):
     args = parser.parse_args(argv)
     if args.func:
         args.func(args)
+        logger.info("Finished running msyd. Have a nice day!")
     else:
         logger.info("No subcommand specified, printing help message.")
         parser.print_help()
@@ -192,18 +193,22 @@ def call(args):
         logger.info(f"Merging VCFs, saving to {tmpfile}")
         io.reduce_vcfs(vcfs, tmpfile)
 
-        logger.info(f"Adding Pansyn annotations, saving to {args.vcf.name}")
+        logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
         io.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
+
+    logger.info(f"Finished running msyd call, output saved to {args.pff.name}.")
 
 def merge(args):
     # temporary function to better test the vcf merging functionality
-    logger.info(f"Merging {args.vcfs} to {args.outfile}")
+    logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
     io.reduce_vcfs(args.vcfs, args.outfile.name)
+    logger.info(f"Finished running msyd merge, output saved to {args.outfile.name}.")
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
     df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
+    logger.info("Finished running msyd order")
 
 def view(args):
     logger.info(f"reading pansynteny from {args.infile.name}")
@@ -236,6 +241,8 @@ def view(args):
         io.save_to_pff(df, args.outfile, save_cigars=False)
     else:
         logger.error(f"Invalid filetype: {args.filetype}")
+        return
+    logger.info(f"Finished running msyd view, output saved to {args.outfile.name}.")
 
 
 def realign(args):
@@ -244,7 +251,9 @@ def realign(args):
     syns = io.read_pff(args.infile)
     resyns = realignment.realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign)
     print(util.get_stats(resyns))
+    logger.info(f"Saving to {args.outfile.name} in PFF format.")
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
+    logger.info(f"Finished running msyd realign, output saved to {args.outfile.name}.")
 
 def fact(args):
     # print out a fact!
