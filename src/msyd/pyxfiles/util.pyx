@@ -84,7 +84,8 @@ def gettmpfile():
         randstr = ''.join(random.choices('abcdefghijklmnopqrstvwxyz', k=6))
         path = f"{TMPDIR}{os.sep}tmp{randstr}"
         if os.path.isfile(path):
-            logger.error(f'Temp file path already exists: {path}')
+            logger.error(f'Temp file path already exists: {path}. Retrying!')
+            return gettmpfile() # retry with different random string
         open(path, 'w').close() # create the file as empty before returning the path
         return path
 
