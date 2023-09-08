@@ -1,13 +1,13 @@
 # msyd
 
 msyd is still under active development, so expect some bugs and changes!
-In particular, the PFF format is not yet stable, while the core synteny identification is stable and the realignment is implemented, but still being tested.
+In particular, the PFF format is not yet stable, while the core synteny identification and realignment are stable.
 If in doubt about the behaviour of msyd or how it might change, feel free to reach out by opening an issue!
 
 ## Installation
 msyd can be installed by a call to `setup.py` as `[sudo] python ./setup.py install [--user]`.
-Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy` and `scipy` for the plotsr ordering functionality.
-They can be installed with `pip install -r requirements.txt`
+Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy`, `scipy`, `mappy/minimap2`, `intervaltree` and `syri >= 1.6.5`.
+The requirements are listed in `requirements.txt` and can be installed via conda or another package manager from this file.
 
 ## Usage
 
