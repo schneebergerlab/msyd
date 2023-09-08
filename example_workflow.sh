@@ -47,11 +47,11 @@ syri --nc 5 -F P --cigar --prefix sha -c sha.paf -r ref.fna -q sha.fna --lf sha.
 syri --nc 5 -F P --cigar --prefix swe -c swe.paf -r ref.fna -q swe.fna --lf swe.syri.log --samplename swe
 
 ## construct genomes.tsv file
-echo "#name\taln\tsyri\tvcf" > genomes.tsv
+echo "#name\taln\tsyri\tvcf\tseq" > genomes.tsv
 for f in *syri.out
 do
 	bs=$(basename $f syri.out)
-	echo "$bs\t$bs.paf\t${bs}syri.out\t${bs}syri.vcf" >> genomes.tsv
+	echo "$bs\t$bs.paf\t${bs}syri.out\t${bs}syri.vcf\t${bs}.fna" >> genomes.tsv
 done
 
 # run msyd to call pansynteny

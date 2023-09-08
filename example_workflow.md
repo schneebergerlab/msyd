@@ -91,10 +91,10 @@ An example TSV for the callset prepared in this workflow could look like this:
 
 ```
 $ cat genomes.tsv
-#name	aln	        syri                vcf
-ler	ler.paf	lersyri.out    lersyri.vcf
-sha	sha.paf	shasyri.out    shasyri.vcf
-swe	swe.paf	swesyri.out    swesyri.vcf
+#name   aln syri    vcf seq
+ler	ler.paf	lersyri.out    lersyri.vcf  ler.fna
+sha	sha.paf	shasyri.out    shasyri.vcf  sha.fna
+swe	swe.paf	swesyri.out    swesyri.vcf  swe.fna
 ``` 
 
 It could be typed out manually, or automatically generated with a bash script:
@@ -106,7 +106,7 @@ echo "#name\taln\tsyri\tvcf" > genomes.tsv
 for f in *syri.out
 do
 	bs=$(basename $f syri.out)
-	echo "$bs\t$bs.pa\t${bs}syri.out\t${bs}syri.vcf" >> genomes.tsv
+	echo "$bs\t$bs.paf\t${bs}syri.out\t${bs}syri.vcf\t${bs}.fna" >> genomes.tsv
 done
 ```
 
