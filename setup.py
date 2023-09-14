@@ -1,16 +1,17 @@
 #/usr/bin/env python3
 import os
 os.chdir('./src')
+# load version number, follows https://stackoverflow.com/a/16084844
+exec(open('msyd/version.py').read())
 
 from setuptools import setup, Extension
 from Cython.Build import cythonize
 import numpy
-#from msyd import __version__
 from Cython.Compiler import Options
 
 
 setup(name="msyd",
-      version='0.8.0',
+      version=__version__,
       description='Synteny identification across multiple genome assemblies',
       url='https://github.com/schneebergerlab/msyd/',
       license='MIT License',

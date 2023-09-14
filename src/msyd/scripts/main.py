@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
-import msyd
+import msyd # to import version
 import msyd.util as util
 import msyd.io as io
 import msyd.imputation as imputation
