@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # in python, probably not worth cythonizing
 
+import msyd
 import msyd.util as util
 import msyd.io as io
 import msyd.imputation as imputation
@@ -31,6 +32,7 @@ def main(argv):
     For more information, see the documentation and subparser help messages accessed by calling msyd [subparser] -h.
     """)
     parser.set_defaults(func=None, cores=1)
+    parser.add_argument('--version', action='version', version=msyd.__version__)
 
     subparsers = parser.add_subparsers()#description="See also msyd [subparser] -h:") # title/description?
     # ordering parser
