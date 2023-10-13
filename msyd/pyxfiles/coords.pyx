@@ -8,7 +8,7 @@ import functools
 #import cython
 import logging
 
-from msyd.classes.cigar import Cigar
+from msyd.cigar import Cigar
 import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)

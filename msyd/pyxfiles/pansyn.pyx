@@ -12,9 +12,9 @@ import multiprocessing
 
 import msyd.io as io
 import msyd.util as util
-import msyd.classes as classes
-from msyd.classes.cigar import Cigar
-from msyd.classes.coords import Pansyn, Range, Position
+import msyd.cigar
+from msyd.cigar import Cigar
+from msyd.coords import Pansyn, Range, Position
 
 cdef int MIN_SYN_THRESH = 30
 
@@ -179,7 +179,7 @@ def match_synal(syn, aln, ref='a'):
         try:
             org = synr[1].org
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                cg = classes.cigar.cigar_from_string(alnr['cg'])
+                cg = msyd.cigar.cigar_from_string(alnr['cg'])
                 rng = synr[1]
                 pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1

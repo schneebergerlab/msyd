@@ -1,5 +1,4 @@
-#!/usr/bin/python3
-# in python, probably not worth cythonizing
+#!/usr/bin/env python3
 
 import msyd # to import version
 import msyd.util as util
@@ -7,9 +6,9 @@ import msyd.io as io
 import msyd.imputation as imputation
 import msyd.pansyn as pansyn
 import msyd.realignment as realignment
-from msyd.classes.coords import Range
+from msyd.coords import Range
 
-import msyd.scripts.ordering as ordering
+import msyd.ordering as ordering
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -23,7 +22,7 @@ import os
 This file serves as the main entrypoint for the msyd CLI.
 """
 
-def main(argv):
+def main():
 
     parser = argparse.ArgumentParser(description="""
     msyd is a tool for identifying and processing pansynteny.
@@ -144,7 +143,7 @@ def main(argv):
         """)
     order_parser.set_defaults(func=order)
 
-    args = parser.parse_args(argv)
+    args = parser.parse_args()
     if args.func:
         args.func(args)
         logger.info("Finished running msyd. Have a nice day!")

@@ -95,8 +95,8 @@ def gettmpfile():
 #############################################
 
 import msyd.pansyn as pansyn
-from msyd.classes.cigar import Cigar
-from msyd.classes.coords import Pansyn, Range
+from msyd.cigar import Cigar
+from msyd.coords import Pansyn, Range
 import msyd.io
 
 

@@ -22,11 +22,11 @@ from gc import collect
 
 cimport numpy as np
 
-from msyd.classes.coords import Range
-from msyd.classes.coords import Pansyn
-from msyd.classes.vars import SNV
+from msyd.coords import Range
+from msyd.coords import Pansyn
+from msyd.vars import SNV
 import msyd.util as util
-import msyd.classes.cigar as cigar
+import msyd.cigar as cigar
 
 logger = util.CustomFormatter.getlogger(__name__)
 np.random.seed(1)

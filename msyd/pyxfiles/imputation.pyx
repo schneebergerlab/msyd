@@ -3,8 +3,8 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-from msyd.classes.cigar import Cigar#, cig_clips, cig_aln_types
-import msyd.classes as classes
+import msyd.cigar
+from msyd.cigar import Cigar#, cig_clips, cig_aln_types
 import msyd.util as util
 
 # redeclare, as cdefs can apparently not be imported
@@ -32,7 +32,7 @@ def impute_strings(strl: str, strr: str):
     :return: A CIGAR string containing an approximated alignment of `strr` to `strl`
     :rtype: str
     """
-    cgl, cgr = classes.cigar.cigar_from_string(strl), Cigar.from_string(strr)
+    cgl, cgr = msyd.cigar.cigar_from_string(strl), msyd.cigar.cigar_from_string(strr)
     return impute(cgl, cgr).to_string()
 
 

@@ -25,7 +25,7 @@ from syri.tdfunc import getCTX
 from syri.writeout import getsrtable
 
 import msyd.util as util
-import msyd.classes.cigar as cigar
+import msyd.cigar as cigar
 import msyd.pansyn as pansyn
 import msyd.io as io
 

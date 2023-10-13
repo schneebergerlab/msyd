@@ -6,7 +6,7 @@ import pandas as pd
 import scipy.cluster.hierarchy as spclhier
 
 import msyd.util as util
-from msyd.classes.coords import Range
+from msyd.coords import Range
 
 logger = util.CustomFormatter.getlogger(__name__)
 
