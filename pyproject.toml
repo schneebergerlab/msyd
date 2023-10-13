@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "msyd"
+# project homepage: https://github.com/schneebergerlab/msyd
 authors = [
     {name = "Leon Rauschning"},
     {name = "Manish Goel"},
