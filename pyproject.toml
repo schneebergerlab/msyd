@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools", "numpy", "cython"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "msyd"
+authors = [
+    {name = "Leon Rauschning"},
+    {name = "Manish Goel"},
+]
+description = "Synteny identification across multiple genome assemblies"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["Structural Variation", "SV", "Pangenomics", "Bioinformatics"]
+license = {text = "MIT"}
+dependencies = [
+	"numpy", 
+	"scipy",
+	"cython",
+	"pandas",
+	"pysam >= 0.21",
+	"mappy",
+	"intervaltree",
+	"syri >= 1.6.5",
+]
+dynamic = ["version"]
+
+
+[project.scripts]
+msyd = "msyd:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "msyd.__version__"}
+

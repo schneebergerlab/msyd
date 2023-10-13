@@ -1,32 +1,22 @@
-#/usr/bin/env python3
-import os
-os.chdir('./src')
-# load version number, follows https://stackoverflow.com/a/16084844
-exec(open('msyd/version.py').read())
+#!/usr/bin/env python3
 
+import numpy
 from setuptools import setup, Extension
 from Cython.Build import cythonize
-import numpy
 from Cython.Compiler import Options
 
+import glob
 
 setup(name="msyd",
-      version=__version__,
       description='Synteny identification across multiple genome assemblies',
       url='https://github.com/schneebergerlab/msyd/',
       license='MIT License',
-      license_files=('LICENSE',),
-      ext_modules=cythonize([Extension('msyd.classes.cigar', ['msyd/pyxfiles/classes/cigar.pyx']),
-                            Extension('msyd.classes.coords', ['msyd/pyxfiles/classes/coords.pyx']),
-                            Extension('msyd.classes.vars', ['msyd/pyxfiles/classes/vars.pyx']),
-                            Extension('msyd.io', ['msyd/pyxfiles/io.pyx']),
-                            Extension('msyd.pansyn', ['msyd/pyxfiles/pansyn.pyx']),
-                            Extension('msyd.realignment', ['msyd/pyxfiles/realignment.pyx']),
-                            Extension('msyd.util', ['msyd/pyxfiles/util.pyx']),
-                            Extension('msyd.imputation', ['msyd/pyxfiles/imputation.pyx']),
-                            Extension('msyd.varcmp', ['msyd/pyxfiles/varcmp.pyx'])]),
-      packages=["msyd", "msyd.scripts"],
+      ext_modules=cythonize([
+          Extension(f"msyd.{name.split('/')[-1].split('.')[0]}", [name])
+          for name in glob.iglob('msyd/pyxfiles/*.pyx')
+          ]),
+      packages=["msyd"],
       include_dirs=[numpy.get_include()],
-      scripts=['msyd/scripts/msyd'],
-      long_description=open('../README.md').read(),
+      entry_points={"console_scripts": ["msyd=msyd:main"]},
+      long_description=open('./README.md').read(),
       )
