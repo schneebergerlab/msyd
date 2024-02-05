@@ -34,21 +34,21 @@ cdef int _MIN_REALIGN_THRESH = 100
 cdef int _MAX_REALIGN = 0
 logger = util.CustomFormatter.getlogger(__name__)
 
-cpdef realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None):
+cpdef realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5'):
     if MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
     if MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
-    return process_gaps(syns, qrynames, fastas)
+    return process_gaps(syns, qrynames, fastas, mp_preset=mp_preset)
 
-cdef process_gaps(syns, qrynames, fastas):
+cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all crosssynteny, hopefully.
     
-    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names.
+    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
     :returns: A DataFrame with the added non-reference crosssynteny
     """
     # init stuff
@@ -156,7 +156,7 @@ cdef process_gaps(syns, qrynames, fastas):
 
                 # construct alignment index from the reference
                 #logger.info("Starting Alignment")
-                aligner = mp.Aligner(seq=refseq, preset='asm5') 
+                aligner = mp.Aligner(seq=refseq, preset=mp_preset) 
                 alns = {org: align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
 
                 # filter out alignments only containing inversions

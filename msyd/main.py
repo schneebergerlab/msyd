@@ -91,6 +91,7 @@ def main():
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
     call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
+    call_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
 
     # view subparser
     view_parser = subparsers.add_parser("view",
@@ -135,6 +136,7 @@ def main():
     realign_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
     realign_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
     realign_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
+    realign_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
 
     fact_parser = subparsers.add_parser("fact",
         help="Give a fact about birds or non-birds!",
@@ -157,7 +159,7 @@ def call(args):
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
     if args.realign:
         # use reference synteny as base to identify all haplotypes
-        df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign)
+        df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset)
 
     if args.tmp:
         if not os.path.isdir(args.tmp):
