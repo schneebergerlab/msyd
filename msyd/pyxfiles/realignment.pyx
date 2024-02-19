@@ -427,6 +427,7 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     offset = interval.data
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
+# TODO: Make parameters adjustable
 cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
     BRT = 20
     TUC = 1000
@@ -446,18 +447,24 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
 
     # handle errors by return value; allows only showing output if there is a problem
     # python errors coming after an error here will have normal stderr
-    if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
-        if redir_stderr:
-            logger.error("Redirecting stderr to console again")
-            #cio.fclose(cio.stderr)
-            #cio.stderr = oldstderr
-            unistd.close(unistd.STDERR_FILENO)
-            unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-        logger.error("syri call failed on input:")
+    try:
+        syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,
+             tdolp=TDOLP)
+    except ValueError:
         print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-        if redir_stderr:
-            logger.error(f"syri stderr in '{CWD}/stderr'")
         return None
+    # if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
+    #     if redir_stderr:
+    #         logger.error("Redirecting stderr to console again")
+    #         #cio.fclose(cio.stderr)
+    #         #cio.stderr = oldstderr
+    #         unistd.close(unistd.STDERR_FILENO)
+    #         unistd.dup2(oldstderr, unistd.STDERR_FILENO)
+    #     logger.error("syri call failed on input:")
+    #     print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
+    #     if redir_stderr:
+    #         logger.error(f"syri stderr in '{CWD}/stderr'")
+    #     return None
 
     #with multiprocessing.Pool(processes=N) as pool:
     #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
@@ -466,6 +473,7 @@ cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redi
     # Merge output of all chromosomes – still necessary for some reason
     mergeOutputFiles([chrom], CWD, PR)
 
+    #TODO: Maybe not requires and can be removed?
     #Identify cross-chromosomal events in all chromosomes simultaneously
     getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
 
