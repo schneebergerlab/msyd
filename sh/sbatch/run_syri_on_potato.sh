@@ -5,7 +5,7 @@
 #SBATCH --partition=biohpc_gen_normal
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=10
-#SBATCH --mem-per-cpu=5000mb
+#SBATCH --mem-per-cpu=2000mb
 #SBATCH --time=12:00:00
 #SBATCH -J QUickScript
 
