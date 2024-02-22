@@ -184,6 +184,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
                         #print(syris[org])
                         #print(syris[org].filter(axis='index', like='SYNAL'))
 
+                        # TODO: shouldn't the colnames of syris[org] bee changed?
                         # the code in pansyn uses all lower-case column names
                         alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
                         #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])

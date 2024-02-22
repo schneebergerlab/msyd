@@ -936,6 +936,7 @@ def extract_syri_regions_to_list_from_files(fins, qrynames, cores=1, **kwargs):
     if cores == 1:
         syns = [partial(fin, qryname) for fin, qryname in zip(fins, qrynames)]
     else:
+        # `partial` requires two parameters, only 1 is given here. would crash ?
         with Pool(cores) as pool:
             syns = pool.map(partial, fins)
 
@@ -1063,7 +1064,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     buf.write("\n")
 
     syniter = df.iterrows()
-
+    # TODO: assert that the columns and columns are in same order as the input file (genomes.csv)
     while True:
         mesyns = []
         refmesyns = []
