@@ -234,7 +234,7 @@ cdef remove_overlap(syn):
         prev = cur
 
     return syn
-
+# END
 
 def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
     """
@@ -243,7 +243,9 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     Uses either SYNAL or SYN regions as annotated by SyRI, controlled by the parameter `SYNAL`.
     In the case of SYN regions, alignment-based length calculation is not (yet) supported and `alns` is ignored.
 
-    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, parameters optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be sorted (default False).
+    :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, parameters
+    optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be
+     sorted (default False).
     `alns` can be set to `None`, in which case the region lengths will be estimated instead of calculated exactly from CIGAR strings.
     :param only_core: Whether to output all cross synteny or only core syntenic regions.
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
