@@ -10,12 +10,14 @@
 #SBATCH -J QUickScript
 
 module load samtools
-chars=({A..A})
+chars=({A..J})
 for i in 5 6 7 8; do
 #  srun minimap2 -ax asm5 -t 10 --eqx DM_chr02.fa ${chars[${SLURM_ARRAY_TASK_ID}]}_chr02_hap${i}.fa \
 #  | samtools sort -@ 10 -O BAM -o dm_${chars[${SLURM_ARRAY_TASK_ID}]}_chr02_hap${i}.bam -
 #  srun samtools
-	srun /dss/dsslegfs01/pn29fi/pn29fi-dss-0003/software/bin_manish/anaconda3/envs/mgpy3.8/bin/hometools runsyri -alignment bam \
+	echo ${SLURM_CPUS_PER_TASK}
+	echo ${chars[${SLURM_ARRAY_TASK_ID}]}
+	srun --exclusive --ntasks=1 --cpus-per-task=${SLURM_CPUS_PER_TASK} --mem-per-cpu=2000 /dss/dsslegfs01/pn29fi/pn29fi-dss-0003/software/bin_manish/anaconda3/envs/mgpy3.8/bin/hometools runsyri -alignment bam \
 	-n 10 -p dm_${chars[${SLURM_ARRAY_TASK_ID}]}_chr02_hap${i} \
 	DM_chr02.fa ${chars[${SLURM_ARRAY_TASK_ID}]}_chr02_hap${i}.fa &
 #srun --ntasks 1 --cpus-per-task ${SLURM_CPUS_PER_TASK} --mem-per-cpu=1000 /dss/dsslegfs01/pn29fi/pn29fi-dss-0003/software/bin_manish/anaconda3/envs/mgpy3.8/bin/hometools runsyri -alignment bam -n 10 -p chr02_dm_A_hap${i} DM_chr02.fa chr02_hap${i}.fa
