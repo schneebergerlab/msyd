@@ -11,7 +11,8 @@
 
 #module load samtools
 
-cwd=/dss/dsslegfs01/pn29fi/pn29fi-dss-0016/projects/msyd/results/potato_hap
+cwd=/dss/dsslegfs01/pn29fi/pn29fi-dss-0016/projects/msyd/results/potato_hap/
+indir=/dss/dsslegfs01/pn29fi/pn29fi-dss-0016/projects/msyd/data/potato_haps/
 cd $cwd
 
 chars=({A..J} O)
@@ -21,7 +22,7 @@ for r in 1 2 3 4; do
     srun --exclusive --ntasks=1 --cpus-per-task=${SLURM_CPUS_PER_TASK} --mem-per-cpu=5000 \
       /dss/dsslegfs01/pn29fi/pn29fi-dss-0003/software/bin_manish/anaconda3/envs/mgpy3.8/bin/hometools runsyri -alignment bam \
       -n 10 -p O${r}_vs_${chars[${SLURM_ARRAY_TASK_ID}]}${q} \
-      O_hap${r}_genome.fasta ${chars[${SLURM_ARRAY_TASK_ID}]}_hap${q}_genome.fasta &
+      ${indir}/O_hap${r}_genome.fasta ${indir}/${chars[${SLURM_ARRAY_TASK_ID}]}_hap${q}_genome.fasta &
   done
 done
 wait
