@@ -9,6 +9,8 @@
 #SBATCH --time=12:00:00
 #SBATCH -J QUickScript
 
+
+## OBSOLETE NOW
 module load samtools
 srun --exclusive --ntasks=1 --cpus-per-task=${SLURM_CPUS_PER_TASK} --mem-per-cpu=2000 /dss/dsslegfs01/pn29fi/pn29fi-dss-0003/software/bin_manish/anaconda3/envs/mgpy3.8/bin/hometools runsyri -alignment bam \
 	-n 10 -p dm_C_chr02_hap7 \
