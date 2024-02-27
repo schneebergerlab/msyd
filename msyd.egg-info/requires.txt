@@ -1,8 +1,0 @@
-numpy
-scipy
-cython
-pandas
-pysam>=0.21
-mappy
-intervaltree
-syri>=1.6.5
