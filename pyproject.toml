@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Synteny identification across multiple genome assemblies"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 keywords = ["Structural Variation", "SV", "Pangenomics", "Bioinformatics"]
 license = {text = "MIT"}
 dependencies = [

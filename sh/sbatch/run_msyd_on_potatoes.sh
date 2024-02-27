@@ -1,8 +1,10 @@
 #!/bin/bash
+#SBATCH --clusters=biohpc_gen
+#SBATCH --partition=biohpc_gen_normal
 #SBATCH --get-user-env
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=20000mb
+#SBATCH --mem-per-cpu=20000mb
 #SBATCH --time=12:00:00
 #SBATCH -J QUickScript
 
