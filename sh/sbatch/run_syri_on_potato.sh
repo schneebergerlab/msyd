@@ -2,7 +2,7 @@
 #SBATCH --array=0-11
 #SBATCH --get-user-env
 #SBATCH --clusters=biohpc_gen
-#SBATCH --partition=biohpc_gen_normal
+#SBATCH --partition=biohpc_gen_production
 #SBATCH --ntasks=16
 #SBATCH --cpus-per-task=5
 #SBATCH --mem-per-cpu=5000mb
@@ -22,7 +22,7 @@ for r in 1 2 3 4; do
     srun --exclusive --ntasks=1 --cpus-per-task=${SLURM_CPUS_PER_TASK} --mem-per-cpu=5000 \
       /dss/dsslegfs01/pn29fi/pn29fi-dss-0003/software/bin_manish/anaconda3/envs/mgpy3.8/bin/hometools runsyri -alignment bam \
       -n ${SLURM_CPUS_PER_TASK} -p O${r}_vs_${chars[${SLURM_ARRAY_TASK_ID}]}${q} \
-      ${indir}/O_hap${r}_genome.fasta ${indir}/${chars[${SLURM_ARRAY_TASK_ID}]}_hap${q}_genome.fasta &
+      ${indir}/O_hap${r}_genome_filtered.fasta ${indir}/${chars[${SLURM_ARRAY_TASK_ID}]}_hap${q}_genome_filtered.fasta &
   done
 done
 wait
