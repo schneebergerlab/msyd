@@ -15,7 +15,7 @@ setup(name="msyd",
           Extension(f"msyd.{name.split('/')[-1].split('.')[0]}", [name])
           for name in glob.iglob('msyd/pyxfiles/*.pyx')
           ]),
-      packages=["msyd"],
+      packages=["msyd", "msyd.scripts"],
       include_dirs=[numpy.get_include()],
       entry_points={"console_scripts": ["msyd=msyd:main"]},
       long_description=open('./README.md').read(),

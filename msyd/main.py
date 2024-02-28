@@ -1,16 +1,5 @@
 #!/usr/bin/env python3
 
-import msyd # to import version
-import msyd.util as util
-import msyd.io as io
-import msyd.imputation as imputation
-import msyd.pansyn as pansyn
-import msyd.realignment as realignment
-from msyd.coords import Range
-
-import msyd.ordering as ordering
-
-logger = util.CustomFormatter.getlogger(__name__)
 
 import pandas as pd
 
@@ -23,7 +12,7 @@ This file serves as the main entrypoint for the msyd CLI.
 """
 
 def main():
-
+    from msyd.scripts.util import logger
     parser = argparse.ArgumentParser(description="""
     msyd is a tool for identifying and processing pansynteny.
     msyd consists of a Python library and a CLI interface.\n
@@ -152,8 +141,21 @@ def main():
     else:
         logger.info("No subcommand specified, printing help message.")
         parser.print_help()
+    return
+# END
 
 def call(args):
+    import msyd  # to import version
+    import msyd.util as util
+    import msyd.io as io
+    import msyd.imputation as imputation
+    import msyd.pansyn as pansyn
+    import msyd.realignment as realignment
+    from msyd.coords import Range
+
+    import msyd.ordering as ordering
+    logger = util.CustomFormatter.getlogger(__name__)
+
     qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
     # find reference synteny
     df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)

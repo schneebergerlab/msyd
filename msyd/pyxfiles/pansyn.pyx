@@ -290,6 +290,7 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
         syns.append(io.read_pff(base))
 
     return reduce_find_overlaps(syns, cores, **kwargs)
+# END
 
 def reduce_find_overlaps(syns, cores, **kwargs):
     if len(syns) == 0:

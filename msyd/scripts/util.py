@@ -14,7 +14,7 @@ import re
 import tempfile
 import random
 
-cdef TMPDIR = None
+TMPDIR = None
 
 class CustomFormatter(logging.Formatter):
     '''
@@ -44,7 +44,6 @@ class CustomFormatter(logging.Formatter):
         log_fmt = self.FORMATS.get(record.levelno)
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
-    
 
     def getlogger(name):
         logger = logging.getLogger(name.split('.')[-1])
@@ -75,7 +74,7 @@ def parallel_reduce(reduceFunc, l, numCPUs):
     p2.join()
     returnVal = reduceFunc(leftReturn, rightReturn)
     return returnVal
-
+# END
 
 def gettmpfile():
     if not TMPDIR:
@@ -88,17 +87,6 @@ def gettmpfile():
             return gettmpfile() # retry with different random string
         open(path, 'w').close() # create the file as empty before returning the path
         return path
-
-
-#############################################
-# everything above this doesn't depend on msyd
-#############################################
-
-import msyd.pansyn as pansyn
-from msyd.cigar import Cigar
-from msyd.coords import Pansyn, Range
-import msyd.io
-
 
 
 def parse_input_tsv_path(path):
@@ -122,17 +110,17 @@ def parse_input_tsv(fin):
     elif not isinstance(fin, io.TextIOBase):
         raise ValueError(f"{fin} is not a path-like or file-like object!")
 
-    cdef:
-        qrynames = deque()
-        syris = deque()     # Lists are too slow appending, using deque instead
-        alns = deque()
-        vcfs = deque()
-        fastas = deque()
-        str qry = ''
-        str syri = ''
-        str aln = ''
-        str vcf = ''
-        str fasta = ''
+    # cdef:
+    qrynames = deque()
+    syris = deque()     # Lists are too slow appending, using deque instead
+    alns = deque()
+    vcfs = deque()
+    fastas = deque()
+    qry = ''
+    syri = ''
+    aln = ''
+    vcf = ''
+    fasta = ''
 
     for line in fin:
         if line[0] == '#' or line.strip() == '':
@@ -151,7 +139,7 @@ def parse_input_tsv(fin):
         else:
             if len(cells) > 5:
                 logger.warning(f"More than five columns in {fin.name}, ignoring anything after fourth column")
-            
+
             qry = cells[0].strip()
             aln = cells[1].strip()
             syri = cells[2].strip()
@@ -179,6 +167,13 @@ def parse_input_tsv(fin):
 
     fin.close()
     return (qrynames, syris, alns, vcfs, fastas)
+# END
+
+#############################################
+# everything above this doesn't depend on msyd
+#############################################
+
+
 
 
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
@@ -309,10 +304,10 @@ def filter_multisyn_df(df, rng, only_contained=False):
     #print(inds)
     return df.loc[inds]
 
-cpdef compile_filter_py(exp: str):
+def compile_filter_py(exp: str):
     return compile_filter(exp)
 
-cdef compile_filter(exp: str):
+def compile_filter(exp: str):
     """
     Higher-Order function for compiling a filtering expression into a single, fast predicate.
     Returns a cdef lambda, check if this works properly when importing into python code, otherwise call in cpdef method.
@@ -323,6 +318,7 @@ cdef compile_filter(exp: str):
     # have preprocessor turn is pansyn into degree >= number of seqs
     # connections: and, or, xor, not
     """
+    from msyd.coords import Range
 
     if len(exp) < 1:
         logger.warning("compile_filter called with empty string. This expression will match everything!")
@@ -397,7 +393,7 @@ cdef compile_filter(exp: str):
     match = re.fullmatch("(on)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         return lambda x: x.ref.chr == match[2]
-    
+
     # find simple cases
     if exp.lower() == 'true':
         return lambda x: True
@@ -407,12 +403,11 @@ cdef compile_filter(exp: str):
     elif exp[0] == '(' and exp[-1] == ')': # no regex required!
         return compile_filter(exp[1:-1])
 
-
-
     logger.error(f"compile_filter called with invalid expression: {exp}")
     raise ValueError(f"compile_filter called with invalid expression: {exp}")
+    return
+# END
 
-    
 
 def filter_multisyn_df_chr(df, chr):
     """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
@@ -435,6 +430,7 @@ def length_compare(syns, alns, cores=1):
 def pff_to_file(df, path):
     """Convenience wrapper for to_format to save to a file directly
     """
+    import msyd.io
     with open(path, 'wt') as f:
         msyd.io.to_pff(df, f)
 
@@ -442,11 +438,12 @@ def pff_to_string(df, save_cigars=False):
     """Convenience wrapper for to_format, saves to a stringbuffer, returns the string.
     Mainly meant for printing small-ish callsets.
     """
+    import msyd.io
     with io.StringIO() as buf:
         msyd.io.to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 
-cpdef chrom_to_int(chrom):
+def chrom_to_int(chrom):
     """
     Util function to ensure the Chr is an integer value.
     :param chrom: Chr specification to input. Can be either a string of the form 'ChrX' or an int (the int will be returned as-is).
