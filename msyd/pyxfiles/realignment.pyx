@@ -104,12 +104,10 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
             end = syn.ref.start
             start = old.ref.end
 
-            # preemptively skip regions too small on the reference, if present
-            # TODO: As far as I understand, this condition would skip insertion in reference. For an insertion present in all query genomes, the end-start value in reference would be small, but the query genomes have informative sequence. Or am I missing something?
-            # leon: Yes, think this is correct.
-            # this filtering should be done not just on the reference, but on all organisms.
-            # Should be an easy fix.
-            if end - start < _MIN_REALIGN_THRESH:
+            # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
+            if end - start < _MIN_REALIGN_THRESH and\
+                    all(syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH\
+                    for org in syn.ranges_dict):
                 ret.append(syn)
                 old = syn
                 syn = next(syniter)[1][0]
