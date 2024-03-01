@@ -250,8 +250,9 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     :param only_core: Whether to output all cross synteny or only core syntenic regions.
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
+    from msyd.scripts.io import extract_syri_regions_to_list_from_files
 
-    syns = io.extract_syri_regions_to_list_from_files(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
+    syns = extract_syri_regions_to_list_from_files(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
