@@ -13,6 +13,8 @@ This file serves as the main entrypoint for the msyd CLI.
 
 def main():
     from msyd.scripts.util import logger
+    from msyd import __version__ as msydv
+
     parser = argparse.ArgumentParser(description="""
     msyd is a tool for identifying and processing pansynteny.
     msyd consists of a Python library and a CLI interface.\n
@@ -20,7 +22,7 @@ def main():
     For more information, see the documentation and subparser help messages accessed by calling msyd [subparser] -h.
     """)
     parser.set_defaults(func=None, cores=1)
-    parser.add_argument('--version', action='version', version=msyd.__version__)
+    parser.add_argument('--version', action='version', version=msydv)
 
     subparsers = parser.add_subparsers()#description="See also msyd [subparser] -h:") # title/description?
     # ordering parser
@@ -145,34 +147,38 @@ def main():
 # END
 
 def call(args):
-    import msyd  # to import version
-    import msyd.util as util
-    import msyd.io as io
+    # import msyd  # to import version
+    from msyd.scripts.util import CustomFormatter, parse_input_tsv, TMPDIR, get_stats, gettmpfile
+    # from msyd.script.io import find_multisyn
     import msyd.imputation as imputation
-    import msyd.pansyn as pansyn
+    from msyd.pansyn import find_multisyn
     import msyd.realignment as realignment
     from msyd.coords import Range
 
     import msyd.ordering as ordering
-    logger = util.CustomFormatter.getlogger(__name__)
+    logger = CustomFormatter.getlogger(__name__)
 
-    qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
+    qrynames, syns, alns, vcfs, fastas = parse_input_tsv(args.infile)
     # find reference synteny
-    df = pansyn.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
+    df = find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
+
+
     if args.realign:
         # use reference synteny as base to identify all haplotypes
         df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset)
 
+        # realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5'):
+
     if args.tmp:
         if not os.path.isdir(args.tmp):
             os.makedirs(args.tmp)
-        util.TMPDIR = args.tmp
+        TMPDIR = args.tmp
 
     if args.print:
         logger.info("Printing sample head to STDOUT")
         print(df.head())
 
-    print(util.get_stats(df))
+    print(get_stats(df))
 
     # save output
     logger.info(f"Saving msyd calls to PFF at {args.pff.name}")
