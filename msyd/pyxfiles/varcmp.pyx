@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from msyd.pansyn import Range, Pansyn
 from msyd.vars import SNV
-import msyd.util as util
+import msyd.scripts.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 

@@ -11,7 +11,7 @@ import array
 
 from libcpp.vector cimport vector
 
-import msyd.util as util
+import msyd.scripts.util as util
 
 
 logger = util.CustomFormatter.getlogger(__name__)

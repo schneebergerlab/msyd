@@ -11,7 +11,7 @@ from collections import deque
 import multiprocessing
 
 import msyd.io as io
-import msyd.util as util
+import msyd.scripts.util as util
 import msyd.cigar
 from msyd.cigar import Cigar
 from msyd.coords import Pansyn, Range, Position

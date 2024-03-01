@@ -25,7 +25,7 @@ cimport numpy as np
 from msyd.coords import Range
 from msyd.coords import Pansyn
 from msyd.vars import SNV
-import msyd.util as util
+import msyd.scripts.util as util
 import msyd.cigar as cigar
 
 logger = util.CustomFormatter.getlogger(__name__)
@@ -945,6 +945,7 @@ def extract_syri_regions_to_list_from_files(fins, qrynames, cores=1, **kwargs):
     #        #reforg=fin.split('/')[-1].split('_')[0],\
     #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
     #        for fin in fins]
+
 
 cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
     #TODO add functionality to incorporate reference information as optional argument
