@@ -34,19 +34,19 @@ cdef int _MIN_REALIGN_THRESH = 100
 cdef int _MAX_REALIGN = 0
 logger = util.CustomFormatter.getlogger(__name__)
 
-cpdef realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5'):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5'):
     if MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
     if MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
-    return process_gaps(syns, qrynames, fastas, mp_preset=mp_preset)
+    return process_gaps(df, qrynames, fastas, mp_preset=mp_preset)
 
-cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
+cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
-    Discovers all crosssynteny, hopefully.
+    Discovers all crosssynteny.
     
     :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
     :returns: A DataFrame with the added non-reference crosssynteny
@@ -59,12 +59,12 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
         raise ValueError("Wrong number of fastas!")
     
     # load fasta files
-    fastas = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
+    fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
 
     # iterate through each gap between coresyn blocks
     # call the alignment/ functionality and merge   
 
-    syniter = syns.iterrows()
+    syniter = df.iterrows()
     try:
         syn = next(syniter)[1][0]
 
@@ -72,8 +72,9 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
         while syn.get_degree() < n:
             ret.append(syn)
             syn = next(syniter)[1][0]
+            print(vars(syn))
         old = syn
-
+        # TODO: Misses the crosssyn before the first coresyn region? This would become if there are no or very few coresyn regions
         crosssyns = dict()
 
         while True:
@@ -82,6 +83,8 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
 
             # store crosssyn-regions, to be added once we know if we need to realign
             refcrosssyns = []
+            # TODO: In the first iteration, syn.get_degree == n (from msyd/pyxfiles/realignment.pyx:72), i.e. this loop would not be initialised? Added line below, I think that should resolve the issue
+            # syn = next(syniter)[1][0]
             while syn.get_degree() < n:
                 refcrosssyns.append(syn)
                 syn = next(syniter)[1][0]
@@ -95,6 +98,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
             start = old.ref.end
 
             # preemptively skip regions too small on the reference, if present
+            # TODO: As far as I understand, this condition would skip insertion in reference. For an insertion present in all query genomes, the end-start value in reference would be small, but the query genomes have informative sequence. Or am I missing something?
             if end - start < _MIN_REALIGN_THRESH:
                 ret.append(syn)
                 old = syn
@@ -123,7 +127,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
             # construct a mapping tree and concatenate all the sequences contained within
             mappingtrees = construct_mappingtrees(crosssyns, old, syn)
             seqdict = {org:''.join([
-                        fastas[org].fetch(region = syn.ranges_dict[org].chr,
+                        fafin[org].fetch(region = syn.ranges_dict[org].chr,
                             start = interval.data,
                             end = interval.data + interval.end - interval.begin)
                         for interval in mappingtrees[org]])
@@ -138,6 +142,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
 
 
             while len(seqdict) > 2: # realign until there is only one sequence left
+                print(old.ref, syn.ref)
                 if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
                     break
 
@@ -155,7 +160,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
                 del mappingtrees[ref]
 
                 # construct alignment index from the reference
-                #logger.info("Starting Alignment")
+                logger.info("Starting Alignment")
                 aligner = mp.Aligner(seq=refseq, preset=mp_preset) 
                 alns = {org: align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
 
@@ -175,6 +180,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
 
                 # run syri
                 cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
+                logger.info("Running syri")
                 syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}# and any(alns[org].bDir == 1)}
                 # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
@@ -220,7 +226,7 @@ cdef process_gaps(syns, qrynames, fastas, mp_preset='asm5'):
                         del mappingtrees[reforg]
 
                 seqdict = {org:''.join([
-                            fastas[org].fetch(region = syn.ranges_dict[org].chr,
+                            fafin[org].fetch(region = syn.ranges_dict[org].chr,
                                 start = interval.data,
                                 end = interval.data + interval.end - interval.begin)
                             for interval in mappingtrees[org]])
@@ -262,9 +268,9 @@ cdef construct_mappingtrees(crosssyns, old, syn):
             for org, rng in crosssyn.ranges_dict.items():
                 #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
                 l = rng.start - offsetdict[org] # len of the region to be added
-                if l < 0: # improper sorting – skip
+                if l < 0:
+                    print('ERROR')# improper sorting – skip
                     continue
-
                 # check if this interval would be redundant
                 prev = list(mappingtrees[org][posdict[org]-1]) # will be empty if tree is empty
                 if prev and posdict[org] + prev[0].data == offsetdict[org]:
@@ -289,7 +295,7 @@ cdef construct_mappingtrees(crosssyns, old, syn):
 
 
 
-cdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
+cpdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
@@ -429,7 +435,7 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
 # TODO: Make parameters adjustable
-cdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
+cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
     BRT = 20
     TUC = 1000
     TUP = 0.5
