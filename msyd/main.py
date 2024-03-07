@@ -150,6 +150,7 @@ def call(args):
     # import msyd  # to import version
     from msyd.scripts.util import CustomFormatter, parse_input_tsv, TMPDIR, get_stats, gettmpfile
     # from msyd.script.io import find_multisyn
+    import msyd.io as io
     import msyd.imputation as imputation
     from msyd.pansyn import find_multisyn
     import msyd.realignment as realignment
@@ -157,6 +158,8 @@ def call(args):
 
     import msyd.ordering as ordering
     logger = CustomFormatter.getlogger(__name__)
+
+    logger.info("Starting msyd call")
 
     qrynames, syns, alns, vcfs, fastas = parse_input_tsv(args.infile)
     # find reference synteny
@@ -210,6 +213,7 @@ def call(args):
     logger.info(f"Finished running msyd call, output saved to {args.pff.name}.")
 
 def merge(args):
+    import msyd.io as io
     # temporary function to better test the vcf merging functionality
     logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
     io.reduce_vcfs(args.vcfs, args.outfile.name)
@@ -217,11 +221,13 @@ def merge(args):
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
+    import msyd.io as io
     df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
     logger.info("Finished running msyd order")
 
 def view(args):
+    import msyd.io as io
     logger.info(f"reading pansynteny from {args.infile.name}")
     df = io.read_pff(args.infile)
     if not args.filetype: # determine filetype if not present
@@ -257,6 +263,7 @@ def view(args):
 
 
 def realign(args):
+    import msyd.io as io
     logger.info(f"realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
     syns = io.read_pff(args.infile)
@@ -284,6 +291,7 @@ def fact(args):
 def plot(args):
     """Deprecated/internal, DO NOT USE
     """
+    import msyd.io as io
     df = io.read_pff(args.infile)
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 

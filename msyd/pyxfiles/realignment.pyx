@@ -75,6 +75,10 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
             print(vars(syn))
         old = syn
         # TODO: Misses the crosssyn before the first coresyn region? This would become if there are no or very few coresyn regions
+        # leon: yes, the crosssyn before the first and after the last coresyn of a chromosome will be missed.
+        # my thinking was that this would correspond to the highly polymorphic tails of the chromosomes
+        # this seems to work out in Ampril (the first coresyn starts at <2 kb in my local test dataset),
+        # but might cause problems in datasets with very little coresyn
         crosssyns = dict()
 
         while True:
@@ -85,6 +89,9 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
             refcrosssyns = []
             # TODO: In the first iteration, syn.get_degree == n (from msyd/pyxfiles/realignment.pyx:72), i.e. this loop would not be initialised? Added line below, I think that should resolve the issue
             # syn = next(syniter)[1][0]
+            # leon: Yes, in the first iteration syn == old. This triggers the condition in l. 109,
+            # causing the next syn to be selected.
+            # not super elegant, but works -- this can be done more explicitly when we realign the start explicitly
             while syn.get_degree() < n:
                 refcrosssyns.append(syn)
                 syn = next(syniter)[1][0]
@@ -97,9 +104,10 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
             end = syn.ref.start
             start = old.ref.end
 
-            # preemptively skip regions too small on the reference, if present
-            # TODO: As far as I understand, this condition would skip insertion in reference. For an insertion present in all query genomes, the end-start value in reference would be small, but the query genomes have informative sequence. Or am I missing something?
-            if end - start < _MIN_REALIGN_THRESH:
+            # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
+            if end - start < _MIN_REALIGN_THRESH and\
+                    all(syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH\
+                    for org in syn.ranges_dict):
                 ret.append(syn)
                 old = syn
                 syn = next(syniter)[1][0]
@@ -191,6 +199,9 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
                         #print(syris[org].filter(axis='index', like='SYNAL'))
 
                         # TODO: shouldn't the colnames of syris[org] bee changed?
+                        # leon: think it doesn't matter that much as long as they are the same in the end
+                        # this is really only relevan for the match_synal call later,
+                        # which uses all lower-case
                         # the code in pansyn uses all lower-case column names
                         alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
                         #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
@@ -481,6 +492,12 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
     mergeOutputFiles([chrom], CWD, PR)
 
     #TODO: Maybe not requires and can be removed?
+    # leon: outSyn fails if this isn't called, that's why it's left in there
+    # but yes, this step should be unnecessary
+    # In general, I think the syri calling should be done more elegantly --
+    # writing to and then reading from files is quite inefficient, especially
+    # for short realignments
+
     #Identify cross-chromosomal events in all chromosomes simultaneously
     getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
 
