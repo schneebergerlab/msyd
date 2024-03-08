@@ -1,3 +1,4 @@
+%cython
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # distutils: language = c++
@@ -45,6 +46,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
         _MAX_REALIGN = int(MAX_REALIGN)
     return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores)
 
+%%cython
 cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
@@ -73,7 +75,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
         while syn.get_degree() < n:
             ret.append(syn)
             syn = next(syniter)[1][0]
-            print(vars(syn))
+            # print(vars(syn))
         old = syn
         # TODO: Misses the crosssyn before the first coresyn region? This would become if there are no or very few coresyn regions
         # leon: yes, the crosssyn before the first and after the last coresyn of a chromosome will be missed.
@@ -154,7 +156,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
 
             # TODO: Parse file containing the centromere coordinate. Check if the selected region is centromeric, skip re-alignment if it is.
             while len(seqdict) > 2: # realign until there is only one sequence left
-                print(old.ref, syn.ref)
+                # print(old.ref, syn.ref)
                 if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
                     break
 
@@ -172,21 +174,27 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
                 del mappingtrees[ref]
 
                 # construct alignment index from the reference
-                logger.info("Starting Alignment")
+                logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}")
                 # aligner = mp.Aligner(seq=refseq, preset=mp_preset)
                 # print('start alignment', datetime.now())
                 # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
-                alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
-                with Pool(processes=ncores) as pool:
-                    # pool.starmap(partial(foo, d='x'), alignargs)
-                    alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree), alignargs)
-                alns = dict(zip(list(seqdict.keys()), alns))
-                #
-                # for org, seq in seqdict.items():
-                #     print(org, datetime.now())
-                #     alns[org] = align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org])
-                # # print('end alignment', datetime.now())
+
+                if syn.ref.start - old.ref.end > 100000:
+                    alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
+                    with Pool(processes=ncores) as pool:
+                        # pool.starmap(partial(foo, d='x'), alignargs)
+                        alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree, aligner=None), alignargs)
+                    alns = dict(zip(list(seqdict.keys()), alns))
+                else:
+                    aligner = mp.Aligner(seq=refseq, preset=mp_preset)
+                    alns = dict()
+                    for org, seq in seqdict.items():
+                        print(org, datetime.now())
+                        alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
+
+                            # align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]))
+                    # print('end alignment', datetime.now())
 
                 # filter out alignments only containing inversions
                 for org in alns:
@@ -316,15 +324,17 @@ cdef construct_mappingtrees(crosssyns, old, syn):
 # END
 
 
-cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
+cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
 # def align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
     Splits alignments that span multiple offsets into one alignment per offset
     """
-    aligner = mp.Aligner(seq=refseq, preset=preset)
-    logger.debug('Start align_concatseqs')
+    # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
+    if aligner is None:
+        aligner = mp.Aligner(seq=refseq, preset=preset)
+    # logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     logger.debug(f'Minimap2 alignment done.')
     #print([str(x) for x in m])
