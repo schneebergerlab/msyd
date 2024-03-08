@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy.cluster.hierarchy as spclhier
 
-import msyd.util as util
+import msyd.scripts.util as util
 from msyd.coords import Range
 
 logger = util.CustomFormatter.getlogger(__name__)

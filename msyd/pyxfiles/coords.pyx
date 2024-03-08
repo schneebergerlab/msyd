@@ -180,6 +180,7 @@ class Range:
             return False
 
 
+# TODO: Maybe, it is possible to have the pansyn class in pansyn.pyx or a separate classes.pyx file? Alternatively, it seems that the coords.pyx just defines Class:pansyn. Cant we just move everything to pansyn.pyx
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering
 class Pansyn:

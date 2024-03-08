@@ -143,7 +143,6 @@ def find_overlaps(left, right, only_core=False):
     del lit
     if len(ret) == 0:
         return pd.DataFrame()
-
     
     ret = pd.DataFrame(data=list(ret))#sorted(list(ret))) # sorting shouldn't be necessary
 

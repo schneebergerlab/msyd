@@ -9,6 +9,8 @@ import numpy as np
 import mappy as mp
 import pysam
 import intervaltree
+from datetime import datetime
+from multiprocessing import Pool
 
 from collections import deque, defaultdict
 import os
@@ -34,16 +36,16 @@ cdef int _MIN_REALIGN_THRESH = 100
 cdef int _MAX_REALIGN = 0
 logger = util.CustomFormatter.getlogger(__name__)
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5'):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5', ncores=1):
     if MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
     if MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
-    return process_gaps(df, qrynames, fastas, mp_preset=mp_preset)
+    return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores)
 
-cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
+cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all crosssynteny.
@@ -67,7 +69,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
     syniter = df.iterrows()
     try:
         syn = next(syniter)[1][0]
-
         # skip to first core
         while syn.get_degree() < n:
             ret.append(syn)
@@ -105,9 +106,9 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
             start = old.ref.end
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
-            if end - start < _MIN_REALIGN_THRESH and\
-                    all(syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH\
-                    for org in syn.ranges_dict):
+            if end - start < _MIN_REALIGN_THRESH and \
+                    all(syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH \
+                        for org in syn.ranges_dict):
                 ret.append(syn)
                 old = syn
                 syn = next(syniter)[1][0]
@@ -134,11 +135,14 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
 
             # construct a mapping tree and concatenate all the sequences contained within
             mappingtrees = construct_mappingtrees(crosssyns, old, syn)
-            seqdict = {org:''.join([
-                        fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                            start = interval.data,
-                            end = interval.data + interval.end - interval.begin)
-                        for interval in mappingtrees[org]])
+            # MG: Instead of concatenating the distant sequences, now I add Ns in between them
+            # TODO: Parametrise number of Ns. For now, setting it to 0 as adding N breaks align_concatseqs
+            Ncnt = 0
+            seqdict = {org: ('N'*Ncnt).join([
+                fafin[org].fetch(region = syn.ranges_dict[org].chr,
+                                 start = interval.data,
+                                 end = interval.data + interval.end - interval.begin)
+                for interval in mappingtrees[org]])
                 for org in mappingtrees}
 
             if not seqdict: # if all sequences have been discarded, skip realignment
@@ -148,7 +152,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
                 syn = next(syniter)[1][0]
                 continue
 
-
+            # TODO: Parse file containing the centromere coordinate. Check if the selected region is centromeric, skip re-alignment if it is.
             while len(seqdict) > 2: # realign until there is only one sequence left
                 print(old.ref, syn.ref)
                 if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
@@ -169,8 +173,20 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
 
                 # construct alignment index from the reference
                 logger.info("Starting Alignment")
-                aligner = mp.Aligner(seq=refseq, preset=mp_preset) 
-                alns = {org: align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]) for org, seq in seqdict.items()}
+                # aligner = mp.Aligner(seq=refseq, preset=mp_preset)
+                # print('start alignment', datetime.now())
+                # alns = {}
+                # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
+                alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
+                with Pool(processes=ncores) as pool:
+                    # pool.starmap(partial(foo, d='x'), alignargs)
+                    alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree), alignargs)
+                alns = dict(zip(list(seqdict.keys()), alns))
+                #
+                # for org, seq in seqdict.items():
+                #     print(org, datetime.now())
+                #     alns[org] = align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org])
+                # # print('end alignment', datetime.now())
 
                 # filter out alignments only containing inversions
                 for org in alns:
@@ -237,16 +253,13 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
                         del mappingtrees[reforg]
 
                 seqdict = {org:''.join([
-                            fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                start = interval.data,
-                                end = interval.data + interval.end - interval.begin)
-                            for interval in mappingtrees[org]])
+                    fafin[org].fetch(region = syn.ranges_dict[org].chr,
+                                     start = interval.data,
+                                     end = interval.data + interval.end - interval.begin)
+                    for interval in mappingtrees[org]])
                     for org in mappingtrees}
-
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
-
-
             # incorporate into output DF, sorted alphabetically by ref name
             # does nothing if no crossyn was found
             for org in sorted(crosssyns.keys()):
@@ -256,16 +269,14 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5'):
             ret.append(syn)
             syn = next(syniter)[1][0]
             #print(old, syn)
-
     except StopIteration as e:
         logger.warning(f'Stopped iteration: {e}')
-
     return pd.DataFrame(list(ret))
-
-
+# END
 
 
 cdef construct_mappingtrees(crosssyns, old, syn):
+# def construct_mappingtrees(crosssyns, old, syn):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
     Crosssyns need to be sorted by position on reference.
@@ -302,20 +313,24 @@ cdef construct_mappingtrees(crosssyns, old, syn):
         if l >= _MIN_REALIGN_THRESH:
             mappingtrees[org][posdict[org]:posdict[org]+l] = offset
     return mappingtrees
+# END
 
 
-
-
-cpdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
+cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
+# def align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
     Splits alignments that span multiple offsets into one alignment per offset
     """
+    aligner = mp.Aligner(seq=refseq, preset=mp_preset)
+    logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
+    logger.debug(f'Minimap2 alignment done.')
     #print([str(x) for x in m])
     al = deque()
     # traverse alignments
+    logger.debug('Traversing alignments')
     for h in m:
         rstart: int = h.r_st
         rend: int = h.r_en
@@ -333,12 +348,12 @@ cpdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
 
         # simply append alignment if there is only one offset
         # as this happens quite often, this should save a lot of time
+        # print(f'reftree: {reftree}, qrytree: {qrytree}, rend: {rend}, qend: {qend}')
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
             al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()])
             continue
-
 
         for rint in sorted(reftree[rstart:rend]):
             # subset alignment to this reference offset interval
@@ -356,52 +371,14 @@ cpdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
                            qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()])
-
-        ## old implementation, not actually faster and maybe broken
-        #for rint in refoffsets:
-        #    print("rint:", rint)
-        #    # drop from the alignment everything before the current interval
-        #    start = max(rint.begin, rstart)
-        #    qstartdelta, cg = cg.get_removed(start - rstart)
-        #    print("start, rstart, qstartdelta", start, rstart, qstartdelta)
-        #    rstart = start
-
-        #    # drop everything after the current interval
-        #    end = min(rint.end, rend)
-        #    qenddelta, rcg = cg.get_removed(rend - end, start=False)
-        #    roffset = rint.data
-        #    print("end, rend, qenddelta, roffset", end, rend, qenddelta, roffset)
-
-        #    for qint in sorted(qrytree[qstart + qstartdelta:qend - qenddelta]):
-        #        print("qint:", qint)
-        #        start = max(qint.begin - qstartdelta, 0)
-        #        # drop from the alignment everything before the current interval
-        #        rstartdelta, qcg = rcg.get_removed(start, ref=False)
-        #        print("start, rstartdelta", start, rstartdelta)
-
-        #        end = min(qint.end, qend)
-        #        # drop everything after the current interval
-        #        renddelta, qcg = qcg.get_removed(end - qint.end, start=False, ref=False)
-
-        #        # transform coordinates with the offset/alignment information, return 
-        #        qoffset = qint.data
-        #        rlen = rend - renddelta - rstart - rstartdelta
-        #        qlen = qend - qenddelta - qstart - qstartdelta
-        #        if rlen < _MIN_REALIGN_THRESH or qlen < _MIN_REALIGN_THRESH:
-        #            print("very small:", rlen, qlen)
-
-        #        al.append([rstart + rstartdelta + roffset, rend - renddelta + roffset,
-        #                   qstart + qstartdelta + qoffset, qend - qenddelta + qoffset,
-        #                   rlen, qlen, qcg.get_identity()*100, 1, h.strand, rcid, qcid, qcg.to_string()])
-
-
+    logger.debug('Alignments traversed')
 
     al = pd.DataFrame(al)
     if al.empty:
         return None
     #print(al[6])
     #al[6] = al[6].astype('float')
-    al = al.loc[al[6] > 90]
+    al = al.loc[al[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
@@ -410,40 +387,7 @@ cpdef align_concatseqs(aligner, seq, rcid, qcid, reftree, qrytree):
     #print(al[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
 
     #TODO use tree to remap!
-
     return None if al.empty else al
-
-cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
-    """DEPRECATED
-    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
-    """
-    start = max(interval.start, rstart)
-    # drop from the alignment everything before the current interval
-    qstartdelta, curcg = cg.get_removed(start - rstart)
-
-    # drop everything after the current interval
-    end = min(interval.end, rend)
-    qenddelta, retcg = curcg.get_removed(rend - end, start=False)
-
-    # transform coordinates with the offset/alignment information, return 
-    offset = interval.data
-    return (start + offset, end + offset, qstart + qstartdelta, qend - qenddelta, retcg)
-
-cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
-    """DEPRECATED
-    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the query with the offset incorporated
-    """
-    start = max(interval.start, qstart)
-    # drop from the alignment everything before the current interval
-    rstartdelta, curcg = cg.get_removed(start - qstart, ref=False)
-
-    end = min(interval.end, qend)
-    # drop everything after the current interval
-    renddelta, retcg = curcg.get_removed(end - interval.end, start=False, ref=False)
-
-    # transform coordinates with the offset/alignment information, return 
-    offset = interval.data
-    return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
 # TODO: Make parameters adjustable
 cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
@@ -466,8 +410,7 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
     # handle errors by return value; allows only showing output if there is a problem
     # python errors coming after an error here will have normal stderr
     try:
-        syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,
-             tdolp=TDOLP)
+        syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP)
     except ValueError:
         print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
         return None
@@ -503,7 +446,6 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
 
     # Recalculate syntenic blocks by considering the blocks introduced by CX events
     outSyn(CWD, T, PR)
-
     o = getsrtable(CWD, PR)
 
     if redir_stderr:
@@ -511,7 +453,6 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
         #cio.stderr = oldstderr
         unistd.close(unistd.STDERR_FILENO)
         unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-
 
     if not K:
         for fin in ["synOut.txt", "invOut.txt", "TLOut.txt", "invTLOut.txt", "dupOut.txt", "invDupOut.txt", "ctxOut.txt", "sv.txt", "notAligned.txt", "snps.txt"]:
@@ -521,5 +462,37 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
                 if e.errno != 2:    # 2 is the error number when no such file or directory is present https://docs.python.org/2/library/errno.html
                     raise
     return o
+# END
 
+################################################# DEPRECATED ###########################################################
+cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
+    """DEPRECATED
+    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
+    """
+    start = max(interval.start, rstart)
+    # drop from the alignment everything before the current interval
+    qstartdelta, curcg = cg.get_removed(start - rstart)
 
+    # drop everything after the current interval
+    end = min(interval.end, rend)
+    qenddelta, retcg = curcg.get_removed(rend - end, start=False)
+
+    # transform coordinates with the offset/alignment information, return
+    offset = interval.data
+    return (start + offset, end + offset, qstart + qstartdelta, qend - qenddelta, retcg)
+
+cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
+    """DEPRECATED
+    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the query with the offset incorporated
+    """
+    start = max(interval.start, qstart)
+    # drop from the alignment everything before the current interval
+    rstartdelta, curcg = cg.get_removed(start - qstart, ref=False)
+
+    end = min(interval.end, qend)
+    # drop everything after the current interval
+    renddelta, retcg = curcg.get_removed(end - interval.end, start=False, ref=False)
+
+    # transform coordinates with the offset/alignment information, return
+    offset = interval.data
+    return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
