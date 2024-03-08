@@ -1,9 +1,8 @@
-%cython
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
-
+import sys
 
 import pandas as pd
 import numpy as np
@@ -46,7 +45,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
         _MAX_REALIGN = int(MAX_REALIGN)
     return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores)
 
-%%cython
 cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
@@ -190,7 +188,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
                     aligner = mp.Aligner(seq=refseq, preset=mp_preset)
                     alns = dict()
                     for org, seq in seqdict.items():
-                        print(org, datetime.now())
+                        # print(org, datetime.now())
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
                             # align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]))
@@ -409,7 +407,6 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
 
     #assert(len(list(np.unique(coords.aChr))) == 1)
     chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
-
     cdef int oldstderr = -1
     if redir_stderr:
         #cio.fclose(cio.stderr)
@@ -420,6 +417,7 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
     # handle errors by return value; allows only showing output if there is a problem
     # python errors coming after an error here will have normal stderr
     try:
+        # TODO: this function expects that the reference and query chromsome would have the same id. If that is not the case (pre-processing not done),then this function always crashes
         syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP)
     except ValueError:
         print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
