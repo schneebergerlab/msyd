@@ -323,7 +323,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
     Both sequences should be on the same chromosomes.
     Splits alignments that span multiple offsets into one alignment per offset
     """
-    aligner = mp.Aligner(seq=refseq, preset=mp_preset)
+    aligner = mp.Aligner(seq=refseq, preset=preset)
     logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     logger.debug(f'Minimap2 alignment done.')
