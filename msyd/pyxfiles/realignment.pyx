@@ -11,7 +11,7 @@ import pysam
 import intervaltree
 from datetime import datetime
 from multiprocessing import Pool
-
+import logging
 from collections import deque, defaultdict
 import os
 from functools import partial
@@ -20,9 +20,10 @@ from io import StringIO
 cimport libc.stdio as cio
 cimport posix.unistd as unistd
 
-
-
-from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn
+# I added these lines to hide all of the INFO logs from syri. If those are required then these lines can be removed
+logging.getLogger('syri').setLevel(logging.WARNING)
+logging.getLogger('getCTX').setLevel(logging.WARNING)
+from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn, apply_TS, alignmentBlock, getSynPath
 from syri.tdfunc import getCTX
 from syri.writeout import getsrtable
 
