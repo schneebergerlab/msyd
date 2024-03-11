@@ -290,7 +290,6 @@ class Pansyn:
                 #raise ValueError("ERROR in Pansyn.check()! CIGAR length not matching query length!")
 
 
-
     def __add__(self, other):
         """
         Convenience function to concatenate two `Pansyn` objects.
