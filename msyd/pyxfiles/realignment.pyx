@@ -1,3 +1,4 @@
+%%cython
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # distutils: language = c++
@@ -252,9 +253,9 @@ def realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_
     if MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
-    return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores)
+    # return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores, cwd=cwd)
 
-cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
+# cpdef process_gaps(df, qrynames, fastas, mp_preset, ncores, cwd):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all crosssynteny.
@@ -266,9 +267,15 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
     ret = deque()#pd.DataFrame()
     n = len(qrynames)
     if not n == len(fastas):
-        logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}!")
+        logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
-    
+    # Synteny call parameters
+    BRT = 20
+    TUC = 1000
+    TUP = 0.5
+    T = 50
+    invgl = 1000000
+
     # load fasta files
     fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
 
@@ -290,8 +297,12 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
         # this seems to work out in Ampril (the first coresyn starts at <2 kb in my local test dataset),
         # but might cause problems in datasets with very little coresyn
         crosssyns = dict()
-
+        CNT = 0
         while True:
+            CNT += 1
+            print(CNT)
+            if CNT == 100:
+                break
             # find block between two coresyn regions
             crosssyns = dict()
 
@@ -315,13 +326,13 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
             start = old.ref.end
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
-            if end - start < _MIN_REALIGN_THRESH and \
-                    all(syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH \
-                        for org in syn.ranges_dict):
-                ret.append(syn)
-                old = syn
-                syn = next(syniter)[1][0]
-                continue
+            if end - start < _MIN_REALIGN_THRESH:
+                if all([syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH \
+                        for org in syn.ranges_dict]):
+                    ret.append(syn)
+                    old = syn
+                    syn = next(syniter)[1][0]
+                    continue
 
             # between chromosomes, there isn't a single gap
             #print(f"Chrs: {syn.ref.chr}, {old.ref.chr}")
@@ -368,7 +379,8 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
                     break
 
                 # choose a reference as the sample containing the most non-crosssynteny
-                ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
+                # ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
+                ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
                 #print('ref:', ref)
                 #print('On ref:', syn.ref.chr, start, end, end - start)
@@ -418,9 +430,49 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
                 # => directly catches translocations/duplications I think?
 
                 # run syri
-                cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
-                logger.info("Running syri")
+                # cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
+                logger.debug("Running syri")
                 syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}# and any(alns[org].bDir == 1)}
+                # TODO MG: Replace getsyriout with the synteny identification method from syri
+                print([v.columns for v in syris.values()])
+                syris = {}
+                for org in alns:
+                    if alns[org] is None: continue
+                    coords = alns[org]
+                    try:
+                        assert coords.aChr.nunique() == 1
+                        assert coords.bChr.nunique() == 1
+                    except AssertionError:
+                        logger.error(
+                            f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+                    # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
+                    chromr = list(coords.aChr)[0]  # there should only ever be one chr anyway
+                    chromq = list(coords.bChr)[0]
+                    samechrids = chromr == chromq
+                    if not samechrids:
+                        coords.bChr.replace(chromq, chromr, inplace=True)
+                    chromo = chromr
+                    coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
+                    syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
+                                  coordsData.bEnd.values, T)
+                    blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
+                    for block in blocks:
+                        i = 0
+                        while i < len(block.children):
+                            block.children = list(set(block.children) - set(blocks[block.children[i]].children))
+                            i += 1
+                        block.children.sort()
+                        for child in block.children:
+                            blocks[child].addParent(block.id)
+                        scores = [blocks[parent].score for parent in block.parents]
+                        if len(scores) > 0:
+                            block.bestParent(block.parents[scores.index(max(scores))], max(scores))
+                    synPath = getSynPath(blocks)
+                    synData = coordsData.iloc[synPath].copy()
+                    if not samechrids:
+                        synData.bChr.replace(chromr, chromq, inplace=True)
+                    syris[org] = synData
+                    print(synData.columns)
                 # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
                 for org in syris:
@@ -489,197 +541,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm5', ncores=1):
     return pd.DataFrame(list(ret))
 # END
 
-
-cdef construct_mappingtrees(crosssyns, old, syn):
-# def construct_mappingtrees(crosssyns, old, syn):
-    """
-    Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
-    Crosssyns need to be sorted by position on reference.
-    For each tree, the sequence in genome `org` at position `tree[pos].data - tree[pos].begin + pos` corresponds to the position `pos` in the synthetic query sequence.
-    """
-    mappingtrees = defaultdict(intervaltree.IntervalTree)
-    posdict = defaultdict(lambda: 0) # stores the current position in each org
-    offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
-    for reforg in crosssyns:
-        for crosssyn in crosssyns[reforg]:
-            for org, rng in crosssyn.ranges_dict.items():
-                #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
-                l = rng.start - offsetdict[org] # len of the region to be added
-                if l < 0:
-                    print('ERROR')# improper sorting – skip
-                    continue
-                # check if this interval would be redundant
-                prev = list(mappingtrees[org][posdict[org]-1]) # will be empty if tree is empty
-                if prev and posdict[org] + prev[0].data == offsetdict[org]:
-                    # extend the previous interval instead
-                    del mappingtrees[org][posdict[org]-1]
-                    posdict[org] += l
-                    mappingtrees[org][prev[0].begin:posdict[org]] = prev[0].data
-                elif l > _MIN_REALIGN_THRESH: # otherwise add to the tree if it's large enough
-                    mappingtrees[org][posdict[org]:posdict[org]+l] = offsetdict[org]
-                    posdict[org] += l
-
-                # all up to the end of this region has been added
-                offsetdict[org] = rng.end
-
-    # see if there's any sequence left to realign after processing the crosssyn regions
-    for org, offset in offsetdict.items():
-        l = syn.ranges_dict[org].start - offset
-        if l >= _MIN_REALIGN_THRESH:
-            mappingtrees[org][posdict[org]:posdict[org]+l] = offset
-    return mappingtrees
-# END
-
-
-cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
-# def align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
-    """
-    Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
-    Both sequences should be on the same chromosomes.
-    Splits alignments that span multiple offsets into one alignment per offset
-    """
-    # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
-    if aligner is None:
-        aligner = mp.Aligner(seq=refseq, preset=preset)
-    # logger.debug('Start align_concatseqs')
-    m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
-    logger.debug(f'Minimap2 alignment done.')
-    #print([str(x) for x in m])
-    al = deque()
-    # traverse alignments
-    logger.debug('Traversing alignments')
-    for h in m:
-        rstart: int = h.r_st
-        rend: int = h.r_en
-        qstart: int = h.q_st
-        qend: int = h.q_en
-        cg = cigar.cigar_from_bam(h.cigar)
-        #print(h.mapq)
-        if rstart > rend:
-            logger.error(f"Inverted on Reference: {h}")
-            continue
-            # shouldn't ever occur, TODO maybe handle anyway?
-
-        rstartov = list(reftree[rstart])[0]
-        qstartov = list(qrytree[qstart])[0]
-
-        # simply append alignment if there is only one offset
-        # as this happens quite often, this should save a lot of time
-        # print(f'reftree: {reftree}, qrytree: {qrytree}, rend: {rend}, qend: {qend}')
-        if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
-            roff = rstartov.data
-            qoff = qstartov.data
-            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()])
-            continue
-
-        for rint in sorted(reftree[rstart:rend]):
-            # subset alignment to this reference offset interval
-            qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
-            qendel, rcg = rcg.get_removed(max(rend - rint.end, 0), start=False)
-            for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
-                # subset to the query offset, respecting the subsetting done so far
-                rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
-                rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
-
-                #TODO maybe filter out small alignments here?
-                #print("r:", rint.data, rstart, rend, rint.begin, rint.end, rendel, rstdel, qcg.get_len(ref=True))
-                #print("q:", qint.data, qstart, qend, qint.begin, qint.end, qendel, qstdel, qcg.get_len(ref=False))
-                al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
-                           qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
-                           min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
-                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()])
-    logger.debug('Alignments traversed')
-
-    al = pd.DataFrame(al)
-    if al.empty:
-        return None
-    #print(al[6])
-    #al[6] = al[6].astype('float')
-    al = al.loc[al[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
-    al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
-    al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
-    al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
-    al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
-    al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    #print(al[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
-
-    #TODO use tree to remap!
-    return None if al.empty else al
-
-# TODO: Make parameters adjustable
-cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
-    BRT = 20
-    TUC = 1000
-    TUP = 0.5
-    T = 50
-    invgl = 1000000
-
-    #assert(len(list(np.unique(coords.aChr))) == 1)
-    chrom = list(coords.aChr)[0] # there should only ever be one chr anyway
-    cdef int oldstderr = -1
-    if redir_stderr:
-        #cio.fclose(cio.stderr)
-        #cio.stderr = cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
-        oldstderr = unistd.dup(unistd.STDERR_FILENO)
-        cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
-
-    # handle errors by return value; allows only showing output if there is a problem
-    # python errors coming after an error here will have normal stderr
-    try:
-        # TODO: this function expects that the reference and query chromsome would have the same id. If that is not the case (pre-processing not done),then this function always crashes
-        syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP)
-    except ValueError:
-        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-        return None
-    # if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
-    #     if redir_stderr:
-    #         logger.error("Redirecting stderr to console again")
-    #         #cio.fclose(cio.stderr)
-    #         #cio.stderr = oldstderr
-    #         unistd.close(unistd.STDERR_FILENO)
-    #         unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-    #     logger.error("syri call failed on input:")
-    #     print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-    #     if redir_stderr:
-    #         logger.error(f"syri stderr in '{CWD}/stderr'")
-    #     return None
-
-    #with multiprocessing.Pool(processes=N) as pool:
-    #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
-
-    #TODO if runtime a problem: redo syri call to only call synteny => maybe configurable?
-    # Merge output of all chromosomes – still necessary for some reason
-    mergeOutputFiles([chrom], CWD, PR)
-
-    #TODO: Maybe not requires and can be removed?
-    # leon: outSyn fails if this isn't called, that's why it's left in there
-    # but yes, this step should be unnecessary
-    # In general, I think the syri calling should be done more elegantly --
-    # writing to and then reading from files is quite inefficient, especially
-    # for short realignments
-
-    #Identify cross-chromosomal events in all chromosomes simultaneously
-    getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
-
-    # Recalculate syntenic blocks by considering the blocks introduced by CX events
-    outSyn(CWD, T, PR)
-    o = getsrtable(CWD, PR)
-
-    if redir_stderr:
-        #cio.fclose(cio.stderr)
-        #cio.stderr = oldstderr
-        unistd.close(unistd.STDERR_FILENO)
-        unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-
-    if not K:
-        for fin in ["synOut.txt", "invOut.txt", "TLOut.txt", "invTLOut.txt", "dupOut.txt", "invDupOut.txt", "ctxOut.txt", "sv.txt", "notAligned.txt", "snps.txt"]:
-            try:
-                os.remove(CWD+PR+fin)
-            except OSError as e:
-                if e.errno != 2:    # 2 is the error number when no such file or directory is present https://docs.python.org/2/library/errno.html
-                    raise
-    return o
-# END
 
 ################################################# DEPRECATED ###########################################################
 cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
