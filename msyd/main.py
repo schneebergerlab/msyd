@@ -170,12 +170,13 @@ def call(args):
         # use reference synteny as base to identify all haplotypes
         df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, cwd=args.workdir)
 
+        # garb = realign(df, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, cwd=args.workdir)
         # realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5'):
 
-    if args.tmp:
-        if not os.path.isdir(args.tmp):
-            os.makedirs(args.tmp)
-        TMPDIR = args.tmp
+    if args.workdir:
+        if not os.path.isdir(args.workdir):
+            os.makedirs(args.workdir)
+        TMPDIR = args.workdir
 
     if args.print:
         logger.info("Printing sample head to STDOUT")

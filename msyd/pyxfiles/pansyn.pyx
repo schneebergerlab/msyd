@@ -153,7 +153,7 @@ def find_overlaps(left, right, only_core=False):
     logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
 
     return ret#.sort_values(ret.columns[0])
-
+#END
 
 
 # given a bam file and corresponding SYNAL range df,

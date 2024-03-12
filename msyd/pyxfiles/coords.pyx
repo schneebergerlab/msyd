@@ -5,6 +5,7 @@
 
 import copy
 import functools
+import traceback
 #import cython
 import logging
 
@@ -349,14 +350,17 @@ class Pansyn:
                     if not cg.is_empty():
                         start_dropped, cg = cg.get_removed(start, start=True, ref=True)
                     else:
+                        print(traceback.format_exc())
                         logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
                         continue
                     if not cg.is_empty():
                         end_dropped, cg = cg.get_removed(end, start=False, ref=True)
                     else:
+                        print(traceback.format_exc())
                         logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
                         continue
                 except ValueError:
+                    print(traceback.format_exc())
                     logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
                     continue
                 ranges_dict[org] = rng.drop(start_dropped, end_dropped)

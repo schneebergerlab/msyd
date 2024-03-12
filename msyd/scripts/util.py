@@ -58,6 +58,8 @@ logger = CustomFormatter.getlogger(__name__)
 
 # copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
 # doesn't seem to be very fast?
+# TODO MG: I suspect that the time it takes to initiate parallelisation for multiple small tasks outstrips any potential
+# benefit of using parallelisation
 def parallel_reduce(reduceFunc, l, numCPUs):
     if numCPUs == 1 or len(l) <= 3:
             returnVal = functools.reduce(reduceFunc, l[1:], l[0])
