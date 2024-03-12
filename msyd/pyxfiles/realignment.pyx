@@ -34,8 +34,10 @@ import msyd.pansyn as pansyn
 import msyd.io as io
 
 
-cdef int _MIN_REALIGN_THRESH = 100
-cdef int _MAX_REALIGN = 0
+cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
+cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
+cdef int _NULL_CNT = 30 # number of separators to use between blocks during alignment
+
 logger = util.CustomFormatter.getlogger(__name__)
 
 # <editor-fold desc='Support functions for realign'>
@@ -49,14 +51,17 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
     mappingtrees = defaultdict(intervaltree.IntervalTree)
     posdict = defaultdict(int) # stores the current position in each org
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
+
     for reforg in crosssyns:
         for crosssyn in crosssyns[reforg]:
+            # iterate through all pansyns found so far by realignment
             for org, rng in crosssyn.ranges_dict.items():
                 #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
                 l = rng.start - offsetdict[org] # len of the region to be added
                 if l < 0:
                     # print('ERROR')# improper sorting – skip
                     continue
+
                 # check if this interval would be redundant
                 prev = list(mappingtrees[org][posdict[org]-1]) # will be empty if tree is empty
                 if prev and posdict[org] + prev[0].data == offsetdict[org]:
@@ -64,9 +69,10 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
                     del mappingtrees[org][posdict[org]-1]
                     posdict[org] += l
                     mappingtrees[org][prev[0].begin:posdict[org]] = prev[0].data
+
                 elif l > _MIN_REALIGN_THRESH: # otherwise add to the tree if it's large enough
                     mappingtrees[org][posdict[org]:posdict[org]+l] = offsetdict[org]
-                    posdict[org] += l
+                    posdict[org] += l + _NULL_CNT # add the spacer length to the start of the next index
 
                 # all up to the end of this region has been added
                 offsetdict[org] = rng.end
@@ -78,7 +84,6 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
             mappingtrees[org][posdict[org]:posdict[org]+l] = offset
     return mappingtrees
 # END
-
 
 cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
 # def align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
@@ -159,13 +164,17 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
 # </editor-fold>
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, fill_realignment=True, mp_preset='asm5', ncores=1):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm5', ncores=1):
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
     if MAX_REALIGN is not None and MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
+    if NULL_CNT is not None and NULL_CNT >= 0:
+        global _NULL_CNT
+        _NULL_CNT = int(NULL_CNT)
+
     # return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores, cwd=cwd)
 
 # cpdef process_gaps(df, qrynames, fastas, mp_preset, ncores, cwd):
@@ -188,8 +197,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, f
     # this chooses the first character in each sample name that is both free and legal to use.
     #TODO this is a pretty broken system, and fails if using more than 21 samples (assuming english input)
     # either find a way to make minimap work or extend to use multiple characters if required (super inefficient though)
-    filler_dict = {}
-    if fill_realignment:
+    filler_dict = {org: '' for org in qrynames}
+    if _NULL_CNT > 0:
         forbidden = set(['A', 'C', 'G', 'T', 'X'])
         for org in qrynames:
             for ch in org:
@@ -197,9 +206,10 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, f
                 if ch not in forbidden and not ch in filler_dict.values():
                     filler_dict[org] = ch
                     break
-            
-            logger.error(f"Unable to find unique characters for every org in {qrynames}. Final mapping {filler_dict}. This could be because there are more than 21 samples. Try calling fill_realignment set to False.")
-            raise ValueError("Unable to find unique characters for every org!")
+
+            if not filler_dict[org]:
+                logger.error(f"Unable to find unique characters for every org in {qrynames}. Final mapping {filler_dict}. This could be because there are more than 21 samples. Try calling with NULL_CNT set to 0.")
+                raise ValueError("Unable to find unique characters for every org!")
 
     logger.info(filler_dict)
 
@@ -277,15 +287,14 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, f
 
             # construct a mapping tree and concatenate all the sequences contained within
             mappingtrees = construct_mappingtrees(crosssyns, old, syn)
-            # MG: Instead of concatenating the distant sequences, now I add Ns in between them
-            # TODO: Parametrise number of Ns. For now, setting it to 0 as adding N breaks align_concatseqs
-            Ncnt = 0
-            seqdict = {org: ('N'*Ncnt).join([
+            seqdict = {org: (filler_dict[org]*_NULL_CNT).join([
                 fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                 start = interval.data,
-                                 end = interval.data + interval.end - interval.begin)
-                for interval in mappingtrees[org]])
+                                 start = interval.data - (ind*_NULL_CNT), # subtract the spacers before this point
+                                 end = interval.data + interval.end - interval.begin - (ind*_NULL_CNT))
+                for ind, interval in enumerate(mappingtrees[org])])
                 for org in mappingtrees}
+            logger.info(mappingtrees)
+            logger.info(seqdict)
 
             if not seqdict: # if all sequences have been discarded, skip realignment
                 #logger.info("Not aligning, not enough non-reference sequence found!")
@@ -402,11 +411,11 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, f
                     if reforg in mappingtrees:
                         del mappingtrees[reforg]
 
-                seqdict = {org:''.join([
+                seqdict = {org:(filler_dict[org]*_NULL_CNT).join([
                     fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                     start = interval.data,
-                                     end = interval.data + interval.end - interval.begin)
-                    for interval in mappingtrees[org]])
+                                     start = interval.data - (ind*_NULL_CNT), # subtract the spacers before this point
+                                     end = interval.data + interval.end - interval.begin - (ind*_NULL_CNT))
+                    for ind, interval in enumerate(mappingtrees[org])])
                     for org in mappingtrees}
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
