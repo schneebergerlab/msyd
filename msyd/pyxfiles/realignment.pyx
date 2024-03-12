@@ -160,10 +160,10 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 # </editor-fold>
 
 cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5', ncores=1, cwd='TMP'):
-    if MIN_REALIGN_THRESH >= 0:
+    if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
-    if MAX_REALIGN >= 0:
+    if MAX_REALIGN is not None and MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
     # return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores, cwd=cwd)
@@ -182,12 +182,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
     if not n == len(fastas):
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
-    # Synteny call parameters
-    BRT = 20
-    TUC = 1000
-    TUP = 0.5
-    T = 50
-    invgl = 1000000
 
     # load fasta files
     fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
@@ -221,11 +215,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
 
             # store crosssyn-regions, to be added once we know if we need to realign
             refcrosssyns = []
-            # TODO: In the first iteration, syn.get_degree == n (from msyd/pyxfiles/realignment.pyx:72), i.e. this loop would not be initialised? Added line below, I think that should resolve the issue
-            # syn = next(syniter)[1][0]
-            # leon: Yes, in the first iteration syn == old. This triggers the condition in l. 109,
-            # causing the next syn to be selected.
-            # not super elegant, but works -- this can be done more explicitly when we realign the start explicitly
             while syn.get_degree() < n:
                 refcrosssyns.append(syn)
                 syn = next(syniter)[1][0]
@@ -285,8 +274,10 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
                 continue
 
             # TODO: Parse file containing the centromere coordinate. Check if the selected region is centromeric, skip re-alignment if it is.
+
             while len(seqdict) > 2: # realign until there is only one sequence left
-                # print(old.ref, syn.ref)
+
+                # stop realignment if we have already found _MAX_REALIGN haplotypes
                 if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
                     break
 
@@ -326,10 +317,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
                         # print(org, datetime.now())
                         # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
-                    # print('fin_seq')
-                            # align_concatseqs(aligner, seq, syn.ref.chr, syn.ranges_dict[org].chr, reftree, mappingtrees[org]))
-                    # print('end alignment', datetime.now())
-                # print(2)
+
+
                 # filter out alignments only containing inversions
                 for org in alns:
                     if alns[org] is not None and all(alns[org].bDir == -1):
@@ -340,71 +329,17 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
                 #print(ref, refseq)
                 #print(seqdict)
 
-                #TODO try out making all regions to be realigned into genome with one chr for each region
-                # then running one alignment & syri call for each synthetic genome
-                # => directly catches translocations/duplications I think?
-
                 # run syri
-                # cwd = '/tmp/' #util.TMPDIR if util.TMPDIR else '/tmp/'
                 logger.debug("Running syri")
-                # syris = {org:getsyriout(alns[org], PR='', CWD=cwd) for org in alns if alns[org] is not None}# and any(alns[org].bDir == 1)}
+
                 # TODO MG: Replaced getsyriout with the synteny identification method from syri. Consider parallelizing this because for repetitive regions this loop would be expensive as well.
-                # print([v.columns for v in syris.values()])
-                syris = {}
-                for org in alns:
-                    if alns[org] is None: continue
-                    coords = alns[org]
-                    try:
-                        assert coords.aChr.nunique() == 1
-                        assert coords.bChr.nunique() == 1
-                    except AssertionError:
-                        logger.error(
-                            f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
-                    # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-                    chromr = list(coords.aChr)[0]  # there should only ever be one chr anyway
-                    chromq = list(coords.bChr)[0]
-                    samechrids = chromr == chromq
-                    if not samechrids:
-                        coords.bChr.replace(chromq, chromr, inplace=True)
-                    chromo = chromr
-                    coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
-                    syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
-                                  coordsData.bEnd.values, T)
-                    blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
-                    for block in blocks:
-                        i = 0
-                        while i < len(block.children):
-                            block.children = list(set(block.children) - set(blocks[block.children[i]].children))
-                            i += 1
-                        block.children.sort()
-                        for child in block.children:
-                            blocks[child].addParent(block.id)
-                        scores = [blocks[parent].score for parent in block.parents]
-                        if len(scores) > 0:
-                            block.bestParent(block.parents[scores.index(max(scores))], max(scores))
-                    synPath = getSynPath(blocks)
-                    synData = coordsData.iloc[synPath].copy()
-                    if not samechrids:
-                        synData.bChr.replace(chromr, chromq, inplace=True)
-                    synData.columns = list(map(str.lower, synData.columns))
-                    synData[['aseq', 'bseq', 'id', 'parent', 'dupclass']] = '-'     # Setting `id` and `parent` as `-`. This does not fit normal syri output but here it should inconsequential as these columns are (probably) not used anyway
-                    synData['vartype'] = 'SYNAL'
-                    synData = synData[['achr', 'astart', 'aend', 'aseq', 'bseq', 'bchr', 'bstart', 'bend', 'id', 'parent', 'vartype', 'dupclass']]
-                    syris[org] = synData
-                    # print(synData.columns)
-                # skip regions that were skipped or could not be aligned, or only contain inverted alignments
+                syris = syri_get_syntenic(alns)
 
                 for org in syris:
                     if syris[org] is not None:
                         #print("===", org, mappingtrees[org][0], "against", ref, reftree[0], reftree[-1], "===")
                         #print(syris[org])
-                        #print(syris[org].filter(axis='index', like='SYNAL'))
 
-                        # TODO: shouldn't the colnames of syris[org] bee changed?
-                        # leon: think it doesn't matter that much as long as they are the same in the end
-                        # this is really only relevan for the match_synal call later,
-                        # which uses all lower-case
-                        # the code in pansyn uses all lower-case column names
                         alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
                         #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
                         #print(mappingtrees[org])
@@ -419,7 +354,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
 
                 # syns should be sorted
                 # TODO: MG Question: what is the use of this function?
-                # print(5)
+                # leon: I've found that sometimes, syri calls would overlap a bit,
+                # which the pansyn identification doesn't like
+                # this checks this isn't the case and corrects it in case it finds it
+                # should probably not be strictly necessary here as we call syri ourselves
+                # but doesn't hurt to check either
+
                 # print(syns)
                 pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
                 # print(6)
@@ -430,8 +370,10 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
                 # Add all crosssyns with alphabetical sorting by reference name
                 crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
                 added = sum([len(x.ref) for x in crosssyns[ref]])
+
                 logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(crosssyns))}) of cross-synteny.")
-                # recalculate mappingtrees from current crosssyns to remove newly found cross synteny
+
+                ## recalculate mappingtrees from current crosssyns to remove newly found cross synteny
                 # TODO maybe in future directly remove, might be more efficient
                 mappingtrees = construct_mappingtrees(crosssyns, old, syn)
                 # remove all orgs that have already been used as a reference
@@ -447,10 +389,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
                     for org in mappingtrees}
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
+
             # incorporate into output DF, sorted alphabetically by ref name
             # does nothing if no crossyn was found
             for org in sorted(crosssyns.keys()):
                 ret.extend(crosssyns[org])
+
             # continue checking the next coresyn gap
             old = syn
             ret.append(syn)
@@ -462,8 +406,107 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
 # END
 
 
+cdef syri_get_syntenic(alns):
+    # Synteny call parameters
+    BRT = 20
+    TUC = 1000
+    TUP = 0.5
+    T = 50
+    invgl = 1000000
+
+    syris = {}
+
+    #NOTE: for large regions, it might make sense to parallelize the syri call
+    # per organism, turning the for loop below into a parallelized map
+    # probably only worth it with no_gil, though
+    for org in alns:
+        if alns[org] is None: continue
+        coords = alns[org]
+        try:
+            assert coords.aChr.nunique() == 1
+            assert coords.bChr.nunique() == 1
+        except AssertionError:
+            logger.error(
+                f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+        # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
+        chromr = list(coords.aChr)[0]  # there should only ever be one chr anyway
+        chromq = list(coords.bChr)[0]
+        samechrids = chromr == chromq
+        if not samechrids:
+            coords.bChr.replace(chromq, chromr, inplace=True)
+        chromo = chromr
+        coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
+        syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
+                      coordsData.bEnd.values, T)
+
+        blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
+        for block in blocks:
+            i = 0
+            while i < len(block.children):
+                block.children = list(set(block.children) - set(blocks[block.children[i]].children))
+                i += 1
+            block.children.sort()
+            for child in block.children:
+                blocks[child].addParent(block.id)
+            scores = [blocks[parent].score for parent in block.parents]
+            if len(scores) > 0:
+                block.bestParent(block.parents[scores.index(max(scores))], max(scores))
+
+        synPath = getSynPath(blocks)
+        synData = coordsData.iloc[synPath].copy()
+
+        if not samechrids:
+            synData.bChr.replace(chromr, chromq, inplace=True)
+
+        synData.columns = list(map(str.lower, synData.columns))
+        synData[['aseq', 'bseq', 'id', 'parent', 'dupclass']] = '-'     # Setting `id` and `parent` as `-`. This does not fit normal syri output but here it should inconsequential as these columns are (probably) not used anyway
+
+        synData['vartype'] = 'SYNAL'
+        synData = synData[['achr', 'astart', 'aend', 'aseq', 'bseq', 'bchr', 'bstart', 'bend', 'id', 'parent', 'vartype', 'dupclass']]
+        syris[org] = synData
+        # print(synData.columns)
+    # skip regions that were skipped or could not be aligned, or only contain inverted alignments
+
+    return syris
+
+
+
+################################################# DEPRECATED ###########################################################
+cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
+    """DEPRECATED
+    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
+    """
+    start = max(interval.start, rstart)
+    # drop from the alignment everything before the current interval
+    qstartdelta, curcg = cg.get_removed(start - rstart)
+
+    # drop everything after the current interval
+    end = min(interval.end, rend)
+    qenddelta, retcg = curcg.get_removed(rend - end, start=False)
+
+    # transform coordinates with the offset/alignment information, return
+    offset = interval.data
+    return (start + offset, end + offset, qstart + qstartdelta, qend - qenddelta, retcg)
+
+cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
+    """DEPRECATED
+    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the query with the offset incorporated
+    """
+    start = max(interval.start, qstart)
+    # drop from the alignment everything before the current interval
+    rstartdelta, curcg = cg.get_removed(start - qstart, ref=False)
+
+    end = min(interval.end, qend)
+    # drop everything after the current interval
+    renddelta, retcg = curcg.get_removed(end - interval.end, start=False, ref=False)
+
+    # transform coordinates with the offset/alignment information, return
+    offset = interval.data
+    return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
+
 # TODO: Make parameters adjustable. Also, now (12.03.24) this could be deprecated.
 cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
+    """DEPRECATED"""
     BRT = 20
     TUC = 1000
     TUP = 0.5
@@ -499,6 +542,7 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
     # except ValueError:
     #     print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
     #     return None
+
     if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
         if redir_stderr:
             logger.error("Redirecting stderr to console again")
@@ -551,36 +595,3 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
     return o
 # END
 
-
-################################################# DEPRECATED ###########################################################
-cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
-    """DEPRECATED
-    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
-    """
-    start = max(interval.start, rstart)
-    # drop from the alignment everything before the current interval
-    qstartdelta, curcg = cg.get_removed(start - rstart)
-
-    # drop everything after the current interval
-    end = min(interval.end, rend)
-    qenddelta, retcg = curcg.get_removed(rend - end, start=False)
-
-    # transform coordinates with the offset/alignment information, return
-    offset = interval.data
-    return (start + offset, end + offset, qstart + qstartdelta, qend - qenddelta, retcg)
-
-cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
-    """DEPRECATED
-    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the query with the offset incorporated
-    """
-    start = max(interval.start, qstart)
-    # drop from the alignment everything before the current interval
-    rstartdelta, curcg = cg.get_removed(start - qstart, ref=False)
-
-    end = min(interval.end, qend)
-    # drop everything after the current interval
-    renddelta, retcg = curcg.get_removed(end - interval.end, start=False, ref=False)
-
-    # transform coordinates with the offset/alignment information, return
-    offset = interval.data
-    return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
