@@ -148,20 +148,20 @@ def main():
 
 def call(args):
     # import msyd  # to import version
-    from msyd.scripts.util import CustomFormatter, parse_input_tsv, TMPDIR, get_stats, gettmpfile
     # from msyd.script.io import find_multisyn
     import msyd.io as io
     import msyd.imputation as imputation
     from msyd.pansyn import find_multisyn
     import msyd.realignment as realignment
     from msyd.coords import Range
-
     import msyd.ordering as ordering
-    logger = CustomFormatter.getlogger(__name__)
+
+    import msyd.scripts.util as util
+    logger = util.CustomFormatter.getlogger("call")
 
     logger.info("Starting msyd call")
 
-    qrynames, syns, alns, vcfs, fastas = parse_input_tsv(args.infile)
+    qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
     # find reference synteny
     df = find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
 
@@ -182,7 +182,7 @@ def call(args):
         logger.info("Printing sample head to STDOUT")
         print(df.head())
 
-    print(get_stats(df))
+    print(util.get_stats(df))
 
     # save output
     logger.info(f"Saving msyd calls to PFF at {args.pff.name}")
@@ -215,6 +215,10 @@ def call(args):
 
 def merge(args):
     import msyd.io as io
+
+    import msyd.scripts.util as util
+    logger = util.CustomFormatter.getlogger("merge")
+
     # temporary function to better test the vcf merging functionality
     logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
     io.reduce_vcfs(args.vcfs, args.outfile.name)
@@ -223,12 +227,19 @@ def merge(args):
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
     import msyd.io as io
+    import msyd.ordering as ordering
+
+    import msyd.scripts.util as util
+    logger = util.CustomFormatter.getlogger("order")
+
     df = io.read_pff(args.infile)
     print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
     logger.info("Finished running msyd order")
 
 def view(args):
     import msyd.io as io
+    import msyd.scripts.util as util
+    logger = util.CustomFormatter.getlogger("view")
     logger.info(f"reading pansynteny from {args.infile.name}")
     df = io.read_pff(args.infile)
     if not args.filetype: # determine filetype if not present
@@ -265,11 +276,17 @@ def view(args):
 
 def realign(args):
     import msyd.io as io
+    import msyd.realignment as realignment
+
+    import msyd.scripts.util as util
+    logger = util.CustomFormatter.getlogger("realign")
+
     logger.info(f"realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
     syns = io.read_pff(args.infile)
     resyns = realignment.realign(syns, qrynames, fastas, MIN_REALIGN_THRESH=args.min_realign, MAX_REALIGN=args.max_realign)
     print(util.get_stats(resyns))
+
     logger.info(f"Saving to {args.outfile.name} in PFF format.")
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
     logger.info(f"Finished running msyd realign, output saved to {args.outfile.name}.")
