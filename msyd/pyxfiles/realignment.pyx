@@ -159,7 +159,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
 # </editor-fold>
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, mp_preset='asm5', ncores=1, cwd='TMP'):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, fill_realignment=True, mp_preset='asm5', ncores=1):
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
@@ -182,6 +182,27 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, m
     if not n == len(fastas):
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
+
+    # create single-byte unique identifiers for each query that aren't ACTGX
+    # this is required to fill the alignments, as minimap2 will align non-bases just like bases
+    # this chooses the first character in each sample name that is both free and legal to use.
+    #TODO this is a pretty broken system, and fails if using more than 21 samples (assuming english input)
+    # either find a way to make minimap work or extend to use multiple characters if required (super inefficient though)
+    filler_dict = {}
+    if fill_realignment:
+        forbidden = set(['A', 'C', 'G', 'T', 'X'])
+        for org in qrynames:
+            for ch in org:
+                ch = ch.upper()
+                if ch not in forbidden and not ch in filler_dict.values():
+                    filler_dict[org] = ch
+                    break
+            
+            logger.error(f"Unable to find unique characters for every org in {qrynames}. Final mapping {filler_dict}. This could be because there are more than 21 samples. Try calling fill_realignment set to False.")
+            raise ValueError("Unable to find unique characters for every org!")
+
+    logger.info(filler_dict)
+
 
     # load fasta files
     fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
