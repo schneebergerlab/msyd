@@ -36,7 +36,7 @@ import msyd.io as io
 
 cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
-cdef int _NULL_CNT = 30 # number of separators to use between blocks during alignment
+cdef int _NULL_CNT = 20 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -121,12 +121,14 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
         # simply append alignment if there is only one offset
         # as this happens quite often, this should save a lot of time
         # print(f'reftree: {reftree}, qrytree: {qrytree}, rend: {rend}, qend: {qend}')
+
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
             al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()])
             continue
         # print('b')
+
         for rint in sorted(reftree[rstart:rend]):
             # subset alignment to this reference offset interval
             qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
@@ -291,10 +293,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 fafin[org].fetch(region = syn.ranges_dict[org].chr,
                                  start = interval.data - (ind*_NULL_CNT), # subtract the spacers before this point
                                  end = interval.data + interval.end - interval.begin - (ind*_NULL_CNT))
-                for ind, interval in enumerate(mappingtrees[org])])
+                for ind, interval in enumerate(sorted(mappingtrees[org]))]) # in theory intervaltrees should sort itself, but just in case
                 for org in mappingtrees}
-            logger.info(mappingtrees)
-            logger.info(seqdict)
+
+            #if any([len(mappingtrees[org]) > 3 for org in mappingtrees]):
+            #    logger.info(mappingtrees)
+            #    logger.info(seqdict)
 
             if not seqdict: # if all sequences have been discarded, skip realignment
                 #logger.info("Not aligning, not enough non-reference sequence found!")
@@ -415,7 +419,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     fafin[org].fetch(region = syn.ranges_dict[org].chr,
                                      start = interval.data - (ind*_NULL_CNT), # subtract the spacers before this point
                                      end = interval.data + interval.end - interval.begin - (ind*_NULL_CNT))
-                    for ind, interval in enumerate(mappingtrees[org])])
+                    for ind, interval in enumerate(sorted(mappingtrees[org]))])
                     for org in mappingtrees}
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
