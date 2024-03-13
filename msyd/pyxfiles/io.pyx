@@ -1134,10 +1134,10 @@ cdef write_pansyns(pansyns, buf, orgs):
 
 cpdef read_pff(f):
     """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
+    A reader for the newer variant of PFF file is available here: msyd.annotate_sv.read_pff2
     """
     if isinstance(f, str):
         f = open(f, 'rt')
-
     syns = deque()
     orgs = f.readline().strip()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
     for l in f:
@@ -1150,6 +1150,5 @@ cpdef read_pff(f):
                  for i, cell in enumerate(l[2:]) if cell != '.' and len(cell.split(',')) > 1} # extract cigars dict
             )
             syns.append(syn)
-
-
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
+# END

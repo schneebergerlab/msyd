@@ -538,6 +538,9 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     offset = interval.data
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
 
+
+
+
 # TODO: Make parameters adjustable. Also, now (12.03.24) this could be deprecated.
 cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
     """DEPRECATED"""
