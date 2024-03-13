@@ -201,7 +201,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     # either find a way to make minimap work or extend to use multiple characters if required (super inefficient though)
     filler_dict = {org: '' for org in qrynames}
     if _NULL_CNT > 0:
-        forbidden = set(['A', 'C', 'G', 'T', 'X'])
+        forbidden = set(['A', 'C', 'G', 'T', 'N', 'X'])
         for org in qrynames:
             for ch in org:
                 ch = ch.upper()
