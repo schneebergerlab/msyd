@@ -115,6 +115,10 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
             continue
             # shouldn't ever occur, TODO maybe handle anyway?
 
+        logger.info(f"rstart: {rstart}, rend: {rend}, qstart: {qstart}, qend: {qend}")
+        logger.info(f"rtree: {str(reftree)}")
+        logger.info(f"qtree: {str(qrytree)}")
+
         rstartov = list(reftree[rstart])[0]
         qstartov = list(qrytree[qstart])[0]
 
@@ -291,9 +295,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             mappingtrees = construct_mappingtrees(crosssyns, old, syn)
             seqdict = {org: (filler_dict[org]*_NULL_CNT).join([
                 fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                 start = interval.data - (ind*_NULL_CNT), # subtract the spacers before this point
-                                 end = interval.data + interval.end - interval.begin - (ind*_NULL_CNT))
-                for ind, interval in enumerate(sorted(mappingtrees[org]))]) # in theory intervaltrees should sort itself, but just in case
+                                 start = interval.data,
+                                 end = interval.data + interval.end - interval.begin)
+                for interval in sorted(mappingtrees[org])]) # in theory intervaltrees should sort itself, but just in case
                 for org in mappingtrees}
 
             #if any([len(mappingtrees[org]) > 3 for org in mappingtrees]):
@@ -348,8 +352,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     alns = dict()
                     # print('seq')
                     for org, seq in seqdict.items():
+                        if seq == '': # skip empty sequences
+                            alns[org] = None
+
                         # print(org, datetime.now())
                         # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
+                        logger.info(f"Processing alignments for {org}. Seq len {len(seq)}.")
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
 
@@ -415,14 +423,29 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     if reforg in mappingtrees:
                         del mappingtrees[reforg]
 
+                ## extract the remaining sequences for future realignment
+
+                # cache the current lens, for debugging
+                lendict = {org: len(seqdict[org]) for org in seqdict}
+                #logger.info("emit ending lens in seqdict")
+                #logger.info(str(lendict))
+
                 seqdict = {org:(filler_dict[org]*_NULL_CNT).join([
                     fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                     start = interval.data - (ind*_NULL_CNT), # subtract the spacers before this point
-                                     end = interval.data + interval.end - interval.begin - (ind*_NULL_CNT))
-                    for ind, interval in enumerate(sorted(mappingtrees[org]))])
+                                     start = interval.data,
+                                     end = interval.data + interval.end - interval.begin)
+                    for interval in sorted(mappingtrees[org])])
                     for org in mappingtrees}
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
+
+                # check that the sequence length has not been extended during the update
+                # allow for up to one spacer to be inserted, though
+                for org in seqdict:
+                    if org in lendict: # eliminating sequences is always okay
+                        logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
+                        assert(len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update")
+
 
             # incorporate into output DF, sorted alphabetically by ref name
             # does nothing if no crossyn was found
