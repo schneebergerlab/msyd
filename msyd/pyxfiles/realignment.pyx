@@ -94,7 +94,14 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     """
     # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
     if aligner is None:
-        aligner = mp.Aligner(seq=refseq, preset=preset)
+        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+
+        # set --score-N parameter to 10
+        #aligner.map_opt.sc_ambi = 10
+
+        #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+        # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
+
     # logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     logger.debug(f'Minimap2 alignment done.')
@@ -203,6 +210,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     # this chooses the first character in each sample name that is both free and legal to use.
     #TODO this is a pretty broken system, and fails if using more than 21 samples (assuming english input)
     # either find a way to make minimap work or extend to use multiple characters if required (super inefficient though)
+    #filler_dict = {org: 'N' for org in qrynames}
+
     filler_dict = {org: '' for org in qrynames}
     if _NULL_CNT > 0:
         forbidden = set(['A', 'C', 'G', 'T', 'N', 'X'])
@@ -357,7 +366,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                         # print(org, datetime.now())
                         # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
-                        logger.info(f"Processing alignments for {org}. Seq len {len(seq)}.")
+                        #logger.info(f"Processing alignments for {org}. Seq len {len(seq)}.")
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
 
@@ -443,7 +452,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 # allow for up to one spacer to be inserted, though
                 for org in seqdict:
                     if org in lendict: # eliminating sequences is always okay
-                        logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
+                        #logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
                         assert(len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update")
 
 
