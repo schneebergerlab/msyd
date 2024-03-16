@@ -150,13 +150,13 @@ def parse_input_tsv(fin):
 
         # Check that the files are accessible
         if not os.path.isfile(aln):
-            raise FileNotFoundError(f"Cannot find file at {aln}. Exiting")
+            raise FileNotFoundError(f"Cannot find file at {aln}. Double-check the input TSV. Exiting.")
         if not os.path.isfile(syri):
-            raise FileNotFoundError(f"Cannot find file at {syri}. Exiting")
+            raise FileNotFoundError(f"Cannot find file at {syri}. Double-check the input TSV. Exiting.")
         if not os.path.isfile(vcf):
-            raise FileNotFoundError(f"Cannot find file at {vcf}. Exiting")
+            raise FileNotFoundError(f"Cannot find file at {vcf}. Double-check the input TSV. Exiting.")
         if not os.path.isfile(fasta):
-            raise FileNotFoundError(f"Cannot find file at {fasta}. Exiting")
+            raise FileNotFoundError(f"Cannot find file at {fasta}. Double-check the input TSV. Exiting.")
 
         qrynames.append(qry)
         alns.append(aln)
