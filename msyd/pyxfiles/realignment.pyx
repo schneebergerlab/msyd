@@ -99,8 +99,12 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
         # set --score-N parameter to 10
         #aligner.map_opt.sc_ambi = 10
 
-        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+        #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
         # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
+
+        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 10])
+        # values from the manpage, under presets -> asm5
+        #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
 
     # logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
