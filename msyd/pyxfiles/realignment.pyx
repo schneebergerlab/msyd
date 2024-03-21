@@ -102,7 +102,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
         #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
         # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
 
-        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 10])
+        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100])
         # values from the manpage, under presets -> asm5
         #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
 
@@ -214,23 +214,23 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     # this chooses the first character in each sample name that is both free and legal to use.
     #TODO this is a pretty broken system, and fails if using more than 21 samples (assuming english input)
     # either find a way to make minimap work or extend to use multiple characters if required (super inefficient though)
-    #filler_dict = {org: 'N' for org in qrynames}
+    filler_dict = {org: 'N' for org in qrynames}
 
-    filler_dict = {org: '' for org in qrynames}
-    if _NULL_CNT > 0:
-        forbidden = set(['A', 'C', 'G', 'T', 'N', 'X'])
-        for org in qrynames:
-            for ch in org:
-                ch = ch.upper()
-                if ch not in forbidden and not ch in filler_dict.values():
-                    filler_dict[org] = ch
-                    break
+    #filler_dict = {org: '' for org in qrynames}
+    #if _NULL_CNT > 0:
+    #    forbidden = set(['A', 'C', 'G', 'T', 'N', 'X'])
+    #    for org in qrynames:
+    #        for ch in org:
+    #            ch = ch.upper()
+    #            if ch not in forbidden and not ch in filler_dict.values():
+    #                filler_dict[org] = ch
+    #                break
 
-            if not filler_dict[org]:
-                logger.error(f"Unable to find unique characters for every org in {qrynames}. Final mapping {filler_dict}. This could be because there are more than 21 samples. Try calling with NULL_CNT set to 0.")
-                raise ValueError("Unable to find unique characters for every org!")
+    #        if not filler_dict[org]:
+    #            logger.error(f"Unable to find unique characters for every org in {qrynames}. Final mapping {filler_dict}. This could be because there are more than 21 samples. Try calling with NULL_CNT set to 0.")
+    #            raise ValueError("Unable to find unique characters for every org!")
 
-    logger.info(filler_dict)
+    #logger.info(filler_dict)
 
 
     # load fasta files
