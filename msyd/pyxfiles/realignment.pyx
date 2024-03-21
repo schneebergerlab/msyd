@@ -94,12 +94,12 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     """
     # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
     if aligner is None:
-        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+        #aligner = mp.Aligner(seq=refseq, preset=preset)
 
         # set --score-N parameter to 10
         #aligner.map_opt.sc_ambi = 10
 
-        #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
         # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
 
     # logger.debug('Start align_concatseqs')
