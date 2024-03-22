@@ -126,9 +126,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
             continue
             # shouldn't ever occur, TODO maybe handle anyway?
 
-        logger.info(f"rstart: {rstart}, rend: {rend}, qstart: {qstart}, qend: {qend}")
-        logger.info(f"rtree: {str(reftree)}")
-        logger.info(f"qtree: {str(qrytree)}")
+        #logger.info(f"rstart: {rstart}, rend: {rend}, qstart: {qstart}, qend: {qend}")
+        #logger.info(f"rtree: {str(reftree)}")
+        #logger.info(f"qtree: {str(qrytree)}")
 
         rstartov = list(reftree[rstart])[0]
         qstartov = list(qrytree[qstart])[0]
