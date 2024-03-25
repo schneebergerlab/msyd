@@ -85,6 +85,21 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
     return mappingtrees
 # END
 
+cdef get_aligner(seq, preset, ns=True):
+    #aligner = mp.Aligner(seq=refseq, preset=preset)
+
+    # set --score-N parameter to 10
+    #aligner.map_opt.sc_ambi = 10
+
+    #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+    # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
+
+    aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
+    # values from the manpage, under presets -> asm5
+    #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
+
+    return aligner
+
 cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
 # def align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
     """
@@ -94,17 +109,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     """
     # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
     if aligner is None:
-        #aligner = mp.Aligner(seq=refseq, preset=preset)
-
-        # set --score-N parameter to 10
-        #aligner.map_opt.sc_ambi = 10
-
-        #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
-        # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
-
-        aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100])
-        # values from the manpage, under presets -> asm5
-        #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
+        aligner = get_aligner(refseq, preset)
 
     # logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
@@ -348,20 +353,19 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 # construct alignment index from the reference
                 logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}")
-                # aligner = mp.Aligner(seq=refseq, preset=mp_preset)
                 # print('start alignment', datetime.now())
                 # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
                 # print(1)
-                if False: #syn.ref.start - old.ref.end > 100000:
-                    # print('par')
+                if syn.ref.start - old.ref.end > 100000:
+                    print('par')
                     alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                     with Pool(processes=ncores) as pool:
                         # pool.starmap(partial(foo, d='x'), alignargs)
                         alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree, aligner=None), alignargs)
                     alns = dict(zip(list(seqdict.keys()), alns))
                 else:
-                    aligner = mp.Aligner(seq=refseq, preset=mp_preset)
+                    aligner = get_aligner(seq=refseq, preset=mp_preset)
                     alns = dict()
                     # print('seq')
                     for org, seq in seqdict.items():
@@ -370,7 +374,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                         # print(org, datetime.now())
                         # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
-                        #logger.info(f"Processing alignments for {org}. Seq len {len(seq)}.")
+                        logger.info(f"Processing alignments for {org}. Seq len {len(seq)}.")
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
 
