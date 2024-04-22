@@ -385,7 +385,7 @@ cpdef extract_syri_snvs(fin):
 
 HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
 ##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
-##ALT<ID=CROSSSYN,Description="Cross syntenic region (syntenic between any two samples for a strict subset of the samples)>
+##ALT<ID=MERISYN,Description="Merisyntenic region (syntenic between any two samples for a strict subset of the samples)">
 ##INFO=<ID=PID,Number=1,Type=Integer,Description="Numerical part of the ID of the parent PANSYN region. If the PID of a region is 10, it's parent's ID will be CROSSSYN10 or CORESYN10 (and there will be only one of either).">
 ##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
