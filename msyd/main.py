@@ -88,6 +88,7 @@ def main():
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
     call_parser.add_argument("--realign", "-ali", dest='realign', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
+    call_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
     call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
@@ -107,6 +108,7 @@ def main():
     view_parser.add_argument("-p", dest='print', action='store_const', const=10, help="Print the first 10 regions after filtering, mainly for debugging")
     view_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="If saving to VCF, the reference to use can be specified with this flag")
     view_parser.add_argument("--intersect", dest='intersect', type=argparse.FileType('r'), help="VCF File to intersect with the PFF file given with -i. Will only keep annotations within pansyntenic regions")
+    view_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
 
     view_parser.add_argument("--opff", dest='filetype', action='store_const', const='pff', help="store output in PFF format")
     view_parser.add_argument("--opff-nocg", dest='filetype', action='store_const', const='pff-nocg', help="store output in PFF format, discarding cigar strings")
@@ -188,7 +190,7 @@ def call(args):
 
         if not args.all:
             logger.info("Pre-filtering VCFs to pansyntenic regions")
-            vcfs = io.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=True)
+            vcfs = io.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=ars.impute)
             
 
         logger.info(vcfs)
@@ -232,7 +234,7 @@ def view(args):
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
-        io.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None)
+        io.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None, impute_ref=args.impute)
         return # has been saved already
 
     # save
