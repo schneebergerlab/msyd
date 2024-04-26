@@ -502,6 +502,16 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # add Parent information
             if add_syn_anns:
                 new_rec.info['PID'] = syncounter
+
+            # impute ref if specified
+            # a syntenic haplotype with no call probably has the ref haplotype
+            if impute_ref:
+                for org in syn.ranges_dict:
+                    if org in orgsvcf and not org in rec.samples:
+                        # unless it has a record, assume this sample has the same gt as the reference of the haplotype
+                        new_rec.samples[org].update(rec.samples[syn.ref.org])
+
+            # write existing genotype if there is one
             for sample in rec.samples:
                 if keep_nonsyn_calls or sample in orgsvcf:
                     new_rec.samples[sample].update(rec.samples[sample])
