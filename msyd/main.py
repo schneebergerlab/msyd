@@ -190,7 +190,7 @@ def call(args):
 
         if not args.all:
             logger.info("Pre-filtering VCFs to pansyntenic regions")
-            vcfs = io.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=ars.impute)
+            vcfs = io.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=args.impute)
             
 
         logger.info(vcfs)
