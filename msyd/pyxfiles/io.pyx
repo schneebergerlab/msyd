@@ -507,9 +507,15 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # a syntenic haplotype with no call probably has the ref haplotype
             if impute_ref:
                 for org in syn.ranges_dict:
+                    logger.info("checking", org, "against", rec.samples)
                     if org in orgsvcf and not org in rec.samples:
                         # unless it has a record, assume this sample has the same gt as the reference of the haplotype
+                        logger.info("imputing", org)
+                        logger.info(rec.samples[syn.ref.org])
+                        logger.info(rec.samples)
                         new_rec.samples[org].update(rec.samples[syn.ref.org])
+                        new_rec.samples[org].update({'GT': 0})
+
 
             # write existing genotype if there is one
             for sample in rec.samples:
