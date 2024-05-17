@@ -201,7 +201,6 @@ def call(args):
 
         logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
         #io.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
-        print(args.impute)
         io.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name, no_complex=args.no_complex, add_syn_anns=True, impute_ref=args.impute)
 
     logger.info(f"Finished running msyd call, output saved to {args.pff.name}.")

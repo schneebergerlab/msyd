@@ -405,7 +405,7 @@ cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -490,22 +490,12 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
                     continue # skip this variant
 
-            # get the samples for which we already have a genotype
-            # to use for either imputation or transfering nonsyn genotypes
-            contained_samples = set()
-            for sample in rec.samples:
-                # based on the ipmlementation in
-                # https://github.com/pysam-developers/pysam/blob/43c10664834cf3914000a744e6057826c6a6fa65/pysam/libcbcf.pyx#L3443
-                # this stuff is all undocumented (see pysam#407)
-                if not rec.samples[sample].alleles[0] is None:
-                    contained_samples.add(sample)
-
             new_rec = vcfout.new_record()
             new_rec.pos = rec.pos
             new_rec.chrom = rec.chrom
             new_rec.id = rec.id
             new_rec.alleles = rec.alleles
-            new_rec.ref = rec.ref # unnecessary, as this is covered by alleles
+            #new_rec.ref = rec.ref # unnecessary, as this is covered by alleles
 
             # discard old INFO information if reading it in as coords
             if not coords_in_info:
@@ -514,27 +504,28 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # add Parent information
             if add_syn_anns:
                 new_rec.info['PID'] = syncounter
-
-            # impute ref if specified
-            # a syntenic haplotype with no call probably has the ref haplotype
-            if impute_ref:
-                for org in syn.ranges_dict:
-                    print("checking", org)
-                    if org in orgsvcf and not org in contained_samples:
-                        # unless it has a record, assume this sample has the same gt as the reference of the haplotype
-                        logger.info(f"imputing {org}")
-                        new_rec.samples[org].allele_indices = 0
-                        #new_rec.allele = 
-                        #new_rec.samples[org].update(rec.samples[syn.ref.org])
-                        #new_rec.samples[org].update({'GT': 0})
-
-
-            # write existing genotype if there is one
+            
+            ## Handle the sample fields
             for sample in rec.samples:
-                if keep_nonsyn_calls or sample in contained_samples:
-                    #TODO should this copy over before impute?
-                    logger.info(f"overwriting {sample}")
+                # see also
+                # https://github.com/pysam-developers/pysam/blob/43c10664834cf3914000a744e6057826c6a6fa65/pysam/libcbcf.pyx#L3443
+                # this stuff is all undocumented (see pysam#407)
+
+                # transfer over existing annotations if instructed
+                if keep_anns:
                     new_rec.samples[sample].update(rec.samples[sample])
+
+                # impute ref if specified and syntenic to ref
+                if impute_ref\
+                        and sample in syn.ranges_dict \
+                        and rec.samples[sample].alleles[0] is None:
+                    #logger.info(f"imputing {sample}")
+                    # no genotype information present
+                    # annotate as reference genotpye if impute is enabled
+                    if syn.ref.org == 'ref':
+                        new_rec.samples[sample].allele_indices = 0
+                    else: # should catch non-ref. merisynteny
+                        new_rec.samples[sample].update(rec.samples[syn.ref.org])
 
             # read in coords from INFO column, add to single sample
             # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
@@ -568,7 +559,7 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
     # incorporate the last vcf, save directly to output
     merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
 
-#cpdef void impute_syn_in_vcf(syns, inpath: Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_nonsyn_calls=False, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
+#cpdef void impute_syn_in_vcf(syns, inpath: Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
 
 
 
