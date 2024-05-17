@@ -36,9 +36,10 @@ import msyd.io as io
 
 cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
-cdef int _NULL_CNT = 20 # number of separators to use between blocks during alignment
+cdef int _NULL_CNT = 30 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # <editor-fold desc='Support functions for realign'>
 cpdef construct_mappingtrees(crosssyns, old, syn):
@@ -216,30 +217,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
 
-    # create single-byte unique identifiers for each query that aren't ACTGX
-    # this is required to fill the alignments, as minimap2 will align non-bases just like bases
-    # this chooses the first character in each sample name that is both free and legal to use.
-    #TODO this is a pretty broken system, and fails if using more than 21 samples (assuming english input)
-    # either find a way to make minimap work or extend to use multiple characters if required (super inefficient though)
-    filler_dict = {org: 'N' for org in qrynames}
-
-    #filler_dict = {org: '' for org in qrynames}
-    #if _NULL_CNT > 0:
-    #    forbidden = set(['A', 'C', 'G', 'T', 'N', 'X'])
-    #    for org in qrynames:
-    #        for ch in org:
-    #            ch = ch.upper()
-    #            if ch not in forbidden and not ch in filler_dict.values():
-    #                filler_dict[org] = ch
-    #                break
-
-    #        if not filler_dict[org]:
-    #            logger.error(f"Unable to find unique characters for every org in {qrynames}. Final mapping {filler_dict}. This could be because there are more than 21 samples. Try calling with NULL_CNT set to 0.")
-    #            raise ValueError("Unable to find unique characters for every org!")
-
-    #logger.info(filler_dict)
-
-
     # load fasta files
     fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
 
@@ -313,7 +290,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
             # construct a mapping tree and concatenate all the sequences contained within
             mappingtrees = construct_mappingtrees(crosssyns, old, syn)
-            seqdict = {org: (filler_dict[org]*_NULL_CNT).join([
+            seqdict = {org: ('N'*_NULL_CNT).join([
                 fafin[org].fetch(region = syn.ranges_dict[org].chr,
                                  start = interval.data,
                                  end = interval.data + interval.end - interval.begin)
@@ -359,8 +336,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
                 # print(1)
-                if syn.ref.start - old.ref.end > 100000:
-                    print('par')
+                if syn.ref.start - old.ref.end > 50000:
+                    logger.debug(f"Starting parallel Alignment between {syn.ref.start} and {old.ref.end} (len {util.siprefix(syn.ref.start - old.ref.end)})")
                     alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                     with Pool(processes=ncores) as pool:
                         # pool.starmap(partial(foo, d='x'), alignargs)
@@ -373,10 +350,10 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     for org, seq in seqdict.items():
                         if seq == '': # skip empty sequences
                             alns[org] = None
+                            continue
 
-                        # print(org, datetime.now())
                         # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
-                        logger.info(f"Processing alignments for {org}. Seq len {len(seq)}.")
+                        logger.debug(f"Processing alignments for {org}. Seq len {len(seq)}.")
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
 
@@ -449,7 +426,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 #logger.info("emit ending lens in seqdict")
                 #logger.info(str(lendict))
 
-                seqdict = {org:(filler_dict[org]*_NULL_CNT).join([
+                seqdict = {org:('N'*_NULL_CNT).join([
                     fafin[org].fetch(region = syn.ranges_dict[org].chr,
                                      start = interval.data,
                                      end = interval.data + interval.end - interval.begin)
