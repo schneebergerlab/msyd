@@ -36,7 +36,7 @@ import msyd.io as io
 
 cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
-cdef int _NULL_CNT = 30 # number of separators to use between blocks during alignment
+cdef int _NULL_CNT = 200 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -86,7 +86,7 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
     return mappingtrees
 # END
 
-cdef get_aligner(seq, preset, ns=True):
+cdef get_aligner(seq, preset, ns=False):
     #aligner = mp.Aligner(seq=refseq, preset=preset)
 
     # set --score-N parameter to 10
@@ -97,7 +97,7 @@ cdef get_aligner(seq, preset, ns=True):
     # https://github.com/lh3/minimap2/issues/155
     # https://github.com/lh3/minimap2/blob/0cc3cdca27f050fb80a19c90d25ecc6ab0b0907b/python/README.rst?plain=1#L93
 
-    aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 127]) if ns else mp.Aligner(seq=seq, preset=preset)
+    aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
     # values from the manpage, under presets -> asm5
     #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
 
@@ -169,13 +169,16 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
                            qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()])
         # print('c')
+
     logger.debug('Alignments traversed')
     # print('d')
     al = pd.DataFrame(al)
+    #print(al)
     if al.empty:
         return None
     #print(al[6])
     #al[6] = al[6].astype('float')
+
     al = al.loc[al[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
     al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
     al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
@@ -189,7 +192,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
 # </editor-fold>
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm5', ncores=1):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1):
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
@@ -331,7 +334,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 del mappingtrees[ref]
 
                 # construct alignment index from the reference
-                logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}")
+                logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
                 # print('start alignment', datetime.now())
                 # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
@@ -353,7 +356,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                             continue
 
                         # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
-                        logger.debug(f"Processing alignments for {org}. Seq len {len(seq)}.")
+                        logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
                         alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
 
@@ -369,9 +372,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 # run syri
                 logger.debug("Running syri")
-
-                # TODO MG: Replaced getsyriout with the synteny identification method from syri. Consider parallelizing this because for repetitive regions this loop would be expensive as well.
                 syris = syri_get_syntenic(alns)
+                # TODO MG: Replaced getsyriout with the synteny identification method from syri. Consider parallelizing this because for repetitive regions this loop would be expensive as well.
 
                 for org in syris:
                     if syris[org] is not None:
@@ -388,6 +390,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
 
                 if len(syns) == 0:
+                    logger.info(f"No synteny to {ref} was found!")
                     continue
 
                 # syns should be sorted
@@ -400,9 +403,10 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 # print(syns)
                 pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
-                # print(6)
+
                 # no need to recalculate the tree if no pansynteny was found
                 if pansyns is None or pansyns.empty:
+                    logger.info("No multisynteny was found in this round!")
                     continue
 
                 # Add all crosssyns with alphabetical sorting by reference name
