@@ -150,6 +150,7 @@ def main():
 
     args = parser.parse_args()
     if args.func:
+        logger.info("Starting msyd.")
         args.func(args)
         logger.info("Finished running msyd. Have a nice day!")
     else:
