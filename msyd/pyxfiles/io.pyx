@@ -526,6 +526,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                         new_rec.samples[sample].allele_indices = 0
                     else: # should catch non-ref. merisynteny
                         new_rec.samples[sample].update(rec.samples[syn.ref.org])
+                        #new_rec.samples[sample].allele_indices = rec.samples[syn.ref.org].allele_indices
 
             # read in coords from INFO column, add to single sample
             # TODO get this to work, also re-look at the if below, seeems not right (rec shouldn't be writeable)
