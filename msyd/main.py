@@ -3,6 +3,7 @@
 import msyd # to import version
 import msyd.util as util
 import msyd.io as io
+import msyd.vcf as vcf
 import msyd.imputation as imputation
 import msyd.pansyn as pansyn
 import msyd.realignment as realignment
@@ -190,25 +191,25 @@ def call(args):
 
         if not args.all:
             logger.info("Pre-filtering VCFs to pansyntenic regions")
-            vcfs = io.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=args.impute)
+            vcfs = vcf.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=args.impute)
             
 
         logger.info(vcfs)
 
         tmpfile = util.gettmpfile()
         logger.info(f"Merging VCFs, saving to {tmpfile}")
-        io.reduce_vcfs(vcfs, tmpfile)
+        vcf.reduce_vcfs(vcfs, tmpfile)
 
         logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
-        #io.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
-        io.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name, no_complex=args.no_complex, add_syn_anns=True, impute_ref=args.impute)
+        #vcf.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
+        vcf.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name, no_complex=args.no_complex, add_syn_anns=True, impute_ref=args.impute)
 
     logger.info(f"Finished running msyd call, output saved to {args.pff.name}.")
 
 def merge(args):
     # temporary function to better test the vcf merging functionality
     logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
-    io.reduce_vcfs(args.vcfs, args.outfile.name)
+    vcf.reduce_vcfs(args.vcfs, args.outfile.name)
     logger.info(f"Finished running msyd merge, output saved to {args.outfile.name}.")
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
@@ -235,7 +236,7 @@ def view(args):
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
-        io.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None, impute_ref=args.impute)
+        vcf.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None, impute_ref=args.impute)
         return # has been saved already
 
     # save
