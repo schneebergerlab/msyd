@@ -110,6 +110,10 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 logger.error(f"Error adding pansyn annotation for region {syn} to VCF. Check if the chromosome names match!")
             syncounter +=1
 
+        # debugging
+        #pos = 0
+        #oldrec = None
+
         # write the small variants in the pansyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             # double check if the chr has been added, was throwing errors for some reason...
@@ -128,6 +132,12 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 # does this need checking for None alleles? not sure...
                 if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
                     continue # skip this variant
+
+            # debugging
+            #if pos > rec.pos and rec.chrom == oldrec.chrom:
+            #    logger.error(f"Unsorted! {oldrec} before {rec}! ({pos} > {rec.pos}")
+            #    pos = rec.pos
+            #    oldrec = rec
 
             new_rec = vcfout.new_record()
             new_rec.pos = rec.pos
