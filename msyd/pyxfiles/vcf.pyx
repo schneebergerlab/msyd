@@ -126,11 +126,17 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                 else:
                     vcfout.header.add_line("##contig=<ID={}>".format(rec.chrom))
 
+            # do not include vars that start before this region
+            # otherwise the sorting will be violated
+            if rec.pos < rng.start:
+                continue
+
             # check if the region is complex by looking for symbolic alleles
             if no_complex:
                 #if any(map(lambda x: re.fullmatch(r'N|[ACGT]*', x) == None, rec.alleles)):
                 # does this need checking for None alleles? not sure...
                 if any([re.fullmatch(r'N|[ACGT]*', allele) == None for allele in rec.alleles]):
+                    logger.debug(f"Complex variant: skipping {rec}")
                     continue # skip this variant
 
             # debugging
@@ -138,6 +144,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             #    logger.error(f"Unsorted! {oldrec} before {rec}! ({pos} > {rec.pos}")
             #    pos = rec.pos
             #    oldrec = rec
+            #logger.debug(f"syn: {rng.start}-{rng.end}, pos {rec.pos}")
 
             new_rec = vcfout.new_record()
             new_rec.pos = rec.pos
@@ -400,6 +407,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
                 copy_record(rann, ovcf)
                 rann = next(rvcf)
                 continue
+            # lann.pos and rann.pos must be equal
             elif lann.alleles[0] != rann.alleles[0]:
                 # there are multiple annotations on this position, and they aren't sorted
                 # (if they are sorted the code above already works)
@@ -436,12 +444,13 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
 
                 # all variants up to this position have been added, continue as normal
                 continue
-
-            merge_vcf_records(lann, rann, ovcf)
-            # discard these two records, look at the next
-            lann = next(lvcf)
-            rann = next(rvcf)
-            continue
+            else:
+                # they are at the same position, and the ref gt matches
+                merge_vcf_records(lann, rann, ovcf)
+                # discard these two records, look at the next
+                lann = next(lvcf)
+                rann = next(rvcf)
+                continue
 
     except StopIteration:
         pass
