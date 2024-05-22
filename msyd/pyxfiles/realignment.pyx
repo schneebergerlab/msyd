@@ -150,7 +150,10 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
             qoff = qstartov.data
             al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()])
             continue
+        else:
+            logger.warning(f"Multiple ({len(reftree[rstart:rend])}) offsets in one alignment!")
         # print('b')
+
 
         for rint in sorted(reftree[rstart:rend]):
             # subset alignment to this reference offset interval
