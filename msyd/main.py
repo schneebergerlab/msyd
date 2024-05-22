@@ -195,15 +195,18 @@ def call(args):
             vcfs = vcf.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=args.impute)
             
 
-        logger.info(vcfs)
+        logger.info(f"Filtered files: {vcfs}")
 
         tmpfile = util.gettmpfile()
         logger.info(f"Merging VCFs, saving to {tmpfile}")
         vcf.reduce_vcfs(vcfs, tmpfile)
 
-        logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
-        #vcf.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
-        vcf.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name, no_complex=args.no_complex, add_syn_anns=True, impute_ref=args.impute)
+        if args.impute:
+            logger.info(f"Imputing reference genotypes in syntenic regions, saving to {args.vcf.name}")
+            vcf.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name, no_complex=args.no_complex, add_syn_anns=True, impute_ref=args.impute)
+        else:
+            logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
+            vcf.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
 
     logger.info(f"Finished running msyd call, output saved to {args.pff.name}.")
 
