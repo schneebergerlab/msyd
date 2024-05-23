@@ -621,12 +621,78 @@ cdef write_pansyns(pansyns, buf, orgs, save_cigars=False):
                 if not save_cigars else
                 [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org, pansyn.cigars_dict[org].to_string()]
                   )
-             if org in pansyn.ranges_dict else '-' for pansyn in pansyns]) # if the haplotype isn't syntenic to an organism, put a minus
+             if org in pansyn.ranges_dict else
+                     (','.join([pansyn.ref.to_pff(), pansyn.ref.org]) # add orgs used as a reference when realigning
+                     if pansyn.ref.org == org else '-') # if there is no synteny, put a minus
+             for pansyn in pansyns])
          for org in orgs])
       )
     buf.write("\n")
 
-cpdef read_pff(f):
+cpdef read_pff(fin):
+    """
+    Takes a file object or path to a file in PFF format and reads it in as a DataFrame of Pansynteny objects.
+    Supports the new version of PFF format; for legacy files, use the deprecated version of this function.
+    """
+    syns = deque()
+    if isinstance(fin, str):
+        fin = open(fin, 'rt')
+
+    line = fin.readline().strip().split()
+    samples = line[4:]
+    for line in fin:
+        # if line == '': continue
+        # if line is None: continue
+        line = line.strip().split()
+        if line == []: continue
+        #try:
+        #    anno = line[3]
+        #except IndexError:
+        #    logger.error(f"Invalid line encountered while reading PFF: {line}")
+
+        refrng = Range('ref', line[0], None, int(line[1]), int(line[2]))
+
+        # split once to reuse in pansyn construction loop
+        samplecells = [cell.split(';') for cell in line[4:]]
+
+        # a single line may contain multiple merisyn records if the PFF is collapsed
+        for i in range(len(samplecells[0])): # will iterate just once for single records
+            reforg = 'ref'
+            syn = Pansyn(None, {}, None)
+            for sample, samplecell in zip(samples, samplecells):
+                #logger.info(f"Parsing {samplecell}")
+                if samplecell[i] == '-': # skip empty records
+                    continue
+
+                vals = samplecell[i].split(',')
+                reforg = vals[1] # should be the same in all records, but we don't know which ones are present, so set it each time to be sure
+                syn.ranges_dict[sample] = Range.read_pff(sample, vals[0])
+                
+                # read cigars if present
+                if len(vals) > 2:
+                    if syn.cigars_dict:
+                        syn.cigars_dict[sample] = cigar.cigar_from_string(vals[2])
+                    else: # initialise if it hasn't been already
+                        syn.cigars_dict = {sample: cigar.cigar_from_string(vals[2])}
+
+            if reforg == 'ref':
+                syn.ref = refrng
+            else:
+                if reforg in syn.ranges_dict:
+                    syn.ref = syn.ranges_dict[reforg]
+                    del syn.ranges_dict[reforg] # a ref shouldn't also be in the samples
+                    if reforg in syn.cigars_dict:
+                        del syn.cigars_dict[reforg] # the alignment would just be a full match anyway
+                else:
+                    logger.error(f"Error while reading PFF: Specified reference not found in PFF!\n Line: {line}")
+                    raise ValueError("Reference not found in line!")
+
+            syns.append(syn)
+    fin.close()
+    return pd.DataFrame(data=list(syns)) # shouldn't require sorting
+
+
+cpdef DEPRECATED_read_pff(f):
     """DEPRECATED: reads the pre-0.1 version of the PFF format. Use the new read function instead, unless working with legacy files.
 
     Takes a file object or path to a file in PFF format and reads it in as a DataFrame.

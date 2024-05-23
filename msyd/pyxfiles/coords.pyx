@@ -61,7 +61,7 @@ class Position:
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 #@cython.total_ordering
 class Range:
-    def __init__(self, org:str, chr:str, haplo:str, start: int, end: int):
+    def __init__(self, org:str, chr:str, haplo, start: int, end: int):
         self.org = org
         self.chr = chr
         self.haplo = haplo
