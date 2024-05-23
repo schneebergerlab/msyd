@@ -255,15 +255,15 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     if sort:
         syns = [x.sort_values(x.columns[0]) for x in syns]
 
-    alnfilelookup = {
-            'sam': io.readSAMBAM,
-            'bam': io.readSAMBAM,
-            'paf': io.readPAF
-            }
+    #alnfilelookup = {
+    #        'sam': io.readSAMBAM,
+    #        'bam': io.readSAMBAM,
+    #        'paf': io.readPAF
+    #        }
 
     if alns and SYNAL:
         #TODO log
-        alns = [alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
+        alns = [io.alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
         alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
 
         syns = [match_synal(*x, ref=ref) for x in zip(syns, alns)]

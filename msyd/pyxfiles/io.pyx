@@ -333,6 +333,58 @@ def readPAF(paf):
         sys.exit()
 # END
 
+alnfilelookup = {
+        'sam': io.readSAMBAM,
+        'bam': io.readSAMBAM,
+        'paf': io.readPAF
+        }
+
+cpdef read_alnsfile(fin):
+    """
+    Reads in pairwise all vs all alignments.
+    The file containing each alignment is in the third column, the first two columns contain the samples used as reference and alternative in the alignment.
+    The fourth column may optionally contain the filetype (sam, bam or paf).
+    If no fourth column is present, the filetype will be inferred from the file ending
+    Empty lines and lines starting with '#' are ignored
+    """
+    if isinstance(fin, str):
+        fin = open(fin, 'rt')
+
+    out = dict()
+    for line in fin:
+        line = line.strip()
+        # ignore empty lines and comments
+        if line == '' or line[0] == '#':
+            continue
+        
+        # parse TSV
+        line = line.split('\t')
+        ref = line[0].strip()
+        alt = line[1].strip()
+        path = line[2].strip()
+
+        # read in aln file
+        ftype = line[3].strip() if len(line) > 3 else path.split('.')[-1]
+        aln = alnfilelookup[ftype.lower()](path)
+        
+        # add to dict of dicts structure
+        if ref not in out:
+            out[ref] = {alt: aln}
+        else:
+            if alt in out[ref]: # warn on duplicate
+                logger.warning(f"Duplicate alignment from {alt} to {ref}. Using last one!")
+            out[ref][alt] = aln
+
+    # check if all pairwise alignments are present, otherwise warn
+    for org in out:
+        others = set(out)
+        others.remove(out)
+        if not set(out[org]) == others:
+            logger.warning(f"Not all pairwise alignments present for {org}! This may cause errors during realignment.")
+
+    return out
+
+
 # pasted from plotsr, parsing syri output
 VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
 cpdef readsyriout(f):
