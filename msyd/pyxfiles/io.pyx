@@ -619,7 +619,7 @@ cdef write_pansyns(pansyns, buf, orgs, save_cigars=False):
             [','.join( # <range>,<haplotype organism>,[<CIGAR>]
                 [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org]\
                 if not save_cigars else
-                [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org, pansyn.cigars_dict[org]]
+                [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org, pansyn.cigars_dict[org].to_string()]
                   )
              if org in pansyn.ranges_dict else '-' for pansyn in pansyns]) # if the haplotype isn't syntenic to an organism, put a minus
          for org in orgs])
@@ -647,5 +647,5 @@ cpdef read_pff(f):
             )
             syns.append(syn)
 
-
+    f.close()
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
