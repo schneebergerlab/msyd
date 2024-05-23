@@ -289,7 +289,7 @@ def view(args):
     elif args.filetype == 'pff-nocg' or args.filetype == 'pff-nocigar':
         io.save_to_pff(df, args.outfile, save_cigars=False)
     else:
-        logger.error(f"Invalid filetype: {args.filetype}")
+        logger.error(f"Couldn't determine filetype for {args.filetype}")
         return
     logger.info(f"Finished running msyd view, output saved to {args.outfile.name}.")
 
