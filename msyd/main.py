@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 
+import msyd # to import version
+import msyd.util as util
+import msyd.io as io
+import msyd.vcf as vcf
+import msyd.imputation as imputation
+import msyd.pansyn as pansyn
+import msyd.realignment as realignment
+from msyd.coords import Range
+
+import msyd.ordering as ordering
+
+logger = util.CustomFormatter.getlogger(__name__)
 
 import pandas as pd
 
@@ -68,18 +80,19 @@ def main():
     call_parser.set_defaults(func=call)
     call_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output, alignment and VCF files in from. For more details, see the Readme.")
     call_parser.add_argument("-o", dest='pff', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
-    call_parser.add_argument("-m", "--merge-vcf", dest='vcf', type=argparse.FileType('wt'), help="Merge the VCFs specified in the input table, store the merged VCF at the path specified.")
-    call_parser.add_argument("-a", "--all", dest='all', action='store_const', const=True, default=False, help="Merge all VCF records instead of only records annotated in pansyntenic regions.")
+    call_parser.add_argument("-m", "--merge-vcf", dest='vcf', type=argparse.FileType('wt'), help="Merge the VCFs specified in the input table, store the merged VCF at the path specified. Does not currently work with --realign, as non-ref haplotypes do not have coordinates on the reference that VCF records can be fetched from.")
+    call_parser.add_argument("-a", "--all", dest='all', action='store_true', default=False, help="Merge all VCF records instead of only records annotated in pansyntenic regions.")
     call_parser.add_argument("-x", "--complex", dest='no_complex', action='store_const', const=False, default=True, help="Do not filter the input VCFs to only contain SNPs and INDELs")
     call_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="Reference to use for the VCF output")
     call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PFF file containing a previous pansynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Pansyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 1.", type=int, default=1)
-    call_parser.add_argument("--core", dest='core', action='store_const', const=True, default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
+    call_parser.add_argument("--core", dest='core', action='store_true', default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
-    call_parser.add_argument("--realign", "-ali", dest='realign', action='store_const', const=True, default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
+    call_parser.add_argument("--realign", "-ali", dest='realign', action='store_true', default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
-    call_parser.add_argument("--workdir", "-w", dest='workdir', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!", default='.')
+    call_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
+    call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
     call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     call_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
@@ -98,6 +111,7 @@ def main():
     view_parser.add_argument("-p", dest='print', action='store_const', const=10, help="Print the first 10 regions after filtering, mainly for debugging")
     view_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="If saving to VCF, the reference to use can be specified with this flag")
     view_parser.add_argument("--intersect", dest='intersect', type=argparse.FileType('r'), help="VCF File to intersect with the PFF file given with -i. Will only keep annotations within pansyntenic regions")
+    view_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
 
     view_parser.add_argument("--opff", dest='filetype', action='store_const', const='pff', help="store output in PFF format")
     view_parser.add_argument("--opff-nocg", dest='filetype', action='store_const', const='pff-nocg', help="store output in PFF format, discarding cigar strings")
@@ -138,6 +152,7 @@ def main():
 
     args = parser.parse_args()
     if args.func:
+        logger.info("Starting msyd.")
         args.func(args)
         logger.info("Finished running msyd. Have a nice day!")
     else:
@@ -200,16 +215,21 @@ def call(args):
 
         if not args.all:
             logger.info("Pre-filtering VCFs to pansyntenic regions")
-            vcfs = io.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False)
+            vcfs = vcf.filter_vcfs(df, vcfs, ref, no_complex=args.no_complex, add_syn_anns=False, impute_ref=args.impute)
+            
 
-        logger.info(vcfs)
+        logger.info(f"Filtered files: {vcfs}")
 
         tmpfile = util.gettmpfile()
         logger.info(f"Merging VCFs, saving to {tmpfile}")
-        io.reduce_vcfs(vcfs, tmpfile)
+        vcf.reduce_vcfs(vcfs, tmpfile)
 
-        logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
-        io.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
+        if args.impute:
+            logger.info(f"Imputing reference genotypes in syntenic regions, saving to {args.vcf.name}")
+            vcf.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name, no_complex=args.no_complex, add_syn_anns=True, impute_ref=args.impute)
+        else:
+            logger.info(f"Adding pansynteny annotations, saving to {args.vcf.name}")
+            vcf.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
 
     logger.info(f"Finished running msyd call, output saved to {args.pff.name}.")
 
@@ -221,7 +241,7 @@ def merge(args):
 
     # temporary function to better test the vcf merging functionality
     logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
-    io.reduce_vcfs(args.vcfs, args.outfile.name)
+    vcf.reduce_vcfs(args.vcfs, args.outfile.name)
     logger.info(f"Finished running msyd merge, output saved to {args.outfile.name}.")
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
@@ -257,7 +277,7 @@ def view(args):
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
-        io.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None)
+        vcf.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None, impute_ref=args.impute)
         return # has been saved already
 
     # save
