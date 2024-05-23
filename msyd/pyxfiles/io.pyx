@@ -631,11 +631,6 @@ cdef write_pansyns(pansyns, buf, orgs, save_cigars=False):
       )
     buf.write("\n")
 
-<<<<<<< HEAD
-cpdef read_pff(f):
-    """Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
-    A reader for the newer variant of PFF file is available here: msyd.annotate_sv.read_pff2
-=======
 cpdef read_pff(fin):
     """
     Takes a file object or path to a file in PFF format and reads it in as a DataFrame of Pansynteny objects.
