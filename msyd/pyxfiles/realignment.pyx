@@ -218,8 +218,10 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
         for org in mappingtrees}
 
 cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
-    ret = alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) &
-                   (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend)]
+    # get all alns that span this range; assumes we can align through the entire range, ignores smaller alignments within the range
+    #TODO also get those? in separate condition or single big clause
+    ret = alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
+                   (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)]
     ret.sort_values(['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend'], inplace=True)
     ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     return ret
