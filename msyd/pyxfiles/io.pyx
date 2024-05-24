@@ -334,9 +334,9 @@ def readPAF(paf):
 # END
 
 alnfilelookup = {
-        'sam': io.readSAMBAM,
-        'bam': io.readSAMBAM,
-        'paf': io.readPAF
+        'sam': readSAMBAM,
+        'bam': readSAMBAM,
+        'paf': readPAF
         }
 
 cpdef read_alnsfile(fin):
@@ -672,7 +672,7 @@ cdef write_pansyns(pansyns, buf, orgs, save_cigars=False):
         [';'.join(
             [','.join( # <range>,<haplotype organism>,[<CIGAR>]
                 [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org]\
-                if not save_cigars else
+                if not (save_cigars and pansyn.cigars_dict) else
                 [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org, pansyn.cigars_dict[org].to_string()]
                   )
              if org in pansyn.ranges_dict else
@@ -735,8 +735,9 @@ cpdef read_pff(fin):
                 if reforg in syn.ranges_dict:
                     syn.ref = syn.ranges_dict[reforg]
                     del syn.ranges_dict[reforg] # a ref shouldn't also be in the samples
-                    if reforg in syn.cigars_dict:
-                        del syn.cigars_dict[reforg] # the alignment would just be a full match anyway
+                    # remove alignment , would just be a full match anyway
+                    if syn.cigars_dict and reforg in syn.cigars_dict:
+                        del syn.cigars_dict[reforg]
                 else:
                     logger.error(f"Error while reading PFF: Specified reference not found in PFF!\n Line: {line}")
                     raise ValueError("Reference not found in line!")
