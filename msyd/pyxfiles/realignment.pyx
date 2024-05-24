@@ -180,9 +180,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
                 # check to make sure alns match cigar length
                 if aln[4] != qcg.get_len(ref=True):
-                    logger.error(f"Aln length not matching cigar length! {aln}")
+                    logger.error(f"Aln length not matching cigar length on ref! Occurred in {aln}")
                 if aln[5] != qcg.get_len(ref=False):
-                    logger.error(f"Aln length not matching cigar length! {aln}")
+                    logger.error(f"Aln length not matching cigar length on qry! Occurred in {aln}")
                 alns.append(aln)
 
         # print('c')
@@ -217,13 +217,41 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
         for interval in sorted(mappingtrees[org])])
         for org in mappingtrees}
 
+
 cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
+    ret = deque()
     # get all alns that span this range; assumes we can align through the entire range, ignores smaller alignments within the range
     #TODO also get those? in separate condition or single big clause
-    ret = alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-                   (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)]
-    ret.sort_values(['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend'], inplace=True)
+    for aln in alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
+                        (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)]\
+                                .iterrows():
+        # cut off alignments to only in the gap we are realigning
+        aln = aln[1]
+        cg = cigar.cigar_from_string(aln.cg)
+        logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend}")
+        srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
+        
+        # check that the positions after removing match
+        if srem != qstart - aln.bstart:
+            logger.error(f"Mismatch during alignment trimming, start does not map on query! Occurred in {aln}")
+        if erem != aln.bend - qend:
+            logger.error(f"Mismatch during alignment trimming, end does not map on query! Occurred in {aln}")
+
+        # check that lengths match
+        if rend - rstart != cg.get_len(ref=True):
+            logger.error(f"Coordinate length ({rend - rstart}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
+        if qend - qstart != cg.get_len(ref=False):
+            logger.error(f"Coordinate length ({qend - qstart}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
+
+        ret.append([rstart, rend, qstart, qend, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, aln.achr, aln.bchr, cg.to_string()])
+
+
+    if len(ret) == 0: # return no aln if none found
+        return None
+
+    ret = pd.DataFrame(ret)
     ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    ret.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
     return ret
 
 
