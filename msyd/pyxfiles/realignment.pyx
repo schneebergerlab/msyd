@@ -39,7 +39,7 @@ cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
 cdef int _NULL_CNT = 200 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)
 
 # <editor-fold desc='Support functions for realign'>
 cpdef construct_mappingtrees(crosssyns, old, syn):
@@ -116,7 +116,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
     # logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
-    logger.debug(f'Minimap2 alignment done.')
+    #logger.debug(f'Minimap2 alignment done.')
     #print([str(x) for x in m])
     al = deque()
     # traverse alignments
@@ -211,9 +211,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 # cpdef process_gaps(df, qrynames, fastas, mp_preset, ncores, cwd):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
-    Discovers all crosssynteny.
+    Discovers all merisynteny.
     
-    :arguments: A DataFrame with core and crosssyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
+    :arguments: A DataFrame with core and merisyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
     :returns: A DataFrame with the added non-reference crosssynteny
     """
     # init stuff
@@ -285,16 +285,18 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 syn = next(syniter)[1][0]
                 continue
 
-            # Block has been extracted and is long enough;
-            # extract appropriate sequences, respecting crossyn
+            #########
+            ## Block has been extracted and is long enough;
+            ## extract appropriate sequences, respecting already found merisyn
+            #########
 
             #print(old, syn, syn.ref.start - old.ref.end)
             #print(crosssyns)
 
-            ##TODO parallelise everything after this, enable nogil
+            #TODO parallelise everything after this, enable nogil
 
-
-            # construct a mapping tree and concatenate all the sequences contained within
+            
+            ## construct the mapping, and prepare sequences for realignment
             mappingtrees = construct_mappingtrees(crosssyns, old, syn)
             seqdict = {org: ('N'*_NULL_CNT).join([
                 fafin[org].fetch(region = syn.ranges_dict[org].chr,
@@ -314,15 +316,16 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 syn = next(syniter)[1][0]
                 continue
 
-            # TODO: Parse file containing the centromere coordinate. Check if the selected region is centromeric, skip re-alignment if it is.
-
+            ## Realign iteratively until all synteny is found
             while len(seqdict) > 2: # realign until there is only one sequence left
 
+                # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
                 if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
                     break
 
-                # choose a reference as the sample containing the most non-crosssynteny
+                ## choose a reference
+                # uses the sample containing the most non-merisyntenic sequence
                 # ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
                 ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
@@ -373,11 +376,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 #print(ref, refseq)
                 #print(seqdict)
 
-                # run syri
+                ## run syri
                 logger.debug("Running syri")
                 syris = syri_get_syntenic(alns)
                 # TODO MG: Replaced getsyriout with the synteny identification method from syri. Consider parallelizing this because for repetitive regions this loop would be expensive as well.
 
+                ## Match ALNs, in preparation for merisyn identification
                 for org in syris:
                     if syris[org] is not None:
                         #print("===", org, mappingtrees[org][0], "against", ref, reftree[0], reftree[-1], "===")
@@ -404,7 +408,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 # should probably not be strictly necessary here as we call syri ourselves
                 # but doesn't hurt to check either
 
+                
                 # print(syns)
+                ## Find merisyn in the syri calls
                 pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
 
                 # no need to recalculate the tree if no pansynteny was found
@@ -419,7 +425,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(crosssyns))}) of cross-synteny.")
 
                 ## recalculate mappingtrees from current crosssyns to remove newly found cross synteny
-                # TODO maybe in future directly remove, might be more efficient
+                # TODO maybe directly remove, should be more efficient
                 mappingtrees = construct_mappingtrees(crosssyns, old, syn)
                 # remove all orgs that have already been used as a reference
                 for reforg in crosssyns:
