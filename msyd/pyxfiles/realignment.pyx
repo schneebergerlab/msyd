@@ -201,8 +201,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
     #alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
     #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
-    alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
-    alns.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    #alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    alns.columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cigar']
+    alns.sort_values(['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend'], inplace=True)
     #print(alns[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
     # print('e')
     return None if alns.empty else alns
@@ -221,7 +222,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     ret = alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) &
                    (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend)]
     ret.sort_values(['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend'], inplace=True)
-    ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    #ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     return ret
 
 
@@ -405,7 +406,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 # filter out alignments only containing inversions
                 for org in alns:
-                    if alns[org] is not None and all(alns[org].bDir == -1):
+                    if alns[org] is not None and all(alns[org].bdir == -1):
                         logger.warning(f"{org} in alns only contains inverted alignments: \n{alns[org]}")
                         alns[org] = None
 
@@ -521,21 +522,21 @@ cdef syri_get_syntenic(alns):
         if alns[org] is None: continue
         coords = alns[org]
         try:
-            assert coords.aChr.nunique() == 1
-            assert coords.bChr.nunique() == 1
+            assert coords.achr.nunique() == 1
+            assert coords.bchr.nunique() == 1
         except AssertionError:
             logger.error(
-                f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+                f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.achr}. Qry chromosomes: {coords.bchr}")
         # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-        chromr = list(coords.aChr)[0]  # there should only ever be one chr anyway
-        chromq = list(coords.bChr)[0]
+        chromr = list(coords.achr)[0]  # there should only ever be one chr anyway
+        chromq = list(coords.bchr)[0]
         samechrids = chromr == chromq
         if not samechrids:
-            coords.bChr.replace(chromq, chromr, inplace=True)
+            coords.bchr.replace(chromq, chromr, inplace=True)
         chromo = chromr
-        coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
-        syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
-                      coordsData.bEnd.values, T)
+        coordsData = coords[(coords.achr == chromo) & (coords.bchr == chromo) & (coords.bdir == 1)]
+        syndf = apply_TS(coordsData.astart.values, coordsData.aend.values, coordsData.bstart.values,
+                      coordsData.bend.values, T)
 
         blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
         for block in blocks:
@@ -554,7 +555,7 @@ cdef syri_get_syntenic(alns):
         synData = coordsData.iloc[synPath].copy()
 
         if not samechrids:
-            synData.bChr.replace(chromr, chromq, inplace=True)
+            synData.bchr.replace(chromr, chromq, inplace=True)
 
         synData.columns = list(map(str.lower, synData.columns))
         synData[['aseq', 'bseq', 'id', 'parent', 'dupclass']] = '-'     # Setting `id` and `parent` as `-`. This does not fit normal syri output but here it should inconsequential as these columns are (probably) not used anyway
