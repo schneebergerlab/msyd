@@ -378,7 +378,7 @@ cpdef read_alnsfile(fin):
     # check if all pairwise alignments are present, otherwise warn
     for org in out:
         others = set(out)
-        others.remove(out)
+        others.remove(org)
         if not set(out[org]) == others:
             logger.warning(f"Not all pairwise alignments present for {org}! This may cause errors during realignment.")
 
