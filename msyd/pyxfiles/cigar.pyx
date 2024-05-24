@@ -200,7 +200,11 @@ cdef class Cigar:
         If `only_pos` is set, will not change the Cigar, but only return the number of bases that would be removed.
         Internally calls get_removed().
         """
-        return (self.get_removed(s, ref=ref, only_pos=only_pos), self.get_removed(e, ref=ref, only_pos=only_pos))
+        if only_pos:
+            return (self.get_removed(s, ref=ref, only_pos=only_pos), self.get_removed(e, ref=ref, only_pos=only_pos))
+        sdrop, tmp = self.get_removed(s, ref=ref)
+        edrop, tmp = tmp.get_removed(e, ref=ref)
+        return (sdrop, edrop, tmp)
 
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
