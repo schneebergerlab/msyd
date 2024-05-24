@@ -42,8 +42,8 @@ logger = util.CustomFormatter.getlogger(__name__)
 #logger.setLevel(logging.DEBUG)
 
 # <editor-fold desc='Support functions for realign'>
-cpdef construct_mappingtrees(crosssyns, old, syn):
-# def construct_mappingtrees(crosssyns, old, syn):
+cpdef construct_mappingtrees(merisyns, old, syn):
+# def construct_mappingtrees(merisyns, old, syn):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
     Crosssyns need to be sorted by position on reference.
@@ -53,10 +53,10 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
     posdict = defaultdict(int) # stores the current position in each org
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
 
-    for reforg in crosssyns:
-        for crosssyn in crosssyns[reforg]:
+    for reforg in merisyns:
+        for merisyn in merisyns[reforg]:
             # iterate through all pansyns found so far by realignment
-            for org, rng in crosssyn.ranges_dict.items():
+            for org, rng in merisyn.ranges_dict.items():
                 #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
                 l = rng.start - offsetdict[org] # len of the region to be added
                 if l < 0:
@@ -78,7 +78,7 @@ cpdef construct_mappingtrees(crosssyns, old, syn):
                 # all up to the end of this region has been added
                 offsetdict[org] = rng.end
 
-    # see if there's any sequence left to realign after processing the crosssyn regions
+    # see if there's any sequence left to realign after processing the merisyn regions
     for org, offset in offsetdict.items():
         l = syn.ranges_dict[org].start - offset
         if l >= _MIN_REALIGN_THRESH:
@@ -227,7 +227,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     Discovers all merisynteny.
     
     :arguments: A DataFrame with core and merisyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
-    :returns: A DataFrame with the added non-reference crosssynteny
+    :returns: A DataFrame with the added non-reference merisynteny
     """
     # init stuff
     ret = deque()#pd.DataFrame()
@@ -251,12 +251,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             syn = next(syniter)[1][0]
             # print(vars(syn))
         old = syn
-        # TODO: Misses the crosssyn before the first coresyn region? This would become if there are no or very few coresyn regions
-        # leon: yes, the crosssyn before the first and after the last coresyn of a chromosome will be missed.
+        # TODO: Misses the merisyn before the first coresyn region? This would become if there are no or very few coresyn regions
+        # leon: yes, the merisyn before the first and after the last coresyn of a chromosome will be missed.
         # my thinking was that this would correspond to the highly polymorphic tails of the chromosomes
         # this seems to work out in Ampril (the first coresyn starts at <2 kb in my local test dataset),
         # but might cause problems in datasets with very little coresyn
-        crosssyns = dict()
+        merisyns = dict()
         # CNT = 0
         while True:
             # CNT += 1
@@ -264,15 +264,15 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             # if CNT == 100:
             #     break
             # find block between two coresyn regions
-            crosssyns = dict()
+            merisyns = dict()
 
-            # store crosssyn-regions, to be added once we know if we need to realign
-            refcrosssyns = []
+            # store merisyn-regions, to be added once we know if we need to realign
+            refmerisyns = []
             while syn.get_degree() < n:
-                refcrosssyns.append(syn)
+                refmerisyns.append(syn)
                 syn = next(syniter)[1][0]
 
-            crosssyns[old.ref.org] = refcrosssyns
+            merisyns[old.ref.org] = refmerisyns
 
             # syn must be core now
 
@@ -304,13 +304,13 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             #########
 
             #print(old, syn, syn.ref.start - old.ref.end)
-            #print(crosssyns)
+            #print(merisyns)
 
             #TODO parallelise everything after this, enable nogil
 
             
             ## construct the mapping, and prepare sequences for realignment
-            mappingtrees = construct_mappingtrees(crosssyns, old, syn)
+            mappingtrees = construct_mappingtrees(merisyns, old, syn)
             seqdict = {org: ('N'*_NULL_CNT).join([
                 fafin[org].fetch(region = syn.ranges_dict[org].chr,
                                  start = interval.data,
@@ -334,7 +334,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
-                if _MAX_REALIGN > 0 and len(crosssyns) > _MAX_REALIGN:
+                if _MAX_REALIGN > 0 and len(merisyns) > _MAX_REALIGN:
                     break
 
                 ## choose a reference
@@ -431,17 +431,17 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     logger.info("No multisynteny was found in this round!")
                     continue
 
-                # Add all crosssyns with alphabetical sorting by reference name
-                crosssyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
-                added = sum([len(x.ref) for x in crosssyns[ref]])
+                # Add all merisyns with alphabetical sorting by reference name
+                merisyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
+                added = sum([len(x.ref) for x in merisyns[ref]])
 
-                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(crosssyns))}) of cross-synteny.")
+                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merisyns))}) of mersisynteny.")
 
-                ## recalculate mappingtrees from current crosssyns to remove newly found cross synteny
+                ## recalculate mappingtrees from current merisyns to remove newly found meri synteny
                 # TODO maybe directly remove, should be more efficient
-                mappingtrees = construct_mappingtrees(crosssyns, old, syn)
+                mappingtrees = construct_mappingtrees(merisyns, old, syn)
                 # remove all orgs that have already been used as a reference
-                for reforg in crosssyns:
+                for reforg in merisyns:
                     if reforg in mappingtrees:
                         del mappingtrees[reforg]
 
@@ -470,9 +470,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
 
             # incorporate into output DF, sorted alphabetically by ref name
-            # does nothing if no crossyn was found
-            for org in sorted(crosssyns.keys()):
-                ret.extend(crosssyns[org])
+            # does nothing if no merisyn was found
+            for org in sorted(merisyns.keys()):
+                ret.extend(merisyns[org])
 
             # continue checking the next coresyn gap
             old = syn
@@ -652,7 +652,7 @@ cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, red
     # writing to and then reading from files is quite inefficient, especially
     # for short realignments
 
-    #Identify cross-chromosomal events in all chromosomes simultaneously
+    #Identify meri-chromosomal events in all chromosomes simultaneously
     getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
 
     # Recalculate syntenic blocks by considering the blocks introduced by CX events
