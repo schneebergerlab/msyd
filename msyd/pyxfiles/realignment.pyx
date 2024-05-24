@@ -118,7 +118,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
     #logger.debug(f'Minimap2 alignment done.')
     #print([str(x) for x in m])
-    al = deque()
+    alns = deque()
     # traverse alignments
     logger.debug('Traversing alignments')
     for h in m:
@@ -148,12 +148,18 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
-            al.append([rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()])
+            aln = [rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()]
+
+            # check to make sure alns match cigar length
+            if aln[4] != cg.get_len(ref=True):
+                    logger.error(f"Aln length not matching cigar length! {aln}")
+            if aln[5] != cg.get_len(ref=False):
+                    logger.error(f"Aln length not matching cigar length! {aln}")
+
+            alns.append(aln)
             continue
         else:
             logger.warning(f"Multiple ({len(reftree[rstart:rend])}) offsets in one alignment!")
-        # print('b')
-
 
         for rint in sorted(reftree[rstart:rend]):
             # subset alignment to this reference offset interval
@@ -167,31 +173,38 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
                 #TODO maybe filter out small alignments here?
                 #print("r:", rint.data, rstart, rend, rint.begin, rint.end, rendel, rstdel, qcg.get_len(ref=True))
                 #print("q:", qint.data, qstart, qend, qint.begin, qint.end, qendel, qstdel, qcg.get_len(ref=False))
-                al.append([rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
+                aln = [rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
-                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()])
+                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()]
+
+                # check to make sure alns match cigar length
+                if aln[4] != qcg.get_len(ref=True):
+                    logger.error(f"Aln length not matching cigar length! {aln}")
+                if aln[5] != qcg.get_len(ref=False):
+                    logger.error(f"Aln length not matching cigar length! {aln}")
+                alns.append(aln)
+
         # print('c')
 
     logger.debug('Alignments traversed')
     # print('d')
-    al = pd.DataFrame(al)
-    #print(al)
-    if al.empty:
+    alns = pd.DataFrame(alns)
+    #print(alns)
+    if alns.empty:
         return None
-    #print(al[6])
-    #al[6] = al[6].astype('float')
+    #print(alns[6])
+    #alns[6] = alns[6].astype('float')
 
-    al = al.loc[al[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
-    al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] + al.loc[al[8] == -1, 3]
-    al.loc[al[8] == -1, 3] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
-    al.loc[al[8] == -1, 2] = al.loc[al[8] == -1, 2] - al.loc[al[8] == -1, 3]
-    al.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
-    al.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    #print(al[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
+    alns = alns.loc[alns[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
+    alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
+    alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
+    alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
+    alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    alns.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    #print(alns[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
     # print('e')
-    #TODO use tree to remap!
-    return None if al.empty else al
+    return None if alns.empty else alns
 
 # </editor-fold>
 
