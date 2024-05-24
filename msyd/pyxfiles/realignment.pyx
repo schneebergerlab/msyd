@@ -197,9 +197,10 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     #alns[6] = alns[6].astype('float')
 
     alns = alns.loc[alns[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
-    alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
-    alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
-    alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
+    # count inverted alns as well
+    #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
+    #alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
+    #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
     alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alns.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
     #print(alns[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
