@@ -209,6 +209,15 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
 # </editor-fold>
 
+cpdef generate_seqdict(fafin, mappingtrees, chrdict):
+    return {org:('N'*_NULL_CNT).join([
+        fafin[org].fetch(region = chrdict[org],
+                         start = interval.data,
+                         end = interval.data + interval.end - interval.begin)
+        for interval in sorted(mappingtrees[org])])
+        for org in mappingtrees}
+
+
 cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1):
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
@@ -312,12 +321,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             
             ## construct the mapping, and prepare sequences for realignment
             mappingtrees = construct_mappingtrees(merisyns, old, syn)
-            seqdict = {org: ('N'*_NULL_CNT).join([
-                fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                 start = interval.data,
-                                 end = interval.data + interval.end - interval.begin)
-                for interval in sorted(mappingtrees[org])]) # in theory intervaltrees should sort itself, but just in case
-                for org in mappingtrees}
+            seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
 
             #if any([len(mappingtrees[org]) > 3 for org in mappingtrees]):
             #    logger.info(mappingtrees)
@@ -453,12 +457,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 #logger.info("emit ending lens in seqdict")
                 #logger.info(str(lendict))
 
-                seqdict = {org:('N'*_NULL_CNT).join([
-                    fafin[org].fetch(region = syn.ranges_dict[org].chr,
-                                     start = interval.data,
-                                     end = interval.data + interval.end - interval.begin)
-                    for interval in sorted(mappingtrees[org])])
-                    for org in mappingtrees}
+                seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
                 if not seqdict: # if all sequences have been discarded, finish realignment
                     break
 
