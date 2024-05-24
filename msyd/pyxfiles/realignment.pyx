@@ -39,7 +39,7 @@ cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
 cdef int _NULL_CNT = 200 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 # <editor-fold desc='Support functions for realign'>
 cpdef construct_mappingtrees(merisyns, old, syn):
@@ -217,8 +217,15 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
         for interval in sorted(mappingtrees[org])])
         for org in mappingtrees}
 
+cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
+    ret = alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) &
+                   (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend)]
+    ret.sort_values(['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend'], inplace=True)
+    ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    return ret
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1):
+
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None):
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
@@ -344,8 +351,11 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 ## choose a reference
                 # uses the sample containing the most non-merisyntenic sequence
-                # ref = max(map(lambda x: (len(x[1]), x[0]), seqdict.items()))[1]
-                ref = max([(len(v), k) for k,v in seqdict.items()])[1]
+                # if a dict of pairwise alns is passed, will always prefer samples in the dict
+                if pairwise:
+                    ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
+                else:
+                    ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
                 #print('ref:', ref)
                 #print('On ref:', syn.ref.chr, start, end, end - start)
@@ -357,31 +367,40 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 reftree = mappingtrees[ref]
                 del mappingtrees[ref]
 
-                # construct alignment index from the reference
-                logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
-                # print('start alignment', datetime.now())
+                ## get alignments to reference construct alignment index from the reference
                 # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
-                # print(1)
-                if syn.ref.start - old.ref.end > 50000:
-                    logger.debug(f"Starting parallel Alignment between {syn.ref.start} and {old.ref.end} (len {util.siprefix(syn.ref.start - old.ref.end)})")
-                    alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
-                    with Pool(processes=ncores) as pool:
-                        # pool.starmap(partial(foo, d='x'), alignargs)
-                        alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree, aligner=None), alignargs)
-                    alns = dict(zip(list(seqdict.keys()), alns))
+                if pairwise and ref in pairwise:
+                    # if we have pairwise alns, fetch them
+                    logger.debug(f"Fetching from existing alignments. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
+                    refdict = pairwise[ref]
+                    # get all the alns overlapping this region; syri should do the rest
+                    # regions not in seqdict will be ignored
+                    refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
+                    refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
+                    alns = {org: get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[ref].start) for org in seqdict}
                 else:
-                    aligner = get_aligner(seq=refseq, preset=mp_preset)
-                    alns = dict()
-                    # print('seq')
-                    for org, seq in seqdict.items():
-                        if seq == '': # skip empty sequences
-                            alns[org] = None
-                            continue
+                    # otherwise realign ourselves
+                    logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
+                    if syn.ref.start - old.ref.end > 50000:
+                        logger.debug(f"Starting parallel Alignment between {syn.ref.start} and {old.ref.end} (len {util.siprefix(syn.ref.start - old.ref.end)})")
+                        alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
+                        with Pool(processes=ncores) as pool:
+                            # pool.starmap(partial(foo, d='x'), alignargs)
+                            alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree, aligner=None), alignargs)
+                        alns = dict(zip(list(seqdict.keys()), alns))
+                    else:
+                        aligner = get_aligner(seq=refseq, preset=mp_preset)
+                        alns = dict()
+                        # print('seq')
+                        for org, seq in seqdict.items():
+                            if seq == '': # skip empty sequences
+                                alns[org] = None
+                                continue
 
-                        # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
-                        logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
-                        alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
+                            # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
+                            logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
+                            alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
 
                 # filter out alignments only containing inversions
