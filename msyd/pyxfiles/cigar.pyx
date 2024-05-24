@@ -191,6 +191,17 @@ cdef class Cigar:
 
         return Cigar(newtups)
 
+    cpdef trim(self, unsigned int s, unsigned int e, bint ref=True, bint only_pos=False):
+        """
+        Trims an alignment by removing `s` bases from the start and `e` from the end.
+        If `ref` is set to `True`, the removed bases are counted on the reference sequence, otherwise on the alternative.
+        Returns a tuple with the first value representing the number of bases removed from the start in the alternative (resp. reference if `ref` is `True`).
+        The second value is the same, but from the end of the sequence.
+        If `only_pos` is set, will not change the Cigar, but only return the number of bases that would be removed.
+        Internally calls get_removed().
+        """
+        return (self.get_removed(s, ref=ref, only_pos=only_pos), self.get_removed(e, ref=ref, only_pos=only_pos))
+
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
         """
