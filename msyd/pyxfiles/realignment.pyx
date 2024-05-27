@@ -220,6 +220,12 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
 
 cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     ret = deque()
+
+    logger.debug(f"printing ALNS matching this pos: {rchrom}, {rstart}-{rend}/{qstart}-{qend}")
+    print(alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
+                        (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)]['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen'])
+
+
     # get all alns that span this range; assumes we can align through the entire range, ignores smaller alignments within the range
     #TODO also get those? in separate condition or single big clause
     for aln in alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
