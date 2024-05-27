@@ -96,7 +96,7 @@ cdef get_aligner(seq, preset, ns=False):
     # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
     # https://github.com/lh3/minimap2/issues/155
     # https://github.com/lh3/minimap2/blob/0cc3cdca27f050fb80a19c90d25ecc6ab0b0907b/python/README.rst?plain=1#L93
-
+    
     aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
     # values from the manpage, under presets -> asm5
     #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
@@ -415,13 +415,17 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
                 if pairwise and ref in pairwise:
                     # if we have pairwise alns, fetch them
-                    logger.debug(f"Fetching from existing alignments. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
+                    logger.debug(f"Fetching from existing alignments. Left core: {old.ref} ({old.ranges_dict}). Right core: {syn.ref} ({syn.ranges_dict}). Ref {ref}")
                     refdict = pairwise[ref]
                     # get all the alns overlapping this region; syri should do the rest
                     # regions not in seqdict will be ignored
                     refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
                     refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
-                    alns = {org: get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[ref].start) for org in seqdict}
+
+                    if refstart > refend:
+                        logger.error(f"{refstart} after {refend}!")
+
+                    alns = {org: get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start) for org in seqdict}
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
