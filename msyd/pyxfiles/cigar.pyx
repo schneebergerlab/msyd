@@ -233,7 +233,8 @@ cdef class Cigar:
             Cigt cur = self.tups[ind] if start else self.tups[self.tups.size()-1]
 
         # loop and remove regions as long as the skip is more than one region
-        while rem > 0 and ind < self.tups.size():
+        # >= to greedily remove I/D at the edges
+        while rem >= 0 and ind < self.tups.size():
             cur = self.tups[ind] if start else self.tups[self.tups.size()-ind -1]
             # increment appropriate counters depending on which strand this cgi forwards
             if cur.t in altfwd:
