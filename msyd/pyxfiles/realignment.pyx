@@ -83,6 +83,11 @@ cpdef construct_mappingtrees(merisyns, old, syn):
         l = syn.ranges_dict[org].start - offset
         if l >= _MIN_REALIGN_THRESH:
             mappingtrees[org][posdict[org]:posdict[org]+l] = offset
+
+    for org in old.ranges_dict:
+        if syn.ranges_dict[org].start < old.ranges_dict[org].end:
+            logger.error(f"{org}: End after start! Mappingtree {mappingtrees[org]}")
+
     return mappingtrees
 # END
 
@@ -431,6 +436,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                     if refstart > refend:
                         logger.error(f"{refstart} after {refend}!")
+                        continue
 
                     alns = {org: get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start) for org in seqdict}
                 else:
