@@ -223,7 +223,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
     logger.debug(f"printing ALNS matching this pos: {rchrom}, {rstart}-{rend}/{qstart}-{qend}")
     print(alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-                        (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)]['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen'])
+                        (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)][['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen']])
 
 
     # get all alns that span this range; assumes we can align through the entire range, ignores smaller alignments within the range
@@ -234,6 +234,13 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
         # cut off alignments to only in the gap we are realigning
         aln = aln[1]
         cg = cigar.cigar_from_string(aln.cg)
+
+        # check that aln lengths are correct
+        if cg.get_len() != aln.aend - aln.astart + 1:
+            logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
+        if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
+            logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
+
         logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
