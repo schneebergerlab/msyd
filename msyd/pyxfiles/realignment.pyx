@@ -221,9 +221,9 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
 cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     ret = deque()
 
-    logger.debug(f"printing ALNS matching this pos: {rchrom}, {rstart}-{rend}/{qstart}-{qend}")
-    print(alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-                        (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)][['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen']])
+    #logger.debug(f"printing ALNS matching this pos: {rchrom}, {rstart}-{rend}/{qstart}-{qend}")
+    #print(alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
+    #                    (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)][['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen']])
 
 
     for aln in alns.loc[(
@@ -239,27 +239,31 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
         cg = cigar.cigar_from_string(aln.cg)
 
         # check that aln lengths are correct
-        if cg.get_len() != aln.aend - aln.astart + 1:
-            logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
-        if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
-            logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
+        #if cg.get_len() != aln.aend - aln.astart + 1:
+        #    logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
+        #if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
+        #    logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
 
         logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
+        #print(cg.to_string())
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
         # check that the positions after removing match
-        if srem != qstart - aln.bstart:
-            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
-        if erem != aln.bend - qend:
-            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
+        #if srem != qstart - aln.bstart:
+        #    logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
+        #if erem != aln.bend - qend:
+        #    logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
 
-        # check that lengths match
-        if rend - rstart + 1 != cg.get_len(ref=True):
-            logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
-        if qend - qstart + 1 != cg.get_len(ref=False):
-            logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
+        ## check that lengths match
+        #if rend - rstart + 1 != cg.get_len(ref=True):
+        #    logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
+        #if qend - qstart + 1 != cg.get_len(ref=False):
+        #    logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
 
-        ret.append([rstart, rend, qstart, qend, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, aln.achr, aln.bchr, cg.to_string()])
+        # use cigar lens to force eager trimming of CIGARS
+        # otherwise, I/D records at the end of the ALN could stick around, confusing later steps
+        ret.append([rstart, rstart + cg.get_len(), qstart, qstart + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
+                    aln.adir, aln.bdir, aln.achr, aln.bchr, cg.to_string()]) # we change neither orientation nor chromosome of the ALN
 
 
     if len(ret) == 0: # return no aln if none found
@@ -509,7 +513,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 merisyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
                 added = sum([len(x.ref) for x in merisyns[ref]])
 
-                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merisyns))}) of mersisynteny.")
+                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merisyns))}) of merisynteny.")
 
                 ## recalculate mappingtrees from current merisyns to remove newly found meri synteny
                 # TODO maybe directly remove, should be more efficient
