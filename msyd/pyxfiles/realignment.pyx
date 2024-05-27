@@ -228,14 +228,14 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
         # cut off alignments to only in the gap we are realigning
         aln = aln[1]
         cg = cigar.cigar_from_string(aln.cg)
-        logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend}")
+        logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
         # check that the positions after removing match
         if srem != qstart - aln.bstart:
-            logger.error(f"Mismatch during alignment trimming, start does not map on query! Occurred in {aln}")
+            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. Occurred in {aln}")
         if erem != aln.bend - qend:
-            logger.error(f"Mismatch during alignment trimming, end does not map on query! Occurred in {aln}")
+            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. Occurred in {aln}")
 
         # check that lengths match
         if rend - rstart + 1 != cg.get_len(ref=True):
