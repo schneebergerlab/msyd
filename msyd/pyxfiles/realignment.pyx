@@ -226,11 +226,14 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
                         (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)][['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen']])
 
 
-    # get all alns that span this range; assumes we can align through the entire range, ignores smaller alignments within the range
-    #TODO also get those? in separate condition or single big clause
-    for aln in alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-                        (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)]\
-                                .iterrows():
+    for aln in alns.loc[(
+                # add alns passing over this interval
+                (alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
+                (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)) | (
+                # add alns fully within this interval
+                (alns['achr'] == rchrom) & (alns['astart'] >= rstart) & (alns['aend'] <= rend) & (alns['adir'] == 1) &
+                (alns['bchr'] == qchrom) & (alns['bstart'] >= qstart) & (alns['bend'] <= qend) & (alns['bdir'] == 1)) 
+                ].iterrows():
         # cut off alignments to only in the gap we are realigning
         aln = aln[1]
         cg = cigar.cigar_from_string(aln.cg)
@@ -246,9 +249,9 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
         
         # check that the positions after removing match
         if srem != qstart - aln.bstart:
-            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. Occurred in {aln}")
+            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
         if erem != aln.bend - qend:
-            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. Occurred in {aln}")
+            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
 
         # check that lengths match
         if rend - rstart + 1 != cg.get_len(ref=True):
