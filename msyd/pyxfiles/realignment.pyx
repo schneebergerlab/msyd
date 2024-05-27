@@ -432,7 +432,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
-                    if syn.ref.start - old.ref.end > 50000:
+                    if len(refseq) > 50000:
                         logger.debug(f"Starting parallel Alignment between {syn.ref.start} and {old.ref.end} (len {util.siprefix(syn.ref.start - old.ref.end)})")
                         alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                         with Pool(processes=ncores) as pool:
