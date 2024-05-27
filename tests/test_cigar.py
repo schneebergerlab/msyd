@@ -77,6 +77,19 @@ def test_getrem():
         assert endrem == cg.get_removed(skip, start=False)
 
 @pytest.mark.parametrize("ref", [True, False])
+@pytest.mark.parametrize("start", [True, False])
+def test_getrem_length_invariant(example_cigar, ref, start):
+    """
+    Checks that the cigar length is preserved by get_rem.
+    That is, if a cigar has len n, after removing x, the new length should be n-x.
+    """
+    l = example_cigar.get_len(ref=ref)
+    for i in [10, 50, 100, 200]:
+        if i < l:
+            assert(example_cigar.get_removed(i, ref=ref, start=start)[1].get_len(ref=ref) + i == l)
+
+
+@pytest.mark.parametrize("ref", [True, False])
 def test_getrem_inv(example_cigar, ref):
     # tests that reversing a cigar string and then skipping X is the same as getting X 
     cg_rev = example_cigar.reverse()
@@ -86,6 +99,4 @@ def test_getrem_inv(example_cigar, ref):
     assert invskip == skip
     assert invrem.reverse() == rem
     assert invrem == rem.reverse()
-
-
 
