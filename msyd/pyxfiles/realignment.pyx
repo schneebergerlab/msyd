@@ -238,10 +238,10 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
             logger.error(f"Mismatch during alignment trimming, end does not map on query! Occurred in {aln}")
 
         # check that lengths match
-        if rend - rstart != cg.get_len(ref=True):
-            logger.error(f"Coordinate length ({rend - rstart}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
-        if qend - qstart != cg.get_len(ref=False):
-            logger.error(f"Coordinate length ({qend - qstart}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
+        if rend - rstart + 1 != cg.get_len(ref=True):
+            logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
+        if qend - qstart + 1 != cg.get_len(ref=False):
+            logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
 
         ret.append([rstart, rend, qstart, qend, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, aln.achr, aln.bchr, cg.to_string()])
 
