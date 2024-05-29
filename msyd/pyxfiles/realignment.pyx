@@ -86,7 +86,7 @@ cpdef construct_mappingtrees(merisyns, old, syn):
 
     for org in old.ranges_dict:
         if old.ranges_dict[org].end > syn.ranges_dict[org].start:
-            logger.error(f"{org}: End ({old.ranges_dict[org].end}) after start ({syn.ranges_dict[org].start})! {old}, {syn}.")
+            logger.error(f"{org}: End ({old.ranges_dict[org].end}) after start ({syn.ranges_dict[org].start})! {old} (check: {old.check()}), {syn} (check: {syn.check()}).")
             #logger.debug(f"CIGARS of above error: {old.cigars_dict[org].to_string()}, {syn.cigars_dict[org].to_string()}")
 
     return mappingtrees

@@ -340,7 +340,7 @@ class Pansyn:
                 #    start = int(pstart*l)
                 #    end = int(pend*l)
 
-                if start + end < len(rng): # TODO maybe handle this case to drop proportionally, i.e. if the drop is 10% of ref, drop 10% of qry instead of having absolute length the same
+                if start + end < len(rng):
                     ranges_dict[org] = rng.drop(start, end)
         else:
             cigars_dict = dict()
@@ -359,10 +359,12 @@ class Pansyn:
                         print(traceback.format_exc())
                         logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
                         continue
+
                 except ValueError:
                     print(traceback.format_exc())
                     logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
                     continue
+
                 ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 cigars_dict[org] = cg
 
