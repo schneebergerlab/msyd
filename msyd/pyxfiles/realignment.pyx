@@ -86,7 +86,8 @@ cpdef construct_mappingtrees(merisyns, old, syn):
 
     for org in old.ranges_dict:
         if syn.ranges_dict[org].start < old.ranges_dict[org].end:
-            logger.error(f"{org}: End after start! Mappingtree {mappingtrees[org]}")
+            logger.error(f"{org}: End ({old.ranges_dict[org].end}) after start ({syn.ranges_dict[org].start})! {syn}, {old}.")
+            logger.debug(f"CIGARS of above error: {old.cigars_dict[org].to_string()}, {syn.cigars_dict[org].to_string()}")
 
     return mappingtrees
 # END
@@ -422,6 +423,14 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 reftree = mappingtrees[ref]
                 del mappingtrees[ref]
 
+                refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
+                refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
+
+                if refstart > refend:
+                    logger.error(f"{refstart} after {refend}! Seqdict {{k:len(v) for k,v in seqdict.items()}}")
+                    #continue
+
+
                 ## get alignments to reference construct alignment index from the reference
                 # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
@@ -431,19 +440,17 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     refdict = pairwise[ref]
                     # get all the alns overlapping this region; syri should do the rest
                     # regions not in seqdict will be ignored
-                    refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
-                    refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
 
-                    if refstart > refend:
-                        logger.error(f"{refstart} after {refend}!")
-                        continue
-
+                    #TODO use mappingtrees instead to divide alns and exclude existing merisyn
+                    # keep get_at_pos, write new function
+                    # call get_at_pos at start there and recycle cigar objects
+                    # to make more efficient
                     alns = {org: get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start) for org in seqdict}
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
                     if len(refseq) > 50000:
-                        logger.debug(f"Starting parallel Alignment between {syn.ref.start} and {old.ref.end} (len {util.siprefix(syn.ref.start - old.ref.end)})")
+                        logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
                         alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                         with Pool(processes=ncores) as pool:
                             # pool.starmap(partial(foo, d='x'), alignargs)
