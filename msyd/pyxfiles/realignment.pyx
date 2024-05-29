@@ -85,9 +85,9 @@ cpdef construct_mappingtrees(merisyns, old, syn):
             mappingtrees[org][posdict[org]:posdict[org]+l] = offset
 
     for org in old.ranges_dict:
-        if syn.ranges_dict[org].start < old.ranges_dict[org].end:
-            logger.error(f"{org}: End ({old.ranges_dict[org].end}) after start ({syn.ranges_dict[org].start})! {syn}, {old}.")
-            logger.debug(f"CIGARS of above error: {old.cigars_dict[org].to_string()}, {syn.cigars_dict[org].to_string()}")
+        if old.ranges_dict[org].end > syn.ranges_dict[org].start:
+            logger.error(f"{org}: End ({old.ranges_dict[org].end}) after start ({syn.ranges_dict[org].start})! {old}, {syn}.")
+            #logger.debug(f"CIGARS of above error: {old.cigars_dict[org].to_string()}, {syn.cigars_dict[org].to_string()}")
 
     return mappingtrees
 # END
@@ -352,6 +352,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             # start and end of the non-ref region, on the reference
             end = syn.ref.start
             start = old.ref.end
+            logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
             if end - start < _MIN_REALIGN_THRESH:
@@ -427,7 +428,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
 
                 if refstart > refend:
-                    logger.error(f"{refstart} after {refend}! Seqdict {{k:len(v) for k,v in seqdict.items()}}")
+                    logger.error(f"{refstart} after {refend}! Seqdict {[(k, len(v)) for k,v in seqdict.items()]}")
                     #continue
 
 
