@@ -211,25 +211,33 @@ cdef remove_overlap(syn):
     prev = next(syniter)[1][0]
     for _, cur in syniter:
         cur = cur[0]
-        # check for overlap on the reference
-        ov = prev.ref.end - cur.ref.start
-        if ov <= 0 or cur.ref.chr != prev.ref.chr: # there is no overlap
+        if cur.ref.chr != prev.ref.chr: # there can be no overlap between chrs
             prev = cur
             continue
 
-        #logger.debug(f"{ov}, {prevref}, {curref}")
-        # remove the overlap from the previous row;
-        # this performs essentially the same function as compute_overlap
-        # in intersect_syns
-        cur.ref.start += ov
-        if cur.cigars_dict:
-            for org, cg in cur.cigars_dict.items():
-                drop, cgnew = cg.get_removed(ov, start=True)
-                cur.cigars_dict[org] = cgnew
-                cur.ranges_dict[org].start += drop
-        else:
-            for rng in cur.ranges_dict.values():
-                rng.start += ov
+        ## check for & remove overlap on the reference
+        ov = prev.ref.end - cur.ref.start
+        if ov > 0:
+            # there is overlap on ref
+            logger.warning(f"Found {ov} bp overlap on reference, removing from latter record!")
+            cur = cur.drop(ov, 0) # pandas dataframes can be written to by overwriting a reference
+
+        ## check for overlap on other orgs
+
+        # when this is called, cur and prev should normally have the same orgs
+        # will not catch overlap between non-adjacent regions!
+        #assert(set(cur.ranges_dict) == set(prev.ranges_dict))
+        for org in cur: # should be on the same chr
+            if org not in prev:
+                prev = cur
+                continue
+            assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr)
+
+            ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start
+            if ov > 0:
+                # there is overlap on org
+                logger.warning(f"Found {ov} bp overlap on {org}, removing from latter record!")
+                cur = cur.drop_on_org(ov, 0, org)
 
         prev = cur
 
