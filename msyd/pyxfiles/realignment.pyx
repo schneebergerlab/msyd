@@ -225,6 +225,10 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
 
 
 cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
+    """
+    Function that takes a Dataframe of alignments, and extracts the part of each alignment overlapping with the specified regions.
+    :returns: Returns a new dataframe in the same format.
+    """
     ret = deque()
 
     #logger.debug(f"printing ALNS matching this pos: {rchrom}, {rstart}-{rend}/{qstart}-{qend}")
@@ -234,8 +238,8 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
     for aln in alns.loc[(
                 # add alns passing over this interval
-                (alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-                (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)) | (
+                (alns['achr'] == rchrom if rchrom else True) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
+                (alns['bchr'] == qchrom if qchrom else True) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)) | (
                 # add alns fully within this interval
                 (alns['achr'] == rchrom) & (alns['astart'] >= rstart) & (alns['aend'] <= rend) & (alns['adir'] == 1) &
                 (alns['bchr'] == qchrom) & (alns['bstart'] >= qstart) & (alns['bend'] <= qend) & (alns['bdir'] == 1)) 
@@ -279,6 +283,33 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     ret.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
     return ret
+
+
+cdef filter_qry(alndf, start, end):
+    """Helper Fn to filter an alignment DF for any region overlapping with [start:end]"""
+    return alndf.loc[!((alndf.bstart < start) ^ (alndf.bend > end))]
+
+cpdef get_nonsyn_alns(alndf, tree):
+    """
+    Function that extracts alignments of sequence that has not been called as merisyntenic yet from a set of alignments, in preparation for the synteny identification part of realignment.
+    This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alndf first. 
+    :args:
+    :alndf: Dataframe of alignments (eg produced by io.read_alnsfile).
+    :tree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet. Produced for all samples at once by construct_mappingtrees.
+    :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merisyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.
+    """
+
+    ret = []
+
+
+
+        ret.append([rstart, rstart + cg.get_len(), qstart, qstart + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
+
+    return pd.DataFrame(ret)
+
+
+
+
 
 
 cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None):
