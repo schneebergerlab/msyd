@@ -316,6 +316,25 @@ class Pansyn:
 
         return Pansyn(self.ref, rngs, cgs)
 
+
+    def drop_on_org(self, start, end, org):
+        """
+        Similar to drop, but supports specifying the number of bases to drop on an organism other than the reference.
+        Returns a new `Pansyn` object with `start`/`end` positions from the start/end of this pansyntenic region removed counting on `org`, respecting cigar alignments if not `None`.
+        If this `Pansyn` has no cigar object, it will be identical to a drop on the reference (as the genomes are assumed to align perfectly).
+        """
+        # in case its called with the ref org already, directly drop
+        # this fn shouldn't usually be called like this, but handle anyway
+        if org == self.ref.org:
+            return self.drop(start, end)
+
+        assert(org in self.ranges_dict)
+        # get no of bases corresponding to this drop on the reference
+        if self.cigars_dict:
+            start, end = self.cigars_dict[org].trim(start, end, only_pos=True, ref=False)
+
+        return self.drop(start, end)
+
     def drop(self, start, end):
         #, prop=False):
         #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Pansyn` without CIGAR strings.

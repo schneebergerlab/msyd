@@ -19,6 +19,8 @@ from msyd.coords import Pansyn, Range, Position
 cdef int MIN_SYN_THRESH = 30
 
 logger = util.CustomFormatter.getlogger(__name__)
+import logging
+logger.setLevel(logging.DEBUG)
 
 def find_overlaps(left, right, only_core=False):
     """
@@ -182,14 +184,20 @@ def match_synal(syn, aln, ref='a'):
                 rng = synr[1]
                 pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1
-                ## debugging output
+
+                ## Correct mismatches between CIGAR and coordinate len
+
+                # check on ref
+                if not len(pansyn.ref) == cg.get_len():
+                    logger.warning(f"CIGAR len ({cg.get_len()}) not matching coordinate len ({len(pansyn.ref)}) on ref! Adjusting end to match CIGAR len (this might be because of clipping).")
+                    pansyn.ref.end = pansyn.ref.start + cg.get_len() - 1
+
+                # check on org
                 if not len(rng) == cg.get_len(ref=False):
-                    #print(len(rng), cg.get_len(ref=False))
-                    #logger.warning(f"cigar string length on qry {cg.get_len(ref=True)}, {cg.get_len(ref=False)} does not match qry length {len(pansyn.ref)}/{len(list(pansyn.ranges_dict.values())[0])} in {pansyn}")
-                    #logger.warning(f"Cigar is: {cg}")
-                    #logger.warning("Adjusting to cg length")
                     # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
+                    logger.warning(f"CIGAR len ({cg.get_len(ref=False)}) not matching coordinate len ({len(rng)}) on {org}! Adjusting end to match CIGAR len (this might be because of clipping).")
                     rng.end = rng.start + cg.get_len(ref=False) -1
+
 
                 ret.append(pansyn)
                 synr = next(syniter)[1]
@@ -210,25 +218,33 @@ cdef remove_overlap(syn):
     prev = next(syniter)[1][0]
     for _, cur in syniter:
         cur = cur[0]
-        # check for overlap on the reference
-        ov = prev.ref.end - cur.ref.start
-        if ov <= 0 or cur.ref.chr != prev.ref.chr: # there is no overlap
+        if cur.ref.chr != prev.ref.chr: # there can be no overlap between chrs
             prev = cur
             continue
 
-        #logger.debug(f"{ov}, {prevref}, {curref}")
-        # remove the overlap from the previous row;
-        # this performs essentially the same function as compute_overlap
-        # in intersect_syns
-        cur.ref.start += ov
-        if cur.cigars_dict:
-            for org, cg in cur.cigars_dict.items():
-                drop, cgnew = cg.get_removed(ov, start=True)
-                cur.cigars_dict[org] = cgnew
-                cur.ranges_dict[org].start += drop
-        else:
-            for rng in cur.ranges_dict.values():
-                rng.start += ov
+        ## check for & remove overlap on the reference
+        ov = prev.ref.end - cur.ref.start
+        if ov > 0:
+            # there is overlap on ref
+            logger.warning(f"Found {ov} bp overlap on reference at {cur.ref.start}, dropping from latter record!")
+            cur = cur.drop(ov, 0) # pandas dataframes can be written to by overwriting a reference
+
+        ## check for overlap on other orgs
+
+        # when this is called, cur and prev should normally have the same orgs
+        # will not catch overlap between non-adjacent regions!
+        #assert(set(cur.ranges_dict) == set(prev.ranges_dict))
+        for org in cur.ranges_dict: # should be on the same chr
+            if org not in prev.ranges_dict:
+                continue
+            assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr)
+
+            ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start
+            if ov > 0:
+                # there is overlap on org
+                logger.warning(f"Found {ov} bp overlap on {org} at {cur.ranges_dict[org].start}, dropping from latter record!")
+                logger.debug(f"Overlapping on {org}: {prev}, {cur}")
+                cur = cur.drop_on_org(ov, 0, org)
 
         prev = cur
 
