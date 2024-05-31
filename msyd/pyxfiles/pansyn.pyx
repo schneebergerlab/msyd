@@ -19,8 +19,6 @@ from msyd.coords import Pansyn, Range, Position
 cdef int MIN_SYN_THRESH = 30
 
 logger = util.CustomFormatter.getlogger(__name__)
-import logging
-logger.setLevel(logging.DEBUG)
 
 def find_overlaps(left, right, only_core=False):
     """
