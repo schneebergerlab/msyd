@@ -243,7 +243,7 @@ cdef class Cigar:
             ind += 1
 
         if rem > 0:
-            logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar length: {len(self)}, terminated at index {ind}")
+            logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar len on ref/alt: {self.get_len(ref=ref)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
         if cur.t in altfwd: # remove overadded value
