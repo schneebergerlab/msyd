@@ -236,14 +236,8 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     #                    (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)][['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen']])
 
 
-    for aln in alns.loc[(
-                # add alns passing over this interval
-                (alns['achr'] == rchrom if rchrom else True) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-                (alns['bchr'] == qchrom if qchrom else True) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)) | (
-                # add alns fully within this interval
-                (alns['achr'] == rchrom) & (alns['astart'] >= rstart) & (alns['aend'] <= rend) & (alns['adir'] == 1) &
-                (alns['bchr'] == qchrom) & (alns['bstart'] >= qstart) & (alns['bend'] <= qend) & (alns['bdir'] == 1)) 
-                ].iterrows():
+    # iterate over all alns overlapping on both qry and ref
+    for aln in get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False).iterrows():
         # cut off alignments to only in the gap we are realigning
         aln = aln[1]
         cg = cigar.cigar_from_string(aln.cg)
@@ -279,33 +273,50 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     if len(ret) == 0: # return no aln if none found
         return None
 
-    ret = pd.DataFrame(ret)
-    ret.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
-    ret.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    return pd.DataFrame(ret)
+
+cdef syrify(alnsdf):
+    alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    return alnsdf
+
+cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
+    """Helper Fn to filter an alignment DF for any region overlapping with [start:end] on a (default) or b (if `ref=False` is passed). If `dir` is passed and not 0 (default 1), also filter for the alignment direction (-1 = inverted, 1 non-inverted).
+    Filters for a chromosome on a or b if specified, otherwise ignores chromosomes"""
+    #return alnsdf.loc[!((alnsdf.bstart < start) ^ (alnsdf.bend > end))]
+    start = alnsdf.astart if ref else alnsdf.bstart
+    end = alnsdf.aend if ref else alnsdf.bend
+    ret = alnsdf.loc[((alnsdf['achr' if ref else 'bchr'] == chrom) if chrom else True) &
+                     ((alnsdf['adir' if ref else 'bdir'] == dir) if dir != 0 else True) & (
+                    (alnsdf.bstart >= start & alnsdf.bend <= end) | # get regions fully contained
+                    (alnsdf.bstart >= start & alnsdf.bstart <= end) | # or starting and ending beyond
+                    (alnsdf.bend >= start & alnsdf.bend <= end ))] # or starting before and ending within
+    print(f"Called with {start}, {end}, {chrom}, {ref}, {dir}, returned: {ret}")
     return ret
 
-
-cdef filter_qry(alndf, start, end):
-    """Helper Fn to filter an alignment DF for any region overlapping with [start:end]"""
-    return alndf.loc[!((alndf.bstart < start) ^ (alndf.bend > end))]
-
-cpdef get_nonsyn_alns(alndf, tree):
+cpdef get_nonsyn_alns(alnsdf, tree):
     """
     Function that extracts alignments of sequence that has not been called as merisyntenic yet from a set of alignments, in preparation for the synteny identification part of realignment.
-    This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alndf first. 
+    This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alnsdf first. 
     :args:
-    :alndf: Dataframe of alignments (eg produced by io.read_alnsfile).
+    :alnsdf: Dataframe of alignments (eg produced by io.read_alnsfile).
     :tree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet. Produced for all samples at once by construct_mappingtrees.
     :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merisyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.
     """
 
     ret = []
 
+    for interval in tree:
+        # how to get ref offset?
+        start = interval.
 
 
-        ret.append([rstart, rstart + cg.get_len(), qstart, qstart + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
+        ret.append(get_at_pos(alnsdf, interval.value, interval.)
 
-    return pd.DataFrame(ret)
+
+        #ret.append([rstart, rstart + cg.get_len(), qstart, qstart + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
+
+    return pd.concat(ret)
 
 
 
