@@ -276,6 +276,8 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     return pd.DataFrame(ret)
 
 cdef syrify(alnsdf):
+    if alnsdf is None:
+        return None
     alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
     return alnsdf
@@ -491,7 +493,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     # keep get_at_pos, write new function
                     # call get_at_pos at start there and recycle cigar objects
                     # to make more efficient
-                    alns = {org: get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start) for org in seqdict}
+                    alns = {org: syrify(get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start)) for org in seqdict}
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
