@@ -291,12 +291,12 @@ cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
     ret = alnsdf.loc[((alnsdf['achr' if ref else 'bchr'] == chrom) if chrom else True) &
                      ((alnsdf['adir' if ref else 'bdir'] == dir) if dir != 0 else True) & (
                     ((startcol >= start) & (endcol <= end)) | # get regions fully contained
-                    ((startcol < start) & (endcol > end)) #| # or starting before and ending beyond
-                    #((startcol >= start) & (startcol <= end)) | # or starting and ending beyond
-                    #((endcol >= start) & (endcol <= end) ) # or starting before and ending within
+                    ((startcol < start) & (endcol > end)) | # or starting before and ending beyond
+                    ((startcol >= start) & (startcol <= end)) | # or starting and ending beyond
+                    ((endcol >= start) & (endcol <= end) ) # or starting before and ending within
                     )]
-    print(f"Called with {start}, {end}, {chrom}, {ref}, {dir}")
-    print(f"{ret}")
+    #print(f"Called with {start}, {end}, {chrom}, {ref}, {dir}")
+    #print(f"{ret}")
     return ret
 
 cpdef get_nonsyn_alns(alnsdf, tree, reftree):
