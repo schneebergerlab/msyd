@@ -223,11 +223,11 @@ cdef remove_overlap(syn):
             continue
 
         ## check for & remove overlap on the reference
-        ov = prev.ref.end - cur.ref.start
+        ov = prev.ref.end - cur.ref.start +1
         if ov > 0:
             # there is overlap on ref
             logger.warning(f"Found {ov} bp overlap on reference at {cur.ref.start}, dropping from latter record!")
-            cur = cur.drop(ov, 0) # pandas dataframes can be written to by overwriting a reference
+            cur.drop_inplace(ov, 0) # call drop_inplace to mutate the dataframe from a reference
 
         ## check for overlap on other orgs
 
@@ -239,12 +239,14 @@ cdef remove_overlap(syn):
                 continue
             assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr)
 
-            ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start
+            ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start + 1 # indices are inclusive
             if ov > 0:
                 # there is overlap on org
                 logger.warning(f"Found {ov} bp overlap on {org} at {cur.ranges_dict[org].start}, dropping from latter record!")
                 logger.debug(f"Overlapping on {org}: {prev}, {cur}")
-                cur = cur.drop_on_org(ov, 0, org)
+                logger.debug(f"Before drop: {cur}")
+                cur.drop_on_org_inplace(ov, 0, org)
+                logger.debug(f"After drop: {cur}")
 
         prev = cur
 

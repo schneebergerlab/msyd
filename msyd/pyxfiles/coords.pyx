@@ -335,6 +335,22 @@ class Pansyn:
 
         return self.drop(start, end)
 
+    def drop_on_org_inplace(self, start, end, org):
+        """
+        Same as `drop_on_org`, but instead of returning a new Pansyn object, this mutates the current object.
+        """
+        # in case its called with the ref org already, directly drop
+        # this fn shouldn't usually be called like this, but handle anyway
+        if org == self.ref.org:
+            self.drop_inplace(start, end)
+
+        assert(org in self.ranges_dict)
+        # get no of bases corresponding to this drop on the reference
+        if self.cigars_dict:
+            start, end = self.cigars_dict[org].trim(start, end, only_pos=True, ref=False)
+
+        self.drop_inplace(start, end)
+
     def drop(self, start, end):
         #, prop=False):
         #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Pansyn` without CIGAR strings.
@@ -389,3 +405,53 @@ class Pansyn:
 
         return Pansyn(ref, ranges_dict, cigars_dict)
 
+    #TODO? write test testing that this is equivalent to drop
+    def drop_inplace(self, start, end):
+        #, prop=False):
+        #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Pansyn` without CIGAR strings.
+        """
+        Performs the same function as `drop`, but mutates this object instead of returning a new one.
+        Mutates this `Pansyn` object to remove `start`/`end` positions from the start/end, respecting cigar alignments if not `None`.
+        """
+        if start < 0 or end < 0 or start + end > len(self.ref):
+            logger.error(f"Tried to drop invalid start ({start}) or end ({end}) on this Pansyn with length on the reference {len(self.ref)}")
+            raise ValueError("tried to drop invalid start/end!")
+
+        self.ref = self.ref.drop(start, end)
+        #reflen = len(ref)
+        #pstart = start/reflen
+        #pend = end/reflen
+
+        if not self.cigars_dict:
+            for org, rng in self.ranges_dict.items():
+                #if prop:
+                #    l = len(rng)
+                #    start = int(pstart*l)
+                #    end = int(pend*l)
+
+                if start + end < len(rng):
+                    self.ranges_dict[org] = rng.drop(start, end)
+        else:
+            for org, rng in self.ranges_dict.items():
+                cg = self.cigars_dict[org]
+                try:
+                    if not cg.is_empty():
+                        start_dropped, cg = cg.get_removed(start, start=True, ref=True)
+                    else:
+                        print(traceback.format_exc())
+                        logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
+                        continue
+                    if not cg.is_empty():
+                        end_dropped, cg = cg.get_removed(end, start=False, ref=True)
+                    else:
+                        print(traceback.format_exc())
+                        logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
+                        continue
+
+                except ValueError:
+                    print(traceback.format_exc())
+                    logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
+                    continue
+
+                self.ranges_dict[org] = rng.drop(start_dropped, end_dropped)
+                self.cigars_dict[org] = cg
