@@ -237,9 +237,11 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
 
     # iterate over all alns overlapping on both qry and ref
-    for aln in get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False).iterrows():
+    alns = get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False)
+    if alns is None:
+        return None
+    for _, aln in alns.iterrows():
         # cut off alignments to only in the gap we are realigning
-        aln = aln[1]
         cg = cigar.cigar_from_string(aln.cg)
 
         # check that aln lengths are correct
@@ -273,7 +275,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     if len(ret) == 0: # return no aln if none found
         return None
 
-    return pd.DataFrame(ret)
+    return pd.DataFrame(ret, columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg'])
 
 cdef syrify(alnsdf):
     if alnsdf is None:
@@ -286,10 +288,12 @@ cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
     """Helper Fn to filter an alignment DF for any region overlapping with [start:end] on a (default) or b (if `ref=False` is passed). If `dir` is passed and not 0 (default 1), also filter for the alignment direction (-1 = inverted, 1 non-inverted).
     Filters for a chromosome on a or b if specified, otherwise ignores chromosomes"""
     #return alnsdf.loc[!((alnsdf.bstart < start) ^ (alnsdf.bend > end))]
+    if alnsdf is None or alnsdf.empty:
+        return None
     startcol = alnsdf.astart if ref else alnsdf.bstart
     endcol = alnsdf.aend if ref else alnsdf.bend
     ret = alnsdf.loc[((alnsdf['achr' if ref else 'bchr'] == chrom) if chrom else True) &
-                     ((alnsdf['adir' if ref else 'bdir'] == dir) if dir != 0 else True) & (
+                    ((alnsdf['adir' if ref else 'bdir'] == dir) if dir != 0 else True) & (
                     ((startcol >= start) & (endcol <= end)) | # get regions fully contained
                     ((startcol < start) & (endcol > end)) | # or starting before and ending beyond
                     ((startcol >= start) & (startcol <= end)) | # or starting and ending beyond
@@ -299,33 +303,33 @@ cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
     #print(f"{ret}")
     return ret
 
-cpdef get_nonsyn_alns(alnsdf, tree, reftree):
+cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     """
     Function that extracts alignments of sequence that has not been called as merisyntenic yet from a set of alignments, in preparation for the synteny identification part of realignment.
     This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alnsdf first. 
     :args:
     :alnsdf: Dataframe of alignments (eg produced by io.read_alnsfile).
-    :tree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet. Produced for all samples at once by construct_mappingtrees.
+    :reftree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the chosen reference. Produced for all samples at once by construct_mappingtrees.
+    :qrytree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the query sequence. Produced for all samples at once by construct_mappingtrees.
     :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merisyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.
     """
 
     ret = []
+    logger.debug(f"get_nonsyn called with ref {reftree}, qry {qrytree}")
+    for rint in reftree:
+        # pre-fetch overlapping alns
+        # do not drop now, another copy is probably slower anyway
+        rintalns = get_overlapping(alnsdf, rint.data, rint.data + len(rint))
+        #rintalns = get_at_pos(alnsdf, None, rint.data, rint.data + len(rint), None, None)
 
-    #for interval in tree:
-        # how to get ref offset?
-        #start = interval.
+        for qint in qrytree:
+            ret.append(get_at_pos(rintalns, None, rint.data, rint.data + len(rint), None, qint.data, qint.data + len(qint)))
 
-
-        #ret.append(get_at_pos(alnsdf, interval.value, interval.)
-
-
-        #ret.append([rstart, rstart + cg.get_len(), qstart, qstart + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
-
-    return pd.concat(ret)
-
-
-
-
+    logger.debug(f"Found: {ret}")
+    if len(ret) == 0 or all([r is None for r in ret]):
+        logger.warning(f"No Alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
+        return None
+    return syrify(pd.concat(ret))
 
 
 cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None):
@@ -474,26 +478,26 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
                 refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
 
+                logger.debug(f"Realigning {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Seqdict lens: {[(k, len(v)) for k,v in seqdict.items()]}")
+
                 if refstart > refend:
                     logger.error(f"{refstart} after {refend}! Seqdict {[(k, len(v)) for k,v in seqdict.items()]}")
                     #continue
 
 
                 ## get alignments to reference construct alignment index from the reference
-                # alns = {}
                 # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
                 if pairwise and ref in pairwise:
                     # if we have pairwise alns, fetch them
                     logger.debug(f"Fetching from existing alignments. Left core: {old.ref} ({old.ranges_dict}). Right core: {syn.ref} ({syn.ranges_dict}). Ref {ref}")
-                    refdict = pairwise[ref]
+                    
+                    refalnsdict = pairwise[ref]
                     # get all the alns overlapping this region; syri should do the rest
                     # regions not in seqdict will be ignored
-
-                    #TODO use mappingtrees instead to divide alns and exclude existing merisyn
-                    # keep get_at_pos, write new function
-                    # call get_at_pos at start there and recycle cigar objects
-                    # to make more efficient
-                    alns = {org: syrify(get_at_pos(refdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start)) for org in seqdict}
+                    alns = {org: get_nonsyn_alns(
+                                    get_at_pos(refalnsdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start), # pre-process alignments to restrict to this realn region
+                                    reftree, mappingtrees[org])
+                            for org in seqdict}
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
