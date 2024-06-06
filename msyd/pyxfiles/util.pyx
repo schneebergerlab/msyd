@@ -177,17 +177,20 @@ def parse_input_tsv(fin):
 
 
 
-
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
 # For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
-    return msyd.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
+    import msyd.pansyn as pansyn
+    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    return msyd.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
+    import msyd.pansyn as pansyn
+    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
 def coresyn_from_lists(syns, alns, **kwargs):
-    return msyd.find_multisyn(syns, alns, only_core=True, **kwargs)
+    import msyd.pansyn as pansyn
+    return pansyn.find_multisyn(syns, alns, only_core=True, **kwargs)
 def crosssyn_from_lists(syns, alns, **kwargs):
-    return msyd.find_multisyn(syns, alns, only_core=False, **kwargs)
+    import msyd.pansyn as pansyn
+    return pansyn.find_multisyn(syns, alns, only_core=False, **kwargs)
 
 def get_orgs_from_df(df):
     """Small utility function to get all organism from a DataFrame of `Pansyn` objects.
@@ -251,7 +254,8 @@ def siprefix(x):
 def get_call_stats(syns, alns, **kwargs):
     """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats
     """
-    df = msyd.find_multisyn(syns, alns, **kwargs)
+    import msyd.pansyn as pansyn
+    df = pansyn.find_multisyn(syns, alns, **kwargs)
     return get_stats(df)
 
 
@@ -407,7 +411,6 @@ def compile_filter(exp: str):
 
     logger.error(f"compile_filter called with invalid expression: {exp}")
     raise ValueError(f"compile_filter called with invalid expression: {exp}")
-    return
 # END
 
 
@@ -445,7 +448,7 @@ def pff_to_string(df, save_cigars=False):
         msyd.io.to_pff(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 
-def chrom_to_int(chrom):
+cpdef chrom_to_int(chrom):
     """
     Util function to ensure the Chr is an integer value.
     :param chrom: Chr specification to input. Can be either a string of the form 'ChrX' or an int (the int will be returned as-is).
