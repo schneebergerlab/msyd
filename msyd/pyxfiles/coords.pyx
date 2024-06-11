@@ -240,7 +240,7 @@ class Pansyn:
                 logger.warning("attempted to add cigar to Pansyn without cigars_dict, ignoring")
 
     def get_degree(self):
-        return len(self.ranges_dict)
+        return len(self.ranges_dict) + 1 # count the ref as well
 
     def get_orgs(self):
         return self.ranges_dict.keys()
