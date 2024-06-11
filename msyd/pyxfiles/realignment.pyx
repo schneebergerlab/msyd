@@ -296,9 +296,9 @@ cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
     ret = alnsdf.loc[((alnsdf['achr' if ref else 'bchr'] == chrom) if chrom else True) &
                     ((alnsdf['adir' if ref else 'bdir'] == dir) if dir != 0 else True) & (
                     ((startcol >= start) & (endcol <= end)) | # get regions fully contained
-                    ((startcol < start) & (endcol > end)) | # or starting before and ending beyond
-                    ((startcol >= start) & (startcol <= end)) | # or starting and ending beyond
-                    ((endcol >= start) & (endcol <= end) ) # or starting before and ending within
+                    ((startcol <= start) & (endcol >= end)) | # or starting before and ending beyond
+                    ((startcol >= start) & (startcol < end)) | # or starting and ending beyond
+                    ((endcol > start) & (endcol <= end) ) # or starting before and ending within
                     )]
     #print(f"Called with {start}, {end}, {chrom}, {ref}, {dir}")
     #print(f"{ret}")
@@ -406,8 +406,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             # syn must be core now
 
             # start and end of the non-ref region, on the reference
-            end = syn.ref.start
-            start = old.ref.end
+            end = syn.ref.start -1 # end/start are inclusive
+            start = old.ref.end +1
             logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
