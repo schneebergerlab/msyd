@@ -238,6 +238,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
     # iterate over all alns overlapping on both qry and ref
     alns = get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False)
+    logger.debug(f"called with {rchrom}, {rstart}, {rend}, {qchrom}, {qstart}, {qend}, found overlapping {alns}")
     if alns is None:
         return None
     for _, aln in alns.iterrows():
@@ -319,15 +320,19 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     for rint in reftree:
         # pre-fetch overlapping alns
         # do not drop now, another copy is probably slower anyway
-        rintalns = get_overlapping(alnsdf, rint.data, rint.data + len(rint))
-        #rintalns = get_at_pos(alnsdf, None, rint.data, rint.data + len(rint), None, None)
+        rintlen = rint.end - rint.begin + 1
+        rintalns = get_overlapping(alnsdf, rint.data, rint.data + rintlen)
+        #rintalns = get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, None)
+        logger.debug(f"{rint}: found {rintalns}")
 
         for qint in qrytree:
-            ret.append(get_at_pos(rintalns, None, rint.data, rint.data + len(rint), None, qint.data, qint.data + len(qint)))
+            qintlen = qint.end - qint.begin + 1
+            #logger.debug(str(get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen)))
+            ret.append(get_at_pos(rintalns, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen))
 
     logger.debug(f"Found: {ret}")
     if len(ret) == 0 or all([r is None for r in ret]):
-        logger.warning(f"No Alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
+        logger.warning(f"No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
         return None
     return syrify(pd.concat(ret))
 

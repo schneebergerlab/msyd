@@ -46,6 +46,7 @@ def find_overlaps(left, right, only_core=False):
 
     cdef int cov = 0 # store the last position in the ref that has been covered in ret
 
+    #TODO refactor into external fn, write filtering fn for reduce_find_overlap if n=1
     def add_filtered(pansyn): # Filters out pansyns that should be discarded at this step, and adds those that we want to keep to the results list
         if not pansyn: # filter empty objects to handle failures
             return
