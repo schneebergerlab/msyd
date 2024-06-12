@@ -60,7 +60,7 @@ cpdef construct_mappingtrees(merisyns, old, syn):
                 #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
                 l = rng.start - offsetdict[org] # len of the region to be added
                 if l < 0:
-                    # print('ERROR')# improper sorting – skip
+                    logger.info(f"improper sorting: {rng.start} < {offsetdict[org]}") # improper sorting – skip
                     continue
 
                 # check if this interval would be redundant
@@ -360,8 +360,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     """
     # init stuff
     ret = deque()#pd.DataFrame()
-    n = len(qrynames)
-    if not n == len(fastas):
+    n = len(qrynames) + 1 # to account for reference
+    if not n == len(fastas) + 1:
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
 
@@ -408,7 +408,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             # start and end of the non-ref region, on the reference
             end = syn.ref.start -1 # end/start are inclusive
             start = old.ref.end +1
-            logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")
+            logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")#\n Full borders {old}, {syn}")
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
             if end - start < _MIN_REALIGN_THRESH:
@@ -587,7 +587,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 ## recalculate mappingtrees from current merisyns to remove newly found meri synteny
                 # TODO maybe directly remove, should be more efficient
+                logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merisyns}.")
                 mappingtrees = construct_mappingtrees(merisyns, old, syn)
+                logger.debug(f"New Mappingtrees: {mappingtrees}")
                 # remove all orgs that have already been used as a reference
                 for reforg in merisyns:
                     if reforg in mappingtrees:

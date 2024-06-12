@@ -89,7 +89,7 @@ def find_overlaps(left, right, only_core=False):
                 # add the region up to the overlap if it is large enough
                 intstart = max(starting.ref.start, cov + 1) # start of the non-overlapping region of interest
                 if not only_core and ovstart - intstart >= MIN_SYN_THRESH:
-                    add_filtered(starting.drop(intstart - starting.ref.start, starting.ref.end - ovstart))
+                    add_filtered(starting.drop(intstart - starting.ref.start, 1 + starting.ref.end - ovstart))
 
                 # add overlap region
                 add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
@@ -130,7 +130,7 @@ def find_overlaps(left, right, only_core=False):
                 ending = l if l.ref.end > r.ref.end else r
                 #print(cov, ending.ref, ending.ref.end - ending.ref.start, {org:cg.get_len(ref=True) for org, cg in ending.cigars_dict.items()})
                 if ending.ref.end - cov >= MIN_SYN_THRESH: # check if there is still something to add; if so, add it
-                    add_filtered(ending.drop(max(0, cov - ending.ref.start), 0))
+                    add_filtered(ending.drop(max(0, 1 + cov - ending.ref.start), 0))
 
             break
 

@@ -598,7 +598,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     # output organisms in lexicalic ordering
     orgs = sorted(util.get_orgs_from_df(df))
     cdef:
-        int n = len(orgs)
+        int n = len(orgs) + 1 # to account for ref
         int corecounter = 1
         int mericounter = 1
         int coreend = 0
