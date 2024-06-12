@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import mappy as mp
 import pysam
-import intervaltree
+from intervaltree import IntervalTree#, Interval
 from datetime import datetime
 from multiprocessing import Pool
 import logging
@@ -41,56 +41,74 @@ cdef int _NULL_CNT = 200 # number of separators to use between blocks during ali
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+cpdef listdict_to_mts(lists):
+    ret = dict()
+    posdict = defaultdict(int) # stores the current position in each org
+    for org, lst in lists.items():
+        tree = IntervalTree()
+        for offset, length in lst:
+            if length > _MIN_REALIGN_THRESH: # filter again for sufficient len
+                tree[posdict[org]:posdict[org] + length] = offset
+                posdict[org] += length + _NULL_CNT # add interval + spacer
+
+        #if len(tree) > 0:
+        ret[org] = tree
+            
+    #return {org: IntervalTree(functools.reduce(Interval())
+    #        for org, lst in lists.items()}
+    return ret
+
 # <editor-fold desc='Support functions for realign'>
-cpdef construct_mappingtrees(merisyns, old, syn):
+cpdef construct_mts(merisyns, old, syn):
 # def construct_mappingtrees(merisyns, old, syn):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
     Crosssyns need to be sorted by position on reference.
     For each tree, the sequence in genome `org` at position `tree[pos].data - tree[pos].begin + pos` corresponds to the position `pos` in the synthetic query sequence.
     """
-    mappingtrees = defaultdict(intervaltree.IntervalTree)
-    posdict = defaultdict(int) # stores the current position in each org
+    listdict = defaultdict(list)
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
 
-    for reforg in merisyns:
-        for merisyn in merisyns[reforg]:
-            # iterate through all pansyns found so far by realignment
-            for org, rng in merisyn.ranges_dict.items():
-                #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
-                l = rng.start - offsetdict[org] # len of the region to be added
-                if l < 0:
-                    logger.info(f"improper sorting: {rng.start} < {offsetdict[org]}") # improper sorting – skip
-                    continue
+    for merisyn in merisyns:
+        # iterate through all pansyns found so far
+        for org, rng in merisyn.ranges_dict.items():
+            #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
+            l = rng.start - offsetdict[org] # len of the region to be added
+            if l < 0:
+                logger.error(f"improper sorting: {rng.start} < {offsetdict[org]}") # improper sorting – skip
+                continue
 
-                # check if this interval would be redundant
-                prev = list(mappingtrees[org][posdict[org]-1]) # will be empty if tree is empty
-                if prev and posdict[org] + prev[0].data == offsetdict[org]:
-                    # extend the previous interval instead
-                    del mappingtrees[org][posdict[org]-1]
-                    posdict[org] += l
-                    mappingtrees[org][prev[0].begin:posdict[org]] = prev[0].data
+            # check if this interval would be redundant
+            if org in listdict:
+                prev = listdict[org][-1]
+                print(prev[0] + prev[1], offsetdict[org])
+                if prev[0] + prev[1] == offsetdict[org]: 
+                    # check if offset + len matches the current offset; extend prev interval instead
+                    # no +1 because the end is not inclusive
+                    prev[1] += l
 
-                elif l > _MIN_REALIGN_THRESH: # otherwise add to the tree if it's large enough
-                    mappingtrees[org][posdict[org]:posdict[org]+l] = offsetdict[org]
-                    posdict[org] += l + _NULL_CNT # add the spacer length to the start of the next index
+            if l > _MIN_REALIGN_THRESH: # otherwise add to the tree if it's large enough
+                listdict[org].append( (offsetdict[org], l) )
 
-                # all up to the end of this region has been added
-                offsetdict[org] = rng.end
+            # all up to the end of this region has been added
+            offsetdict[org] = rng.end
 
     # see if there's any sequence left to realign after processing the merisyn regions
     for org, offset in offsetdict.items():
         l = syn.ranges_dict[org].start - offset
         if l >= _MIN_REALIGN_THRESH:
-            mappingtrees[org][posdict[org]:posdict[org]+l] = offset
+            listdict[org].append( (offset, l) )
 
     for org in old.ranges_dict:
         if old.ranges_dict[org].end > syn.ranges_dict[org].start:
             logger.error(f"{org}: End ({old.ranges_dict[org].end}) after start ({syn.ranges_dict[org].start})! {old} (check: {old.check()}), {syn} (check: {syn.check()}).")
             #logger.debug(f"CIGARS of above error: {old.cigars_dict[org].to_string()}, {syn.cigars_dict[org].to_string()}")
 
-    return mappingtrees
+    return listdict_to_mts(listdict)
 # END
+
+
+
 
 cdef get_aligner(seq, preset, ns=False):
     #aligner = mp.Aligner(seq=refseq, preset=preset)
@@ -310,8 +328,8 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alnsdf first. 
     :args:
     :alnsdf: Dataframe of alignments (eg produced by io.read_alnsfile).
-    :reftree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the chosen reference. Produced for all samples at once by construct_mappingtrees.
-    :qrytree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the query sequence. Produced for all samples at once by construct_mappingtrees.
+    :reftree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the chosen reference. Produced for all samples at once by construct_mts.
+    :qrytree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the query sequence. Produced for all samples at once by construct_mts.
     :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merisyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.
     """
 
@@ -440,7 +458,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
             
             ## construct the mapping, and prepare sequences for realignment
-            mappingtrees = construct_mappingtrees(merisyns, old, syn)
+            mappingtrees = construct_mts(refmerisyns, old, syn)
             seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
 
             #if any([len(mappingtrees[org]) > 3 for org in mappingtrees]):
@@ -587,8 +605,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 ## recalculate mappingtrees from current merisyns to remove newly found meri synteny
                 # TODO maybe directly remove, should be more efficient
-                logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merisyns}.")
-                mappingtrees = construct_mappingtrees(merisyns, old, syn)
+                logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merisyns[ref]}.")
+                mappingtrees = construct_mts(merisyns[ref], old, syn)
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
                 # remove all orgs that have already been used as a reference
                 for reforg in merisyns:
