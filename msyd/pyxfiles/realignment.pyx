@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 import mappy as mp
 import pysam
-from intervaltree import IntervalTree#, Interval
+from intervaltree import IntervalTree, Interval
 from datetime import datetime
 from multiprocessing import Pool
 import logging
@@ -107,6 +107,53 @@ cpdef construct_mts(merisyns, old, syn):
     return listdict_to_mts(listdict)
 # END
 
+cpdef subtract_mts(mappingtrees, merisyns):
+    """
+    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by pansyn objects in `merisyns` subtracted.
+    Used to remove merisynteny found during realignment from the mappingtrees, to do further realignment.
+    """
+    # core iteration is the same as in construct_mts, except we don't need to store the offsets
+    curdict = {org:list(mappingtrees[0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
+    listdict = defaultdict(list) # used to construct the output mappingtrees
+    # these need to be reconstructed to take care of handling the separator intervals
+
+    for merisyn in merisyns:
+        for org, rng in merisyn.ranges_dict.items():
+            curint = curdict[org]
+            orglist = listdict[org]
+
+            # skip to first interval overlapping this merisyn
+            while curint.end - curint.begin + curint.data < rng.start:
+                orglist.append( (curint.data, curint.end - curint.begin) )
+                curint = list(mappingtrees[curint.end + _NULL_CNT + 1])[0]
+
+            # there shouldn't ever be an alignment spanning beyond one offset, as genuinely adjacent offsets are compressed
+            # throw an error if this isn't the case
+            #TODO maybe handle improperly compressed offsets? perhaps by ratcheting over the end as welll as in the while loop above
+            assert rng.end <= curint.end - curint.begin + curint.data, "Synteny beyond an offset detected! An alignment went into the separator."
+
+            # there was no interval overlapping this merisyn anyway, we don't need to subtract anything
+            if curint.data > rng.end:
+                curdict[org] = curint
+                continue
+            
+            ## from here, rng is fully within curint
+
+            # remove overlap from start, add as separate offset if large enough
+            l = rng.start - curint.data
+            if l > _MIN_REALIGN_THRESH:
+                orglist.append( (curint.data, l) )
+
+            # set curint to what remains after removing this merisyn if large enough
+            l = curint.data + curint.end - curint.begin - rng.end
+            if l > _MIN_REALIGN_THRESH:
+                curdict[org] = Interval(curint.end - l, curint.end, rng.end)
+                #orglist.append( (rng.end, l) )
+            else:
+                # otherwise skip to next interval
+                curdict[org] = list(mappingtrees[curint.end + _NULL_CNT + 1])[0]
+
+    return listdict_to_mts(listdict)
 
 
 
@@ -606,7 +653,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 ## recalculate mappingtrees from current merisyns to remove newly found meri synteny
                 # TODO maybe directly remove, should be more efficient
                 logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merisyns[ref]}.")
-                mappingtrees = construct_mts(merisyns[ref], old, syn)
+                mappingtrees = subtract_mts(mappingtrees, merisyns[ref])
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
                 # remove all orgs that have already been used as a reference
                 for reforg in merisyns:
