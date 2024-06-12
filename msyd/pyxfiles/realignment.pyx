@@ -238,7 +238,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
     # iterate over all alns overlapping on both qry and ref
     alns = get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False)
-    logger.debug(f"called with {rchrom}, {rstart}, {rend}, {qchrom}, {qstart}, {qend}, found overlapping {alns}")
+    #logger.debug(f"called with {rchrom}, {rstart}, {rend}, {qchrom}, {qstart}, {qend}, found overlapping {alns}")
     if alns is None:
         return None
     for _, aln in alns.iterrows():
@@ -251,7 +251,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
         #if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
         #    logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
 
-        logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
+        #logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
         #print(cg.to_string())
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
@@ -323,7 +323,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
         rintlen = rint.end - rint.begin + 1
         rintalns = get_overlapping(alnsdf, rint.data, rint.data + rintlen)
         #rintalns = get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, None)
-        logger.debug(f"{rint}: found {rintalns}")
+        #logger.debug(f"{rint}: found {rintalns}")
 
         for qint in qrytree:
             qintlen = qint.end - qint.begin + 1
