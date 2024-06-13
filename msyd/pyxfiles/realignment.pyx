@@ -131,10 +131,10 @@ cpdef subtract_mts(mappingtrees, merisyns):
                 orglist.append( (curint.data, curint.end - curint.begin) )
                 if curint.end + _NULL_CNT + 1 in mappingtrees[org]:
                     curint = list(mappingtrees[org][curint.end + _NULL_CNT +1 ])[0]
-                else: # there is no more offsets; shouldn't reach this in normal operation
+                else: # there is no offset after this
                     break
             else: # to skip to next org in big for loop
-                logger.warning("Skipped out of int iteration loop!")
+                #logger.warning("Skipped out of int iteration loop!")
                 curdict[org] = None
                 continue
 
@@ -205,7 +205,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     #print([str(x) for x in m])
     alns = deque()
     # traverse alignments
-    logger.debug('Traversing alignments')
+    #logger.debug('Traversing alignments')
     for h in m:
         # print('a')
         rstart: int = h.r_st
@@ -272,7 +272,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
         # print('c')
 
-    logger.debug('Alignments traversed')
+    #logger.debug('Alignments traversed')
     # print('d')
     alns = pd.DataFrame(alns)
     #print(alns)
@@ -395,7 +395,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     """
 
     ret = []
-    logger.debug(f"get_nonsyn called with ref {reftree}, qry {qrytree}")
+    #logger.debug(f"get_nonsyn called with ref {reftree}, qry {qrytree}")
     for rint in reftree:
         # pre-fetch overlapping alns
         # do not drop now, another copy is probably slower anyway
@@ -405,11 +405,11 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
         #logger.debug(f"{rint}: found {rintalns}")
 
         for qint in qrytree:
-            qintlen = qint.end - qint.begin + 1
+            qintlen = qint.end - qint.begin
             #logger.debug(str(get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen)))
             ret.append(get_at_pos(rintalns, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen))
 
-    logger.debug(f"Found: {ret}")
+    #logger.debug(f"Found: {ret}")
     if len(ret) == 0 or all([r is None for r in ret]):
         logger.warning(f"No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
         return None
@@ -487,7 +487,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             # start and end of the non-ref region, on the reference
             end = syn.ref.start -1 # end/start are inclusive
             start = old.ref.end +1
-            logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")#\n Full borders {old}, {syn}")
+            #logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")#\n Full borders {old}, {syn}")
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
             if end - start < _MIN_REALIGN_THRESH:
