@@ -81,7 +81,7 @@ cpdef construct_mts(merisyns, old, syn):
             # check if this interval would be redundant
             if org in listdict:
                 prev = listdict[org][-1]
-                print(prev[0] + prev[1], offsetdict[org])
+                #print(prev[0] + prev[1], offsetdict[org])
                 if prev[0] + prev[1] == offsetdict[org]: 
                     # check if offset + len matches the current offset; extend prev interval instead
                     # no +1 because the end is not inclusive
