@@ -399,7 +399,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     for rint in reftree:
         # pre-fetch overlapping alns
         # do not drop now, another copy is probably slower anyway
-        rintlen = rint.end - rint.begin + 1
+        rintlen = rint.end - rint.begin
         rintalns = get_overlapping(alnsdf, rint.data, rint.data + rintlen)
         #rintalns = get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, None)
         #logger.debug(f"{rint}: found {rintalns}")
