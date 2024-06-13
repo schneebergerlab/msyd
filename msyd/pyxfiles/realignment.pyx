@@ -113,19 +113,30 @@ cpdef subtract_mts(mappingtrees, merisyns):
     Used to remove merisynteny found during realignment from the mappingtrees, to do further realignment.
     """
     # core iteration is the same as in construct_mts, except we don't need to store the offsets
-    curdict = {org:list(mappingtrees[0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
+    curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
     listdict = defaultdict(list) # used to construct the output mappingtrees
     # these need to be reconstructed to take care of handling the separator intervals
 
     for merisyn in merisyns:
         for org, rng in merisyn.ranges_dict.items():
+            if not org in curdict or curdict[org] is None: # skip if there are no more intervals to process for this org
+                continue
             curint = curdict[org]
             orglist = listdict[org]
+            #TODO idea: set curdict[org] to None to indicate termination?
 
             # skip to first interval overlapping this merisyn
+            # there should be one of thesejfor any alignment
             while curint.end - curint.begin + curint.data < rng.start:
                 orglist.append( (curint.data, curint.end - curint.begin) )
-                curint = list(mappingtrees[curint.end + _NULL_CNT + 1])[0]
+                if curint.end + _NULL_CNT + 1 in mappingtrees[org]:
+                    curint = list(mappingtrees[org][curint.end + _NULL_CNT +1 ])[0]
+                else: # there is no more offsets; shouldn't reach this in normal operation
+                    break
+            else: # to skip to next org in big for loop
+                logger.warning("Skipped out of int iteration loop!")
+                curdict[org] = None
+                continue
 
             # there shouldn't ever be an alignment spanning beyond one offset, as genuinely adjacent offsets are compressed
             # throw an error if this isn't the case
@@ -151,10 +162,13 @@ cpdef subtract_mts(mappingtrees, merisyns):
                 #orglist.append( (rng.end, l) )
             else:
                 # otherwise skip to next interval
-                curdict[org] = list(mappingtrees[curint.end + _NULL_CNT + 1])[0]
+                if curint.end + _NULL_CNT + 1 in mappingtrees[org]:
+                    curdict[org] = list(mappingtrees[org][curint.end + _NULL_CNT + 1])[0]
+                else:
+                    curdict[org] = None
+                    continue
 
     return listdict_to_mts(listdict)
-
 
 
 cdef get_aligner(seq, preset, ns=False):
