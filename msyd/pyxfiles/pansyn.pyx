@@ -242,6 +242,13 @@ cdef remove_overlap(syn):
 
             ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start + 1 # indices are inclusive
             if ov > 0:
+                # check if the region is fully contained, in case this ever happens
+                # drop the region on this org in that case
+                if cur.ranges_dict[org].end <= prev.ranges_dict[org].end:
+                    del cur.ranges_dict[org]
+                    if cur.cigars_dict:
+                        del cur.cigars_dict[org]
+
                 # there is overlap on org
                 logger.warning(f"Found {ov} bp overlap on {org} at {cur.ranges_dict[org].start}, dropping from latter record!")
                 logger.debug(f"Overlapping on {org}: {prev}, {cur}")
