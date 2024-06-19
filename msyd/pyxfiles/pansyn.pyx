@@ -244,9 +244,9 @@ cdef remove_overlap(syn):
             if ov > 0:
                 # check if the region is fully contained, in case this ever happens
                 # drop the region on this org in that case
-                logger.warning(f"On {org}, a syntenic region fully contains another! Dropping contained region.")
-                logger.debug(f"{cur.ranges_dict[org]} contained in {prev.ranges_dict[org]}!")
                 if cur.ranges_dict[org].end <= prev.ranges_dict[org].end:
+                    logger.warning(f"On {org}, a syntenic region fully contains another! Dropping contained region.")
+                    logger.debug(f"{cur.ranges_dict[org]} contained in {prev.ranges_dict[org]}!")
                     del cur.ranges_dict[org]
                     if cur.cigars_dict:
                         del cur.cigars_dict[org]
