@@ -236,7 +236,7 @@ cdef remove_overlap(syn):
         # will not catch overlap between non-adjacent regions!
         #assert(set(cur.ranges_dict) == set(prev.ranges_dict))
         for org in cur.ranges_dict: # should be on the same chr
-            if org not in prev.ranges_dict:
+            if org not in prev.ranges_dict or cur.ranges_dict[org] is None:
                 continue
             assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr)
 
@@ -245,9 +245,10 @@ cdef remove_overlap(syn):
                 # check if the region is fully contained, in case this ever happens
                 # drop the region on this org in that case
                 if cur.ranges_dict[org].end <= prev.ranges_dict[org].end:
-                    logger.warning(f"On {org}, a syntenic region fully contains another! Dropping contained region.")
+                    logger.warning(f"On {org}, a syntenic region fully contains another! Dropping {org} from contained region.")
                     logger.debug(f"{cur.ranges_dict[org]} contained in {prev.ranges_dict[org]}!")
-                    del cur.ranges_dict[org]
+                    #del cur.ranges_dict[org] # this causes a crash during iteration
+                    cur.ranges_dict[org] = None # set to None instead
                     if cur.cigars_dict:
                         del cur.cigars_dict[org]
                     continue
