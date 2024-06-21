@@ -220,6 +220,27 @@ def tabularize_lens(df):
     return [sum(len(x[1][0].ref) for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
     #return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
+def tabularize_lens_byorg(df):
+    if df.empty:
+        logger.error(f"tabularize_lens_byorg called with empty dataframe: {df}")
+        raise ValueError("DF is empty!")
+
+    maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
+
+    outdict = {org: [0]*(maxdegree-2) for org in get_orgs_from_df(df)}
+    outdict['ref'] = [0]*(maxdegree-2)
+
+    for _, pansyn in df.iterrows():
+        pansyn = pansyn[0]
+        deg = pansyn.get_degree()
+        # add ref
+        outdict[pansyn.ref.org][deg-2] += len(pansyn.ref)
+        # add orgs
+        for org, rng in pansyn.ranges_dict.items():
+            outdict[org][deg-2] += len(rng)
+
+    return outdict
+
 def tabularize_nos(df):
     if df.empty:
         logger.error(f"tabularize_nos called with empty dataframe: {df}")
