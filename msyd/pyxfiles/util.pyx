@@ -249,8 +249,8 @@ def tabularize_nos(df):
 
 def lensdict_to_table(lensdict, sep='\t', si=True):
     header = '#deg' + sep + sep.join(lensdict.keys())
-    table = '\n'.join(str(i+1) + sep + sep.join(siprefix(lensdict[org][i-1]) if si else str(lensdict[org][i-1]) for org in lensdict)
-        for i in range(1, len(lensdict[list(lensdict.keys())[0]])) 
+    table = '\n'.join(str(i) + sep + sep.join(siprefix(lensdict[org][i-1]) if si else str(lensdict[org][i-1]) for org in lensdict)
+        for i in range(1, len(lensdict[list(lensdict.keys())[0]]) +1) 
         )
     return header + '\n' + table
 
