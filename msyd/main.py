@@ -145,11 +145,11 @@ def main():
     realign_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     realign_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
 
-    fact_parser = subparsers.add_parser("fact",
-        help="Give a fact about birds or non-birds!",
-        description="""
-            Written in a duck-typed language!
-        """)
+    #fact_parser = subparsers.add_parser("fact",
+    #    help="Give a fact about birds or non-birds!",
+    #    description="""
+    #        Written in a duck-typed language!
+    #    """)
     order_parser.set_defaults(func=order)
 
     args = parser.parse_args()
