@@ -24,7 +24,7 @@ This file serves as the main entrypoint for the msyd CLI.
 """
 
 def main():
-    from msyd.scripts.util import logger
+    from msyd.util import logger
     from msyd import __version__ as msydv
 
     parser = argparse.ArgumentParser(description="""
@@ -145,6 +145,19 @@ def main():
     realign_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     realign_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
 
+
+    stats_parser = subparsers.add_parser("stats",
+        help="Compute some statistics on a PFF file",
+        description="""
+        Computes some basic statistics on a PFF file.
+        Useful as input for plotting or to get a feel for the dataset.
+        """)
+    stats_parser.set_defaults(func=stats)
+    stats_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read pansynteny information from.")
+    stats_parser.add_argument("-o", dest='outfile', default='-', type=argparse.FileType('wt'), help="Where to send the statistics to. Default stdout.")
+    stats_parser.add_argument("--separator", "-s", dest="sep", help="Separator to use for printing the stats. Default is tab (for TSV), set to ',' for CSV.", type=str, default="\t")
+    stats_parser.add_argument("-p", "--prefix", dest='siprefix', action='store_true', default=False, help="Whether to attach SI prefixes to the output for human readability. If not supplied, print exact numbers.")
+
     #fact_parser = subparsers.add_parser("fact",
     #    help="Give a fact about birds or non-birds!",
     #    description="""
@@ -173,7 +186,7 @@ def call(args):
     from msyd.coords import Range
     import msyd.ordering as ordering
 
-    import msyd.scripts.util as util
+    import msyd.util as util
     logger = util.CustomFormatter.getlogger("call")
 
     logger.info("Starting msyd call")
@@ -243,7 +256,7 @@ def call(args):
 def merge(args):
     import msyd.io as io
 
-    import msyd.scripts.util as util
+    import msyd.util as util
     logger = util.CustomFormatter.getlogger("merge")
 
     # temporary function to better test the vcf merging functionality
@@ -256,7 +269,7 @@ def order(args):
     import msyd.io as io
     import msyd.ordering as ordering
 
-    import msyd.scripts.util as util
+    import msyd.util as util
     logger = util.CustomFormatter.getlogger("order")
 
     df = io.read_pff(args.infile)
@@ -265,7 +278,7 @@ def order(args):
 
 def view(args):
     import msyd.io as io
-    import msyd.scripts.util as util
+    import msyd.util as util
     logger = util.CustomFormatter.getlogger("view")
     logger.info(f"reading pansynteny from {args.infile.name}")
     df = io.read_pff(args.infile)
@@ -305,7 +318,7 @@ def realign(args):
     import msyd.io as io
     import msyd.realignment as realignment
 
-    import msyd.scripts.util as util
+    import msyd.util as util
     logger = util.CustomFormatter.getlogger("realign")
 
     # read in full pairwise alns if supplied
@@ -320,6 +333,17 @@ def realign(args):
 
     logger.info(f"Saving to {args.outfile.name} in PFF format.")
     io.save_to_pff(resyns, args.outfile, save_cigars=args.cigars)
+    logger.info(f"Finished running msyd realign, output saved to {args.outfile.name}.")
+
+def stats(args):
+    import msyd.io as io
+    import msyd.util as util
+    logger = util.CustomFormatter.getlogger("stats")
+
+    logger.info(f"Reading from {args.infile.name}.")
+    syns = io.read_pff(args.infile)
+    #print(util.get_stats(resyns), file=args.outfile)
+    print(util.export_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix), file=args.outfile)
     logger.info(f"Finished running msyd realign, output saved to {args.outfile.name}.")
 
 def fact(args):

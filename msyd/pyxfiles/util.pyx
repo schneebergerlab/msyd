@@ -224,20 +224,19 @@ def tabularize_lens_byorg(df):
     if df.empty:
         logger.error(f"tabularize_lens_byorg called with empty dataframe: {df}")
         raise ValueError("DF is empty!")
-
     maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
 
-    outdict = {org: [0]*(maxdegree-2) for org in get_orgs_from_df(df)}
-    outdict['ref'] = [0]*(maxdegree-2)
+    outdict = {org: [0]*(maxdegree) for org in get_orgs_from_df(df)}
+    outdict['ref'] = [0]*(maxdegree)
 
     for _, pansyn in df.iterrows():
         pansyn = pansyn[0]
         deg = pansyn.get_degree()
         # add ref
-        outdict[pansyn.ref.org][deg-2] += len(pansyn.ref)
+        outdict[pansyn.ref.org][deg-1] += len(pansyn.ref)
         # add orgs
         for org, rng in pansyn.ranges_dict.items():
-            outdict[org][deg-2] += len(rng)
+            outdict[org][deg-1] += len(rng)
 
     return outdict
 
@@ -247,6 +246,13 @@ def tabularize_nos(df):
         raise ValueError("DF is empty!")
     maxdegree = max(x[1][0].get_degree() for x in df.iterrows())
     return [sum(1 for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
+
+def export_table(lensdict, sep='\t', si=True):
+    header = '#deg' + sep + sep.join(lensdict.keys())
+    table = '\n'.join(str(i+1) + sep + sep.join(siprefix(lensdict[org][i-1]) if si else str(lensdict[org][i-1]) for org in lensdict)
+        for i in range(1, len(lensdict[list(lensdict.keys())[0]])) 
+        )
+    return header + '\n' + table
 
 def get_stats(df):
     """Utility function to output some stats for a df containing computed pansyn objects.
