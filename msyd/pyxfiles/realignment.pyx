@@ -171,7 +171,7 @@ cpdef subtract_mts(mappingtrees, merisyns):
     return listdict_to_mts(listdict)
 
 
-cdef get_aligner(seq, preset, ns=False):
+cdef get_aligner(seq, preset, ns=True):
     #aligner = mp.Aligner(seq=refseq, preset=preset)
 
     # set --score-N parameter to 10
