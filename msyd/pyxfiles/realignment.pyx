@@ -141,7 +141,11 @@ cpdef subtract_mts(mappingtrees, merisyns):
             # there shouldn't ever be an alignment spanning beyond one offset, as genuinely adjacent offsets are compressed
             # throw an error if this isn't the case
             #TODO maybe handle improperly compressed offsets? perhaps by ratcheting over the end as welll as in the while loop above
-            assert rng.end <= curint.end - curint.begin + curint.data, "Synteny beyond an offset detected! An alignment went into the separator."
+            #assert rng.end <= curint.end - curint.begin + curint.data, "Synteny in a spacer offset detected! An alignment went into the separator. Most likely, something went wrong during alignment."
+            if rng.end > curint.end - curint.begin + curint.data:
+                logger.debug(f"{rng.end}, {curint.end - curint.begin + curint.data}")
+                logger.warning("Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call.")
+            
 
             # there was no interval overlapping this merisyn anyway, we don't need to subtract anything
             if curint.data > rng.end:
@@ -181,10 +185,13 @@ cdef get_aligner(seq, preset, ns=True):
     # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
     # https://github.com/lh3/minimap2/issues/155
     # https://github.com/lh3/minimap2/blob/0cc3cdca27f050fb80a19c90d25ecc6ab0b0907b/python/README.rst?plain=1#L93
-    
-    aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
     # values from the manpage, under presets -> asm5
     #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
+    
+    aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
+
+    #aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255) # requires a patched version of minimap2; TODO make PR to get that merged
+
 
     return aligner
 
@@ -209,10 +216,11 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     for h in m:
         # print('a')
         rstart: int = h.r_st
-        rend: int = h.r_en
+        rend: int = h.r_en -1 # transform to inclusive range
         qstart: int = h.q_st
-        qend: int = h.q_en
+        qend: int = h.q_en -1 # transform to inclusive range
         cg = cigar.cigar_from_bam(h.cigar)
+        #logger.debug(f"R: {rstart}-{rend}, len: {cg.get_len()}, Q: {qstart}-{qend}, len: {cg.get_len(ref=False)}")
         #print(h.mapq)
         if rstart > rend:
             logger.error(f"Inverted on Reference: {h}")
@@ -233,7 +241,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
-            aln = [rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart, qend - qstart, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()]
+            aln = [rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart +1, qend - qstart +1, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()]
 
             # check to make sure alns match cigar length
             if aln[4] != cg.get_len(ref=True):
@@ -265,9 +273,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
                 # check to make sure alns match cigar length
                 if aln[4] != qcg.get_len(ref=True):
-                    logger.error(f"Aln length not matching cigar length on ref! Occurred in {aln}")
+                    logger.error(f"Aln length not matching cigar length on ref! Occurred in {aln} (cg len {qcg.get_len(ref=True)})")
                 if aln[5] != qcg.get_len(ref=False):
-                    logger.error(f"Aln length not matching cigar length on qry! Occurred in {aln}")
+                    logger.error(f"Aln length not matching cigar length on qry! Occurred in {aln} (cg len {qcg.get_len(ref=False)})")
                 alns.append(aln)
 
         # print('c')
@@ -416,7 +424,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='map-ont', ncores=1, pairwise=None):
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)

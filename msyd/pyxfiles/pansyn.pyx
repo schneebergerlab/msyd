@@ -152,8 +152,8 @@ def find_overlaps(left, right, only_core=False):
     total_len_left = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], left.iterrows())))
     total_len_right = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], right.iterrows())))
     total_len_ret = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], ret.iterrows())))
-    logger.debug(f"left orgs: {util.get_orgs_from_df(left)}, right orgs: {util.get_orgs_from_df(right)}, ret orgs: {util.get_orgs_from_df(ret)}")
-    logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
+    #logger.debug(f"left orgs: {util.get_orgs_from_df(left)}, right orgs: {util.get_orgs_from_df(right)}, ret orgs: {util.get_orgs_from_df(ret)}")
+    #logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
 
     return ret#.sort_values(ret.columns[0])
 #END
