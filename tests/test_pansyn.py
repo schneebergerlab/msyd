@@ -26,9 +26,9 @@ def simple_pansyn():
 
 def get_simple_pansyn():
     return Pansyn(
-            Range('test', 1, 'NaN', 1, 100),
-            {'test1': Range('test1', 1, 'NaN', 1, 100), 'test2': Range('test2', 1, 'NaN', 1, 100)},
-            {'test1': Cigar.from_string('100='), 'test2': Cigar.from_string('100=')})
+            Range('test', 'chr1', 'NaN', 'chr1', 100),
+            {'test1': Range('test1', 'chr1', 'NaN', 'chr1', 100), 'test2': Range('test2', 'chr1', 'NaN', 'chr1', 100)},
+            {'test1': cigar.cigar_from_string('100='), 'test2': cigar.cigar_from_string('100=')})
 
 def intermediate_pansyn_nocg():
     ret = intermediate_pansyn()
@@ -41,9 +41,9 @@ def intermediate_pansyn():
 
 def get_intermediate_pansyn():
     return Pansyn(
-            Range('test', 1, 'NaN', 101, 200),
-            {'test1': Range('test1', 1, 'NaN', 101, 200), 'test2': Range('test2', 1, 'NaN', 101, 200)},
-            {'test1': Cigar.from_string('50=1X49='), 'test2': Cigar.from_string('100=')})
+            Range('test', 'chr1', 'NaN', 101, 200),
+            {'test1': Range('test1', 'chr1', 'NaN', 101, 200), 'test2': Range('test2', 'chr1', 'NaN', 101, 200)},
+            {'test1': cigar.cigar_from_string('50=1X49='), 'test2': cigar.cigar_from_string('100=')})
 
 @pytest.fixture
 def complex_pansyn_nocg():
@@ -57,20 +57,20 @@ def complex_pansyn():
 
 def get_complex_pansyn():
     return Pansyn(
-            Range('test', 1, 'NaN', 1001, 1500),
+            Range('test', 'chr1', 'NaN', 1001, 1500),
             {
-                'test1': Range('test1', 1, 'NaN', 1101, 1600),
-                'test2': Range('test2', 2, 'NaN', 901, 1400),
-                'test3': Range('test3', 1, 'NaN', 1001, 1550),
-                'test4': Range('test4', 3, 'NaN', 951, 1430),
-                'test5': Range('test5', 3, 'NaN', 951, 1430)
+                'test1': Range('test1', 'chr1', 'NaN', 1101, 1600),
+                'test2': Range('test2', 'chr2', 'NaN', 901, 1400),
+                'test3': Range('test3', 'chr1', 'NaN', 1001, 1550),
+                'test4': Range('test4', 'chr3', 'NaN', 951, 1430),
+                'test5': Range('test5', 'chr3', 'NaN', 951, 1430)
             },
             {
-                'test1': Cigar.from_string('500='),
-                'test2': Cigar.from_string('90=10I200=1X99=10D100='),
-                'test3': Cigar.from_string('100=20I100=20I200=10I100='),
-                'test4': Cigar.from_string('80=10D300=10D100='),
-                'test5': Cigar.from_string('100=10I19=1X9=20D50=1X19=1X9=1X30=10I20=20D100=1X49=1X49=')                
+                'test1': cigar.cigar_from_string('500='),
+                'test2': cigar.cigar_from_string('90=10I200=1X99=10D100='),
+                'test3': cigar.cigar_from_string('100=20I100=20I200=10I100='),
+                'test4': cigar.cigar_from_string('80=10D300=10D100='),
+                'test5': cigar.cigar_from_string('100=10I19=1X9=20D50=1X19=1X9=1X30=10I20=20D100=1X49=1X49=')                
             })
 
 @pytest.fixture(params=[get_simple_pansyn, get_intermediate_pansyn, get_complex_pansyn])
@@ -126,21 +126,21 @@ def test_droponorg(all_pansyns, start, end):
 
 @pytest.fixture
 def overlapping_pansyns():
-    return (Pansyn(Range('test', 1, 'NaN', 101, 200),
+    return (Pansyn(Range('test', 'chr1', 'NaN', 101, 200),
         {
-            'test1': Range('test1', 1, 'NaN', 151, 250),
-            'test2': Range('test2', 1, 'NaN', 101, 200)
+            'test1': Range('test1', 'chr1', 'NaN', 151, 250),
+            'test2': Range('test2', 'chr1', 'NaN', 101, 200)
         },{
-            'test1': Cigar.from_string('10I30=1X29=1X9=10D10=1X9='),
-            'test2': Cigar.from_string('30=2X28=1X29=1X4=1X4=')
+            'test1': cigar.cigar_from_string('10I30=1X29=1X9=10D10=1X9='),
+            'test2': cigar.cigar_from_string('30=2X28=1X29=1X4=1X4=')
             }
-        ), Pansyn(Range('test', 1, 'NaN', 151, 220),
+        ), Pansyn(Range('test', 'chr1', 'NaN', 151, 220),
             {
-                'test3': Range('test3', 1, 'NaN', 151, 220),
-                'test4': Range('test4', 1, 'NaN', 171, 220)
+                'test3': Range('test3', 'chr1', 'NaN', 151, 220),
+                'test4': Range('test4', 'chr1', 'NaN', 171, 220)
             }, {
-                'test3': Cigar.from_string('30=1X29=1X9='),
-                'test4': Cigar.from_string('20=2X28=20D')
+                'test3': cigar.cigar_from_string('30=1X29=1X9='),
+                'test4': cigar.cigar_from_string('20=2X28=20D')
                 }
             ))
 
