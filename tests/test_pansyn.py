@@ -2,12 +2,14 @@
 
 import pandas as pd
 import pytest
+import copy
 
 import msyd.util as util
 
 from msyd.pansyn import *
-from msyd.classes.coords import Range, Pansyn
-from msyd.classes.cigar import Cigar
+from msyd.coords import Range, Pansyn
+from msyd.cigar import Cigar
+import msyd.cigar as cigar
 
 
 ### Tests for the `Pansyn` module
@@ -94,6 +96,34 @@ def test_drop(all_pansyns, start, end):
         assert drp.cigars_dict[org].get_len(ref=False) == len(drp.ranges_dict[org])
         assert drp.cigars_dict[org].get_len(ref=True) == l
 
+@pytest.mark.parametrize("start", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
+@pytest.mark.parametrize("end", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
+def test_dropinplace(all_pansyns, start, end):
+
+    pansyn = copy.copy(all_pansyns)
+    #drpctl = pansyn.drop(start, end)
+    pansyn.drop_inplace(start, end)
+
+
+    l = len(pansyn.ref)
+    assert l == len(all_pansyns.ref) - start - end
+
+    for org in all_pansyns.get_organisms():
+        assert pansyn.cigars_dict[org].get_len(ref=False) == len(pansyns.ranges_dict[org])
+        assert pansyn.cigars_dict[org].get_len(ref=True) == l
+
+@pytest.mark.parametrize("start", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
+@pytest.mark.parametrize("end", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
+def test_droponorg(all_pansyns, start, end):
+    for org in all_pansyns.get_organisms():
+        drp = pansyn.drop_on_org(start, end, org)
+        l = len(drp.ranges_dict[org])
+        assert l == len(all_pansyns.ranges_dict[org]) - start - end
+
+        for org in drp.get_organisms():
+            assert drp.cigars_dict[org].get_len(ref=False) == len(drp.ranges_dict[org])
+            assert drp.cigars_dict[org].get_len(ref=True) == l
+
 @pytest.fixture
 def overlapping_pansyns():
     return (Pansyn(Range('test', 1, 'NaN', 101, 200),
@@ -150,54 +180,54 @@ def test_find_overlaps_basic(overlapping_pansyns, cg, only_core):
                 assert len(pan.ranges_dict[org]) == pan.cigars_dict[org].get_len(ref=False)
 
 
-ov_ov_nocg = Pansyn(Range('test', 1, 'NaN', 151, 200),
+ov_ov_nocg = Pansyn(Range('test', 'chr1', 'NaN', 151, 200),
         {
-            'test1': Range('test1', 1, 'NaN', 201, 250),
-            'test2': Range('test2', 1, 'NaN', 151, 200),
-            'test3': Range('test3', 1, 'NaN', 151, 200),
-            'test4': Range('test4', 1, 'NaN', 171, 200)
+            'test1': Range('test1', 'chr1', 'NaN', 201, 250),
+            'test2': Range('test2', 'chr1', 'NaN', 151, 200),
+            'test3': Range('test3', 'chr1', 'NaN', 151, 200),
+            'test4': Range('test4', 'chr1', 'NaN', 171, 200)
             }, None)
 
-ov_ov = Pansyn(Range('test', 1, 'NaN', 151, 200),
+ov_ov = Pansyn(Range('test','chr1', 'NaN', 151, 200),
         {
-            'test1': Range('test1', 1, 'NaN', 211, 250), # need to drop 50 at start
-            'test2': Range('test2', 1, 'NaN', 151, 200),
-            'test3': Range('test3', 1, 'NaN', 151, 200), # need to drop 20 at end
-            'test4': Range('test4', 1, 'NaN', 171, 220)
+            'test1': Range('test1', 'chr1', 'NaN', 211, 250), # need to drop 50 at start
+            'test2': Range('test2', 'chr1', 'NaN', 151, 200),
+            'test3': Range('test3', 'chr1', 'NaN', 151, 200), # need to drop 20 at end
+            'test4': Range('test4', 'chr1', 'NaN', 171, 220)
         },{
-            'test1': Cigar.from_string('10=1X9=10D10=1X9='),
-            'test2': Cigar.from_string('10=1X29=1X4=1X4='),
-            'test3': Cigar.from_string('30=1X19='),
-            'test4': Cigar.from_string('20=2X28=')
+            'test1': cigar.cigar_from_string('10=1X9=10D10=1X9='),
+            'test2': cigar.cigar_from_string('10=1X29=1X4=1X4='),
+            'test3': cigar.cigar_from_string('30=1X19='),
+            'test4': cigar.cigar_from_string('20=2X28=')
         })
 
-ov_noov_left_nocg = Pansyn(Range('test', 1, 'NaN', 101, 150),
+ov_noov_left_nocg = Pansyn(Range('test', 'chr1', 'NaN', 101, 150),
         {
-            'test1': Range('test1', 1, 'NaN', 151, 200),
-            'test2': Range('test2', 1, 'NaN', 101, 150)
+            'test1': Range('test1', 'chr1', 'NaN', 151, 200),
+            'test2': Range('test2', 'chr1', 'NaN', 101, 150)
             }, None)
 
-ov_noov_right_nocg = Pansyn(Range('test', 1, 'NaN', 201, 220),
+ov_noov_right_nocg = Pansyn(Range('test', 'chr1', 'NaN', 201, 220),
         {
-            'test3': Range('test3', 1, 'NaN', 201, 220)
+            'test3': Range('test3', 'chr1', 'NaN', 201, 220)
             # test4 should be filtered out b/c it would be too small
             }, None)
 
-ov_ov_left = Pansyn(Range('test', 1, 'NaN', 101, 150),
+ov_ov_left = Pansyn(Range('test', 'chr1', 'NaN', 101, 150),
         {
-            'test1': Range('test1', 1, 'NaN', 151, 210),
-            'test2': Range('test2', 1, 'NaN', 101, 150)
+            'test1': Range('test1', 'chr1', 'NaN', 151, 210),
+            'test2': Range('test2', 'chr1', 'NaN', 101, 150)
         }, {
-            'test1': Cigar.from_string('10I30=1X19='),
-            'test2': Cigar.from_string('30=2X18=')
+            'test1': cigar.cigar_from_string('10I30=1X19='),
+            'test2': cigar.cigar_from_string('30=2X18=')
             })
 
-ov_ov_right = Pansyn(Range('test', 1, 'NaN', 201, 220),
+ov_ov_right = Pansyn(Range('test', 'chr1', 'NaN', 201, 220),
         {
-            'test3': Range('test3', 1, 'NaN', 201, 220)
+            'test3': Range('test3', 'chr1', 'NaN', 201, 220)
             # test4 should be dropped
         }, {
-            'test3': Cigar.from_string('10=1X9=')
+            'test3': cigar.cigar_from_string('10=1X9=')
             })
 
 def test_find_overlaps_nocg(overlapping_pansyns):

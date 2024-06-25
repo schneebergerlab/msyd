@@ -1,8 +1,8 @@
 #!/bin/python3
 
-import pansyri
-import pansyri.classes.cigar as cigar
-from pansyri.classes.cigar import Cigar
+import msyd
+import msyd.cigar as cigar
+from msyd.cigar import Cigar
 import pytest
 
 @pytest.fixture(params=["100=", "10=2X4=", "100=20I4X5D10I40=", "10=30D5=2X2=20I10="])

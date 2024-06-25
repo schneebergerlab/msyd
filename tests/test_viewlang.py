@@ -1,8 +1,8 @@
 #!/bin/python3
 
-from pansyri.util import *
-import pansyri.util as util
-from pansyri.classes.coords import Range, Pansyn
+from msyd.util import *
+import msyd.util as util
+from msyd.coords import Range, Pansyn
 import pytest
 
 

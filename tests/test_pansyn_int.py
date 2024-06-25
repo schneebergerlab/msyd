@@ -9,8 +9,8 @@ import platform
 import msyd.util as util
 
 from msyd.pansyn import *
-from msyd.classes.coords import Range, Pansyn
-from msyd.classes.cigar import Cigar
+from msyd.coords import Range, Pansyn
+from msyd.cigar import Cigar
 
 
 reffwd = set(['M', 'D', 'N', '=', 'X'])

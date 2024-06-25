@@ -343,6 +343,7 @@ class Pansyn:
         # this fn shouldn't usually be called like this, but handle anyway
         if org == self.ref.org:
             self.drop_inplace(start, end)
+            return
 
         assert(org in self.ranges_dict)
         # get no of bases corresponding to this drop on the reference
