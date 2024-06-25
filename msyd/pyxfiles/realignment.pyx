@@ -659,7 +659,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 
                 # print(syns)
                 ## Find merisyn in the syri calls
-                pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
+                pansyns = syns
+                #pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
 
                 # no need to recalculate the tree if no pansynteny was found
                 if pansyns is None or pansyns.empty:
