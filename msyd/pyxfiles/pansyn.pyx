@@ -228,7 +228,11 @@ cdef remove_overlap(syn):
         if ov > 0:
             # there is overlap on ref
             logger.warning(f"Found {ov} bp overlap on reference at {cur.ref.start}, dropping from latter record!")
+            logger.debug(f"Cur before dropping: {cur}")
             cur.drop_inplace(ov, 0) # call drop_inplace to mutate the dataframe from a reference
+            logger.debug(f"Cur after dropping: {cur}")
+
+
 
         ## check for overlap on other orgs
 
@@ -256,9 +260,9 @@ cdef remove_overlap(syn):
                 # there is overlap on org
                 logger.warning(f"Found {ov} bp overlap on {org} at {cur.ranges_dict[org].start}, dropping from latter record!")
                 logger.debug(f"Overlapping on {org}: {prev}, {cur}")
-                #logger.debug(f"Before drop: {cur}")
+                logger.debug(f"Cur before dropping: {cur}")
                 cur.drop_on_org_inplace(ov, 0, org)
-                #logger.debug(f"After drop: {cur}")
+                logger.debug(f"Cur after dropping: {cur}")
 
         prev = cur
 
