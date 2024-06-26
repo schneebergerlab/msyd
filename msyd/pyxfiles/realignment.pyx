@@ -644,7 +644,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                         for org in syris if syris[org] is not None]
 
 
-                # no need to recalculate the tree if no pansynteny was found
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
                     continue
@@ -662,6 +661,11 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 ## Find merisyn in the syri calls
                 pansyns = syns
                 #pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
+
+                # no need to recalculate the tree if no pansynteny was found
+                if pansyns is None or pansyns.empty:
+                    logger.info("No multisynteny was found in this round!")
+                    continue
 
                 # Add all merisyns with alphabetical sorting by reference name
                 merisyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
