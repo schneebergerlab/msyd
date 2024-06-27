@@ -213,6 +213,9 @@ cdef remove_overlap(syn):
     assumes syn to be sorted
     mutates syn
     """
+    if len(syn) == 0:
+        logger.error("remove_overlap called on empty synteny list! Most likely there is an issue with reading the input files.")
+        return syn
     syniter = syn.iterrows()
     prev = next(syniter)[1][0]
     for _, cur in syniter:
