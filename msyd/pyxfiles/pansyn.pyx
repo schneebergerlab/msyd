@@ -218,9 +218,9 @@ cdef remove_overlap(syn):
     syniter = syn.iterrows()
     prev = next(syniter)[1][0]
     for _, cur in syniter:
+        cur = cur[0]
         logger.debug(f"Prev: {prev}")
         logger.debug(f"Cur: {cur}")
-        cur = cur[0]
         if cur.ref.chr != prev.ref.chr: # there can be no overlap between chrs
             prev = cur
             continue
