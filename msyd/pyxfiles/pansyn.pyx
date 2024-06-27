@@ -19,8 +19,6 @@ from msyd.coords import Pansyn, Range, Position
 cdef int MIN_SYN_THRESH = 30
 
 logger = util.CustomFormatter.getlogger(__name__)
-import logging
-logger.setLevel(logging.DEBUG)
 
 def find_overlaps(left, right, only_core=False):
     """
@@ -205,6 +203,9 @@ def match_synal(syn, aln, ref='a'):
             alnr = next(alniter)[1]
         except StopIteration:
             break
+
+    if len(ret) <= 0.1*len(syn):
+        logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
     return pd.DataFrame(list(ret))
 
 
@@ -215,6 +216,9 @@ cdef remove_overlap(syn):
     assumes syn to be sorted
     mutates syn
     """
+    if len(syn) == 0:
+        logger.error("remove_overlap called on empty synteny list! Most likely there is an issue with reading the input files.")
+        return syn
     syniter = syn.iterrows()
     prev = next(syniter)[1][0]
     for _, cur in syniter:
