@@ -23,8 +23,8 @@ import msyd.io as io
 logger = util.CustomFormatter.getlogger(__name__)
 
 HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on reference genome">
-##ALT<ID=CORESYN,Description="Core syntenic region (syntenic between any two samples)">
-##ALT<ID=MERISYN,Description="Merisyntenic region (syntenic between any two samples for a strict subset of the samples)">
+##ALT<ID=CORESYN,Description="Coresyntenic region (syntenic between any two samples)">
+##ALT<ID=MERISYN,Description="Merasyntenic region (syntenic between any two samples for a strict subset of the samples)">
 ##INFO=<ID=PID,Number=1,Type=Integer,Description="Numerical part of the ID of the parent PANSYN region. If the PID of a region is 10, it's parent's ID will be CROSSSYN10 or CORESYN10 (and there will be only one of either).">
 ##FORMAT=<ID=CHR,Number=1,Type=String,Description="Chromosome in this sample">
 ##FORMAT=<ID=START,Number=1,Type=Integer,Description="Start position in this sample">
@@ -180,7 +180,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
                     # annotate as reference genotpye if impute is enabled
                     if syn.ref.org == 'ref':
                         new_rec.samples[sample].allele_indices = 0
-                    else: # should catch non-ref. merisynteny
+                    else: # should catch non-ref. merasynteny
                         new_rec.samples[sample].update(rec.samples[syn.ref.org])
                         #new_rec.samples[sample].allele_indices = rec.samples[syn.ref.org].allele_indices
 

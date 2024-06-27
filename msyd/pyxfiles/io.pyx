@@ -600,7 +600,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     cdef:
         int n = len(orgs) + 1 # to account for ref
         int corecounter = 1
-        int mericounter = 1
+        int meracounter = 1
         int coreend = 0
         str corechr = ''
 
@@ -626,26 +626,26 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
         except StopIteration: # try/catch block internal, so things still get written after we run out of pansyn regions
             pass
 
-        # first, write non-ref-position merisynteny
+        # first, write non-ref-position merasynteny
         # write to the first position it can be
         # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
         if collapse_mesyn:
             if mesyns: # do not add anything if mesyns is empty
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERISYN{mericounter}-{mericounter+len(mesyns)-1}", '']))
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}-{meracounter+len(mesyns)-1}", '']))
                 write_pansyns(mesyns, buf, orgs, save_cigars=save_cigars)
-                mericounter += len(mesyns)
+                meracounter += len(mesyns)
         else:
             for mesyn in mesyns:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERISYN{mericounter}", '']))
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", '']))
                 write_pansyns([mesyn], buf, orgs, save_cigars=save_cigars)
-                mericounter += 1
+                meracounter += 1
 
         # write mesyn regions that have a position on reference at their appropriate position
         for refmesyn in refmesyns:
             ref = refmesyn.ref
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERISYN{mericounter}", '']))
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}", '']))
             write_pansyns([refmesyn], buf, orgs, save_cigars=save_cigars)
-            mericounter += 1
+            meracounter += 1
 
         # write coresyn region
         if syn:
@@ -709,7 +709,7 @@ cpdef read_pff(fin):
         # split once to reuse in pansyn construction loop
         samplecells = [cell.split(';') for cell in line[4:]]
 
-        # a single line may contain multiple merisyn records if the PFF is collapsed
+        # a single line may contain multiple merasyn records if the PFF is collapsed
         for i in range(len(samplecells[0])): # will iterate just once for single records
             reforg = 'ref'
             syn = Pansyn(None, {}, None)
