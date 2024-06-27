@@ -203,6 +203,9 @@ def match_synal(syn, aln, ref='a'):
             alnr = next(alniter)[1]
         except StopIteration:
             break
+
+    if len(ret) <= 0.1*len(syn):
+        logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
     return pd.DataFrame(list(ret))
 
 
