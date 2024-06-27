@@ -18,7 +18,7 @@ Many convenient shorthand functions are defined in the `util` module.
 ### `msyd call`
 
 This subcommand is used to call multisyntenic regions in a set of genomes.
-It uses the Synteny Intersection Algorithm to identify both core and reference cross synteny, but can optionally be configured to call only core synteny (making it faster particularly when run with many genomes).
+It uses the Synteny Intersection Algorithm to identify both core and reference merasynteny, but can optionally be configured to call only coresynteny (making it faster particularly when run with many genomes).
 `msyd call` expects a tab-separated input file (specified with `-i`) containing for each genome the name that should be used and the location of the alignment, SyRI.out and vcf file (make sure the SyRI.out file was generated without the `--maxsize` parameter, otherwise large INDELs will be missing!).
 Optionally, the VCF might be left out, then `msyd` will automatically look for the syri-generated VCF file corresponding to the syri.out file.
 Both files should be using the same reference in all specified genomes.
@@ -47,7 +47,7 @@ In the call above, the VCF merging functionality can then be enabled:
 $msyd call -i genomes_with_vcf.tsv -o threesamples.pff -r col.fa.gz -m threesamples.vcf
 ```
 
-`msyd call` generates output in Pansynteny File Format (PFF).
+`msyd call` generates output in Population synteny File Format (PFF).
 PFF is a tab-separated format for storing multisynteny annotations and alignments.
 A specification and small example can be seen in `format.md`.
 `msyd view` can be used to export the synteny annotations in a PFF file into a VCF for use with other tools, but `msyd` cannot read multisynteny information from VCF files.
