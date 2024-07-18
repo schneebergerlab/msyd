@@ -94,3 +94,7 @@ The algorithm may not produce suitable output if used on regions with little syn
 ![Diagram illustrating an example workflow for using msyd](https://github.com/schneebergerlab/msyd/blob/master/img/workflow.svg)
 
 Useful scripts for using `msyd` may be seen in the `hgsv\_scripts`, `drosophila\_scripts`, `ampsynth\_scripts` directories.
+
+# Contact
+
+Please report any crashes, weird output, suggestions or otherwise in a GitHub issue!
