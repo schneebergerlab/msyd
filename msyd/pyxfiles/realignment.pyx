@@ -785,7 +785,17 @@ cdef syri_get_syntenic(alns):
 
     return syris
 
-
+# Idea for additional fn
+# finds private regions by scanning through the genome for regions not covered by any merasyn
+# tracks current position along the genome
+# challenge: non-coresyn regions
+# => approach: sort merasyns by org, then subtract
+# alternatively, use intervaltrees, subtract each merasyn
+# maybe move to own file eventually?
+# implement after refactoring of data structures
+#cpdef find_private(syns, only_private=False):
+#    # Finds 
+#    pass
 
 ################################################# DEPRECATED ###########################################################
 
@@ -820,19 +830,6 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
     # transform coordinates with the offset/alignment information, return
     offset = interval.data
     return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
-
-
-# Idea for additional fn
-# finds private regions by scanning through the genome for regions not covered by any merasyn
-# tracks current position along the genome
-# challenge: non-coresyn regions
-# => approach: sort merasyns by org, then subtract
-# alternatively, use intervaltrees, subtract each merasyn
-# maybe move to own file eventually?
-# implement after refactoring of data structures
-#cpdef find_private(syns, only_private=False):
-#    # Finds 
-#    pass
 
 #
 #cimport libc.stdio as cio
