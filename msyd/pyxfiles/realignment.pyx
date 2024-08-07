@@ -190,7 +190,7 @@ cdef get_aligner(seq, preset, ns=True):
     
     #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
 
-    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=70, max_chain_skip=255) # requires a patched version of minimap2; TODO make PR to get that merged
+    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=15, max_chain_skip=255) # requires a patched version of minimap2; TODO make PR to get that merged
 
 
     return aligner
