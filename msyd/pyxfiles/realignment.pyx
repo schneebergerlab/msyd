@@ -421,7 +421,14 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None, output_only_realign=False):
+    """
+    Function to find gaps between two coresyn regions and realign them to a new reference.
+    Discovers all merisynteny.
+    
+    :arguments: A DataFrame with core and merisyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
+    :returns: A DataFrame with the added non-reference merisynteny
+    """
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
         _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
@@ -435,13 +442,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     # return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores, cwd=cwd)
 
 # cpdef process_gaps(df, qrynames, fastas, mp_preset, ncores, cwd):
-    """
-    Function to find gaps between two coresyn regions and realign them to a new reference.
-    Discovers all merisynteny.
-    
-    :arguments: A DataFrame with core and merisyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
-    :returns: A DataFrame with the added non-reference merisynteny
-    """
     # init stuff
     ret = deque()#pd.DataFrame()
     n = len(qrynames) + 1 # to account for reference
@@ -460,7 +460,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
         syn = next(syniter)[1][0]
         # skip to first core
         while syn.get_degree() < n:
-            ret.append(syn)
+            if not output_only_realign:
+                ret.append(syn)
             syn = next(syniter)[1][0]
             # print(vars(syn))
         old = syn
@@ -498,7 +499,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             if end - start < _MIN_REALIGN_THRESH:
                 if all([syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH \
                         for org in syn.ranges_dict]):
-                    ret.append(syn)
+                    if not output_only_realign:
+                        ret.append(syn)
                     old = syn
                     syn = next(syniter)[1][0]
                     continue
@@ -508,7 +510,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             if syn.ref.chr != old.ref.chr:
                 logger.error("Chr case found: {syn.ref}, {old.ref}")
                 old = syn
-                ret.append(syn)
+                if not output_only_realign:
+                    ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
@@ -534,7 +537,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             if not seqdict: # if all sequences have been discarded, skip realignment
                 #logger.info("Not aligning, not enough non-reference sequence found!")
                 old = syn
-                ret.append(syn)
+                if not output_only_realign:
+                    ret.append(syn)
                 syn = next(syniter)[1][0]
                 continue
 
@@ -706,7 +710,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
             # continue checking the next coresyn gap
             old = syn
-            ret.append(syn)
+            if not output_only_realign:
+                ret.append(syn)
             syn = next(syniter)[1][0]
             #print(old, syn)
     except StopIteration as e:
