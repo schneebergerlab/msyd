@@ -20,6 +20,30 @@ cdef int MIN_SYN_THRESH = 30
 
 logger = util.CustomFormatter.getlogger(__name__)
 
+
+def filter_pansyn(pansyn, drop_small=True):
+    """
+    Tests if a pansyn should be added to the output by checking degree and length.
+    If `drop_small` is not set to `False`, will mutate the input pansyn to remove any organisms where the region is smaller than `MIN_SYN_THRESH`.
+    """
+    if not pansyn: # filter empty objects to handle failures
+        return False
+    if len(pansyn.ref) < MIN_SYN_THRESH: # filter small regions
+        return False
+
+    # delete small syntenic regions from the pansyn object, mutates pansyn but that should be fine in this case
+    if drop_small:
+        droplist = [org for org, rng in pansyn.ranges_dict.items() if len(rng) < MIN_SYN_THRESH]
+        for org in droplist:
+            del pansyn.ranges_dict[org]
+            if pansyn.cigars_dict:
+                del pansyn.cigars_dict[org]
+
+    if pansyn.get_degree() < 2: # filter regions without non-reference synteny
+        return False
+
+    return True
+
 def find_overlaps(left, right, only_core=False):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
@@ -44,26 +68,14 @@ def find_overlaps(left, right, only_core=False):
 
     cdef int cov = 0 # store the last position in the ref that has been covered in ret
 
-    #TODO refactor into external fn, write filtering fn for reduce_find_overlap if n=1
-    def add_filtered(pansyn): # Filters out pansyns that should be discarded at this step, and adds those that we want to keep to the results list
-        if not pansyn: # filter empty objects to handle failures
-            return
-        if len(pansyn.ref) < MIN_SYN_THRESH: # filter small regions
-            return
-
-        # delete small syntenic regions from the pansyn object, mutates pansyn but that should be fine in this case
-        remlist = [org for org, rng in pansyn.ranges_dict.items() if len(rng) < MIN_SYN_THRESH]
-        for org in remlist:
-            del pansyn.ranges_dict[org]
-            if pansyn.cigars_dict:
-                del pansyn.cigars_dict[org]
-
-        if pansyn.get_degree() < 1: # filter regions without non-reference synteny
-            return
-        if only_core:
-            if pansyn.get_degree() < l.get_degree() + r.get_degree(): # filter non-core-syntenic regions in case that's relevant
+    # helper Fn to only add filtered pansyns to the final output
+    # calls filter_pansyn and if only_core is set additionally filters for core synteny
+    def add_filtered(pansyn):
+        if filter_pansyn(pansyn):
+            # filter non-core-syntenic regions in case that's relevant
+            if only_core and pansyn.get_degree() < l.get_degree() + r.get_degree():
                 return
-        ret.append(pansyn)
+            ret.append(pansyn)
     
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
