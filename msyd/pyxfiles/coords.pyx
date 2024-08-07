@@ -10,7 +10,7 @@ import traceback
 import logging
 
 from msyd.cigar import Cigar
-import msyd.scripts.util as util
+import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 

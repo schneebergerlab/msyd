@@ -141,7 +141,7 @@ def main():
     realign_parser.add_argument("-p", "--pairwise", dest='pairwise', required=False, type=argparse.FileType('r'), help="Path to a TSV containing paths to full pairwise alignments that msyd will read in from disk if this parameter is passed. Otherwise, individual regions will be realigned on the fly with minimap2/mappy. This is useful if you already have pairwise alignments, or want to use a different aligner.")
     realign_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     realign_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
-    realign_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
+    realign_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 100 bp.", type=int, default=-1)
     realign_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     realign_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
 

@@ -53,7 +53,7 @@ def find_invhaps(f):
     """
     Read realigned PFF and call inversions. Later, this function would be called directly within the main.py and the pansyn blocks would be parsed as arguments.
     """
-    from msyd.scripts.util import CustomFormatter
+    from msyd.util import CustomFormatter
     from msyd.io import read_pff, readsyriout
 
     logger = CustomFormatter.getlogger('find_invhaps')

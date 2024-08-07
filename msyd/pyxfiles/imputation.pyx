@@ -5,7 +5,7 @@
 
 import msyd.cigar
 from msyd.cigar import Cigar#, cig_clips, cig_aln_types
-import msyd.scripts.util as util
+import msyd.util as util
 
 # redeclare, as cdefs can apparently not be imported
 cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])

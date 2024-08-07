@@ -25,7 +25,7 @@ cimport numpy as np
 from msyd.coords import Range
 from msyd.coords import Pansyn
 from msyd.vars import SNV
-import msyd.scripts.util as util
+import msyd.util as util
 import msyd.cigar as cigar
 
 logger = util.CustomFormatter.getlogger(__name__)

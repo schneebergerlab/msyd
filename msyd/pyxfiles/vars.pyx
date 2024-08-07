@@ -3,7 +3,7 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-import msyd.scripts.util as util
+import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 
