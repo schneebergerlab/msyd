@@ -36,9 +36,12 @@ cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to 
 cdef int _NULL_CNT = 200 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 cpdef listdict_to_mts(lists):
+    """
+    Transforms a list of alignments for each organism into a dictionary of intervaltrees mapping an offset in the alignment reference to each position in the sample genome.
+    """
     ret = dict()
     posdict = defaultdict(int) # stores the current position in each org
     for org, lst in lists.items():
@@ -234,7 +237,6 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
         # simply append alignment if there is only one offset
         # as this happens quite often, this should save a lot of time
         # print(f'reftree: {reftree}, qrytree: {qrytree}, rend: {rend}, qend: {qend}')
-
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data

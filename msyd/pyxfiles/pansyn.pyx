@@ -72,7 +72,7 @@ def find_overlaps(left, right, only_core=False):
     # helper Fn to only add filtered pansyns to the final output
     # calls filter_pansyn and if only_core is set additionally filters for core synteny
     def add_filtered(pansyn):
-        if filter_pansyn(pansyn, drop_private=False):
+        if filter_pansyn(pansyn):
             # filter non-core-syntenic regions in case that's relevant
             if only_core and pansyn.get_degree() < l.get_degree() + r.get_degree():
                 return
