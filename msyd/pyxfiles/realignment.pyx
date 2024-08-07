@@ -56,8 +56,8 @@ cpdef listdict_to_mts(lists):
     return ret
 
 # <editor-fold desc='Support functions for realign'>
-cpdef construct_mts(merisyns, old, syn):
-# def construct_mappingtrees(merisyns, old, syn):
+cpdef construct_mts(merasyns, old, syn):
+# def construct_mappingtrees(merasyns, old, syn):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
     Crosssyns need to be sorted by position on reference.
@@ -66,9 +66,9 @@ cpdef construct_mts(merisyns, old, syn):
     listdict = defaultdict(list)
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
 
-    for merisyn in merisyns:
+    for merasyn in merasyns:
         # iterate through all pansyns found so far
-        for org, rng in merisyn.ranges_dict.items():
+        for org, rng in merasyn.ranges_dict.items():
             #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
             l = rng.start - offsetdict[org] # len of the region to be added
             if l < 0:
@@ -90,7 +90,7 @@ cpdef construct_mts(merisyns, old, syn):
             # all up to the end of this region has been added
             offsetdict[org] = rng.end
 
-    # see if there's any sequence left to realign after processing the merisyn regions
+    # see if there's any sequence left to realign after processing the merasyn regions
     for org, offset in offsetdict.items():
         l = syn.ranges_dict[org].start - offset
         if l >= _MIN_REALIGN_THRESH:
@@ -104,25 +104,25 @@ cpdef construct_mts(merisyns, old, syn):
     return listdict_to_mts(listdict)
 # END
 
-cpdef subtract_mts(mappingtrees, merisyns):
+cpdef subtract_mts(mappingtrees, merasyns):
     """
-    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by pansyn objects in `merisyns` subtracted.
-    Used to remove merisynteny found during realignment from the mappingtrees, to do further realignment.
+    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by pansyn objects in `merasyns` subtracted.
+    Used to remove merasynteny found during realignment from the mappingtrees, to do further realignment.
     """
     # core iteration is the same as in construct_mts, except we don't need to store the offsets
     curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
     listdict = defaultdict(list) # used to construct the output mappingtrees
     # these need to be reconstructed to take care of handling the separator intervals
 
-    for merisyn in merisyns:
-        for org, rng in merisyn.ranges_dict.items():
+    for merasyn in merasyns:
+        for org, rng in merasyn.ranges_dict.items():
             if not org in curdict or curdict[org] is None: # skip if there are no more intervals to process for this org
                 continue
             curint = curdict[org]
             orglist = listdict[org]
             #TODO idea: set curdict[org] to None to indicate termination?
 
-            # skip to first interval overlapping this merisyn
+            # skip to first interval overlapping this merasyn
             # there should be one of thesejfor any alignment
             while curint.end - curint.begin + curint.data < rng.start:
                 orglist.append( (curint.data, curint.end - curint.begin) )
@@ -144,7 +144,7 @@ cpdef subtract_mts(mappingtrees, merisyns):
                 logger.warning("Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call.")
             
 
-            # there was no interval overlapping this merisyn anyway, we don't need to subtract anything
+            # there was no interval overlapping this merasyn anyway, we don't need to subtract anything
             if curint.data > rng.end:
                 curdict[org] = curint
                 continue
@@ -156,7 +156,7 @@ cpdef subtract_mts(mappingtrees, merisyns):
             if l > _MIN_REALIGN_THRESH:
                 orglist.append( (curint.data, l) )
 
-            # set curint to what remains after removing this merisyn if large enough
+            # set curint to what remains after removing this merasyn if large enough
             l = curint.data + curint.end - curint.begin - rng.end
             if l > _MIN_REALIGN_THRESH:
                 curdict[org] = Interval(curint.end - l, curint.end, rng.end)
@@ -390,13 +390,13 @@ cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
 
 cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     """
-    Function that extracts alignments of sequence that has not been called as merisyntenic yet from a set of alignments, in preparation for the synteny identification part of realignment.
+    Function that extracts alignments of sequence that has not been called as merasyntenic yet from a set of alignments, in preparation for the synteny identification part of realignment.
     This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alnsdf first. 
     :args:
     :alnsdf: Dataframe of alignments (eg produced by io.read_alnsfile).
-    :reftree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the chosen reference. Produced for all samples at once by construct_mts.
-    :qrytree: An Intervaltree with a start coordinate for each region that has not been identified as merisyntenic yet in the query sequence. Produced for all samples at once by construct_mts.
-    :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merisyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.
+    :reftree: An Intervaltree with a start coordinate for each region that has not been identified as merasyntenic yet in the chosen reference. Produced for all samples at once by construct_mts.
+    :qrytree: An Intervaltree with a start coordinate for each region that has not been identified as merasyntenic yet in the query sequence. Produced for all samples at once by construct_mts.
+    :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merasyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.
     """
 
     ret = []
@@ -424,10 +424,10 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
 cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None, output_only_realign=False):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
-    Discovers all merisynteny.
+    Discovers all merasynteny.
     
-    :arguments: A DataFrame with core and merisyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
-    :returns: A DataFrame with the added non-reference merisynteny
+    :arguments: A DataFrame with core and merasyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
+    :returns: A DataFrame with the added non-reference merasynteny
     """
     if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
         global _MIN_REALIGN_THRESH
@@ -465,12 +465,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             syn = next(syniter)[1][0]
             # print(vars(syn))
         old = syn
-        # TODO: Misses the merisyn before the first coresyn region? This would become if there are no or very few coresyn regions
-        # leon: yes, the merisyn before the first and after the last coresyn of a chromosome will be missed.
+        # TODO: Misses the merasyn before the first coresyn region? This would become if there are no or very few coresyn regions
+        # leon: yes, the merasyn before the first and after the last coresyn of a chromosome will be missed.
         # my thinking was that this would correspond to the highly polymorphic tails of the chromosomes
         # this seems to work out in Ampril (the first coresyn starts at <2 kb in my local test dataset),
         # but might cause problems in datasets with very little coresyn
-        merisyns = dict()
+        merasyns = dict()
         # CNT = 0
         while True:
             # CNT += 1
@@ -478,15 +478,15 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             # if CNT == 100:
             #     break
             # find block between two coresyn regions
-            merisyns = dict()
+            merasyns = dict()
 
-            # store merisyn-regions, to be added once we know if we need to realign
-            refmerisyns = []
+            # store merasyn-regions, to be added once we know if we need to realign
+            refmerasyns = []
             while syn.get_degree() < n:
-                refmerisyns.append(syn)
+                refmerasyns.append(syn)
                 syn = next(syniter)[1][0]
 
-            merisyns[old.ref.org] = refmerisyns
+            merasyns[old.ref.org] = refmerasyns
 
             # syn must be core now
 
@@ -517,17 +517,17 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
             #########
             ## Block has been extracted and is long enough;
-            ## extract appropriate sequences, respecting already found merisyn
+            ## extract appropriate sequences, respecting already found merasyn
             #########
 
             #print(old, syn, syn.ref.start - old.ref.end)
-            #print(merisyns)
+            #print(merasyns)
 
             #TODO parallelise everything after this, enable nogil
 
             
             ## construct the mapping, and prepare sequences for realignment
-            mappingtrees = construct_mts(refmerisyns, old, syn)
+            mappingtrees = construct_mts(refmerasyns, old, syn)
             seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
 
             #if any([len(mappingtrees[org]) > 3 for org in mappingtrees]):
@@ -547,11 +547,11 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
-                if _MAX_REALIGN > 0 and len(merisyns) > _MAX_REALIGN:
+                if _MAX_REALIGN > 0 and len(merasyns) > _MAX_REALIGN:
                     break
 
                 ## choose a reference
-                # uses the sample containing the most non-merisyntenic sequence
+                # uses the sample containing the most non-merasyntenic sequence
                 # if a dict of pairwise alns is passed, will always prefer samples in the dict
                 if pairwise:
                     ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
@@ -630,7 +630,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 syris = syri_get_syntenic(alns)
                 # TODO MG: Replaced getsyriout with the synteny identification method from syri. Consider parallelizing this because for repetitive regions this loop would be expensive as well.
 
-                ## Match ALNs, in preparation for merisyn identification
+                ## Match ALNs, in preparation for merasyn identification
                 for org in syris:
                     if syris[org] is not None:
                         #print("===", org, mappingtrees[org][0], "against", ref, reftree[0], reftree[-1], "===")
@@ -659,7 +659,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 
                 # print(syns)
-                ## Find merisyn in the syri calls
+                ## Find merasyn in the syri calls
                 pansyns = syns
                 pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
 
@@ -668,19 +668,19 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                     logger.info("No multisynteny was found in this round!")
                     continue
 
-                # Add all merisyns with alphabetical sorting by reference name
-                merisyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
-                added = sum([len(x.ref) for x in merisyns[ref]])
+                # Add all merasyns with alphabetical sorting by reference name
+                merasyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
+                added = sum([len(x.ref) for x in merasyns[ref]])
 
-                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merisyns))}) of merisynteny.")
+                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merasyns))}) of merasynteny.")
 
-                ## recalculate mappingtrees from current merisyns to remove newly found meri synteny
+                ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
                 # TODO maybe directly remove, should be more efficient
-                logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merisyns[ref]}.")
-                mappingtrees = subtract_mts(mappingtrees, merisyns[ref])
+                logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merasyns[ref]}.")
+                mappingtrees = subtract_mts(mappingtrees, merasyns[ref])
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
                 # remove all orgs that have already been used as a reference
-                for reforg in merisyns:
+                for reforg in merasyns:
                     if reforg in mappingtrees:
                         del mappingtrees[reforg]
 
@@ -704,9 +704,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
 
             # incorporate into output DF, sorted alphabetically by ref name
-            # does nothing if no merisyn was found
-            for org in sorted(merisyns.keys()):
-                ret.extend(merisyns[org])
+            # does nothing if no merasyn was found
+            for org in sorted(merasyns.keys()):
+                ret.extend(merasyns[org])
 
             # continue checking the next coresyn gap
             old = syn
