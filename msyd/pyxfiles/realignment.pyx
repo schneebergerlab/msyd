@@ -9,33 +9,30 @@ import pandas as pd
 import numpy as np
 import mappy as mp
 import pysam
-from intervaltree import IntervalTree, Interval
-from datetime import datetime
-from multiprocessing import Pool
 import logging
-from collections import deque, defaultdict
 import os
+from collections import deque, defaultdict
 from functools import partial
-from io import StringIO
+from multiprocessing import Pool
 
-cimport libc.stdio as cio
-cimport posix.unistd as unistd
+from intervaltree import IntervalTree, Interval
 
 # I added these lines to hide all of the INFO logs from syri. If those are required then these lines can be removed
 logging.getLogger('syri').setLevel(logging.WARNING)
 logging.getLogger('getCTX').setLevel(logging.WARNING)
+
 from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn, apply_TS, alignmentBlock, getSynPath
 from syri.tdfunc import getCTX
 from syri.writeout import getsrtable
 
-import msyd.scripts.util as util
+import msyd.util as util
 import msyd.cigar as cigar
 import msyd.pansyn as pansyn
 import msyd.io as io
 
 
 cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
-cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to
+cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 200 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
@@ -784,6 +781,7 @@ cdef syri_get_syntenic(alns):
 
 
 ################################################# DEPRECATED ###########################################################
+
 cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
     """DEPRECATED
     Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
@@ -818,95 +816,99 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
 
 
 
+#
+#cimport libc.stdio as cio
+#cimport posix.unistd as unistd
+#
 
-# TODO: Make parameters adjustable. Also, now (12.03.24) this could be deprecated.
-cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
-    """DEPRECATED"""
-    BRT = 20
-    TUC = 1000
-    TUP = 0.5
-    T = 50
-    invgl = 1000000
-
-    #assert(len(list(np.unique(coords.aChr))) == 1)
-    try:
-        assert coords.aChr.nunique() == 1
-        assert coords.bChr.nunique() == 1
-    except AssertionError:
-        logger.error(f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
-
-    cdef int oldstderr = -1
-    if redir_stderr:
-        #cio.fclose(cio.stderr)
-        #cio.stderr = cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
-        oldstderr = unistd.dup(unistd.STDERR_FILENO)
-        cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
-
-    # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-    chromr = list(coords.aChr)[0] # there should only ever be one chr anyway
-    chromq = list(coords.bChr)[0]
-    samechrids = chromr == chromq
-    if not samechrids:
-        coords.bChr.replace(chromq, chromr, inplace=True)
-    chrom = chromr
-    # handle errors by return value; allows only showing output if there is a problem
-    # python errors coming after an error here will have normal stderr
-    # try:
-    #     # TODO: this function expects that the reference and query chromsome would have the same id. If that is not the case (pre-processing not done),then this function always crashes
-    #     syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP)
-    # except ValueError:
-    #     print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-    #     return None
-
-    if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
-        if redir_stderr:
-            logger.error("Redirecting stderr to console again")
-            #cio.fclose(cio.stderr)
-            #cio.stderr = oldstderr
-            unistd.close(unistd.STDERR_FILENO)
-            unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-        logger.error("syri call failed on input:")
-        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
-        if redir_stderr:
-            logger.error(f"syri stderr in '{CWD}/stderr'")
-        return None
-
-    #with multiprocessing.Pool(processes=N) as pool:
-    #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
-
-    #TODO if runtime a problem: redo syri call to only call synteny => maybe configurable?
-    # Merge output of all chromosomes – still necessary for some reason
-    mergeOutputFiles([chrom], CWD, PR)
-
-    #TODO: Maybe not requires and can be removed?
-    # leon: outSyn fails if this isn't called, that's why it's left in there
-    # but yes, this step should be unnecessary
-    # In general, I think the syri calling should be done more elegantly --
-    # writing to and then reading from files is quite inefficient, especially
-    # for short realignments
-
-    #Identify meri-chromosomal events in all chromosomes simultaneously
-    getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
-
-    # Recalculate syntenic blocks by considering the blocks introduced by CX events
-    outSyn(CWD, T, PR)
-    o = getsrtable(CWD, PR)
-    if not samechrids:
-        o.bchr.replace(chromr, chromq, inplace=True)
-
-    if redir_stderr:
-        #cio.fclose(cio.stderr)
-        #cio.stderr = oldstderr
-        unistd.close(unistd.STDERR_FILENO)
-        unistd.dup2(oldstderr, unistd.STDERR_FILENO)
-
-    if not K:
-        for fin in ["synOut.txt", "invOut.txt", "TLOut.txt", "invTLOut.txt", "dupOut.txt", "invDupOut.txt", "ctxOut.txt", "sv.txt", "notAligned.txt", "snps.txt"]:
-            try:
-                os.remove(CWD+PR+fin)
-            except OSError as e:
-                if e.errno != 2:    # 2 is the error number when no such file or directory is present https://docs.python.org/2/library/errno.html
-                    raise
-    return o
-# END
-
+## TODO: Make parameters adjustable. Also, now (12.03.24) this could be deprecated.
+#cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
+#    """DEPRECATED"""
+#    BRT = 20
+#    TUC = 1000
+#    TUP = 0.5
+#    T = 50
+#    invgl = 1000000
+#
+#    #assert(len(list(np.unique(coords.aChr))) == 1)
+#    try:
+#        assert coords.aChr.nunique() == 1
+#        assert coords.bChr.nunique() == 1
+#    except AssertionError:
+#        logger.error(f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+#
+#    cdef int oldstderr = -1
+#    if redir_stderr:
+#        #cio.fclose(cio.stderr)
+#        #cio.stderr = cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
+#        oldstderr = unistd.dup(unistd.STDERR_FILENO)
+#        cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
+#
+#    # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
+#    chromr = list(coords.aChr)[0] # there should only ever be one chr anyway
+#    chromq = list(coords.bChr)[0]
+#    samechrids = chromr == chromq
+#    if not samechrids:
+#        coords.bChr.replace(chromq, chromr, inplace=True)
+#    chrom = chromr
+#    # handle errors by return value; allows only showing output if there is a problem
+#    # python errors coming after an error here will have normal stderr
+#    # try:
+#    #     # TODO: this function expects that the reference and query chromsome would have the same id. If that is not the case (pre-processing not done),then this function always crashes
+#    #     syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP)
+#    # except ValueError:
+#    #     print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
+#    #     return None
+#
+#    if syri(chrom, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD, tdolp=TDOLP) == -1:
+#        if redir_stderr:
+#            logger.error("Redirecting stderr to console again")
+#            #cio.fclose(cio.stderr)
+#            #cio.stderr = oldstderr
+#            unistd.close(unistd.STDERR_FILENO)
+#            unistd.dup2(oldstderr, unistd.STDERR_FILENO)
+#        logger.error("syri call failed on input:")
+#        print(coords[['aStart', 'aEnd', 'aLen', 'bStart', 'bEnd', 'bLen', 'iden', 'aDir', 'bDir']])
+#        if redir_stderr:
+#            logger.error(f"syri stderr in '{CWD}/stderr'")
+#        return None
+#
+#    #with multiprocessing.Pool(processes=N) as pool:
+#    #    pool.map(partial(syri, threshold=T, coords=coords, cwdPath=CWD, bRT=BRT, prefix=PR, tUC=TUC, tUP=TUP, invgl=invgl, tdgl=TD,tdolp=TDOLP), chrs)
+#
+#    #TODO if runtime a problem: redo syri call to only call synteny => maybe configurable?
+#    # Merge output of all chromosomes – still necessary for some reason
+#    mergeOutputFiles([chrom], CWD, PR)
+#
+#    #TODO: Maybe not requires and can be removed?
+#    # leon: outSyn fails if this isn't called, that's why it's left in there
+#    # but yes, this step should be unnecessary
+#    # In general, I think the syri calling should be done more elegantly --
+#    # writing to and then reading from files is quite inefficient, especially
+#    # for short realignments
+#
+#    #Identify meri-chromosomal events in all chromosomes simultaneously
+#    getCTX(coords, CWD, [chrom], T, BRT, PR, TUC, TUP, N, TD, TDOLP)
+#
+#    # Recalculate syntenic blocks by considering the blocks introduced by CX events
+#    outSyn(CWD, T, PR)
+#    o = getsrtable(CWD, PR)
+#    if not samechrids:
+#        o.bchr.replace(chromr, chromq, inplace=True)
+#
+#    if redir_stderr:
+#        #cio.fclose(cio.stderr)
+#        #cio.stderr = oldstderr
+#        unistd.close(unistd.STDERR_FILENO)
+#        unistd.dup2(oldstderr, unistd.STDERR_FILENO)
+#
+#    if not K:
+#        for fin in ["synOut.txt", "invOut.txt", "TLOut.txt", "invTLOut.txt", "dupOut.txt", "invDupOut.txt", "ctxOut.txt", "sv.txt", "notAligned.txt", "snps.txt"]:
+#            try:
+#                os.remove(CWD+PR+fin)
+#            except OSError as e:
+#                if e.errno != 2:    # 2 is the error number when no such file or directory is present https://docs.python.org/2/library/errno.html
+#                    raise
+#    return o
+## END
+#
