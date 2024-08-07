@@ -33,7 +33,7 @@ import msyd.io as io
 
 cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
-cdef int _NULL_CNT = 200 # number of separators to use between blocks during alignment
+cdef int _NULL_CNT = 0 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.INFO)
@@ -190,7 +190,7 @@ cdef get_aligner(seq, preset, ns=True):
     
     #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
 
-    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255) # requires a patched version of minimap2; TODO make PR to get that merged
+    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=70, max_chain_skip=255) # requires a patched version of minimap2; TODO make PR to get that merged
 
 
     return aligner
@@ -486,7 +486,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             refmerasyns = []
             while syn.get_degree() < n:
                 refmerasyns.append(syn)
-                syn = next(syniter)[1][0]
+                syn = next(syniter)[1].iloc[0]
 
             merasyns[old.ref.org] = refmerasyns
 
