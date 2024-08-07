@@ -601,6 +601,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
         int n = len(orgs) + 1 # to account for ref
         int corecounter = 1
         int meracounter = 1
+        int privcounter = 1
         int coreend = 0
         str corechr = ''
 
@@ -613,6 +614,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     while True:
         mesyns = []
         refmesyns = []
+        privs = [] # ref private is handled during writing
         syn = None
         try:
             syn = next(syniter)[1][0]
@@ -621,7 +623,10 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
                 if syn.ref.org == "ref":
                     refmesyns.append(syn)
                 else:
-                    mesyns.append(syn)
+                    if syn.get_degree() > 1:
+                        mesyns.append(syn)
+                    else:
+                        privs.append(syn)
                 syn = next(syniter)[1][0]
         except StopIteration: # try/catch block internal, so things still get written after we run out of pansyn regions
             pass
@@ -634,18 +639,29 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
                 buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}-{meracounter+len(mesyns)-1}", '']))
                 write_pansyns(mesyns, buf, orgs, save_cigars=save_cigars)
                 meracounter += len(mesyns)
+            if privs: # do not add anything if mesyns is empty
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}-{privcounter+len(privs)-1}", '']))
+                write_pansyns(mesyns, buf, orgs, save_cigars=save_cigars)
+                meracounter += len(mesyns)
         else:
             for mesyn in mesyns:
                 buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", '']))
                 write_pansyns([mesyn], buf, orgs, save_cigars=save_cigars)
                 meracounter += 1
+            for priv in privs:
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{meracounter}", '']))
+                write_pansyns([priv], buf, orgs, save_cigars=save_cigars)
+                privcounter += 1
 
         # write mesyn regions that have a position on reference at their appropriate position
         for refmesyn in refmesyns:
             ref = refmesyn.ref
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}", '']))
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}" if refmesyn.get_degree() > 1 else f"PRIVATE{privcounter}", '']))
             write_pansyns([refmesyn], buf, orgs, save_cigars=save_cigars)
-            meracounter += 1
+            if refmesyn.get_degree() > 1:
+                meracounter += 1
+            else:
+                privcounter += 1
 
         # write coresyn region
         if syn:

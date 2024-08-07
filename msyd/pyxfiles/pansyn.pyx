@@ -21,9 +21,10 @@ cdef int MIN_SYN_THRESH = 30
 logger = util.CustomFormatter.getlogger(__name__)
 
 
-def filter_pansyn(pansyn, drop_small=True):
+def filter_pansyn(pansyn, drop_small=True, drop_private=True):
     """
     Tests if a pansyn should be added to the output by checking degree and length.
+    Unless `drop_private` is set to false, will drop private regions (i.e. merasynteny of degree one)
     If `drop_small` is not set to `False`, will mutate the input pansyn to remove any organisms where the region is smaller than `MIN_SYN_THRESH`.
     """
     if not pansyn: # filter empty objects to handle failures
@@ -39,7 +40,7 @@ def filter_pansyn(pansyn, drop_small=True):
             if pansyn.cigars_dict:
                 del pansyn.cigars_dict[org]
 
-    if pansyn.get_degree() < 2: # filter regions without non-reference synteny
+    if drop_private and pansyn.get_degree() < 2: # filter regions without non-reference synteny
         return False
 
     return True
@@ -71,7 +72,7 @@ def find_overlaps(left, right, only_core=False):
     # helper Fn to only add filtered pansyns to the final output
     # calls filter_pansyn and if only_core is set additionally filters for core synteny
     def add_filtered(pansyn):
-        if filter_pansyn(pansyn):
+        if filter_pansyn(pansyn, drop_private=False):
             # filter non-core-syntenic regions in case that's relevant
             if only_core and pansyn.get_degree() < l.get_degree() + r.get_degree():
                 return
