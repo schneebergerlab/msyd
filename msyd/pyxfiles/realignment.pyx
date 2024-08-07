@@ -646,6 +646,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                             alns[org])#, ref=ref)
                         for org in syris if syris[org] is not None]
 
+                if refend - refstart > 5000 and len(syns) < 4:
+                    print('\n'.join([f">{id}\n{seq}" for id, seq in seqdict]))
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
