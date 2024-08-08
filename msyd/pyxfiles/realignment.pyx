@@ -31,7 +31,7 @@ import msyd.pansyn as pansyn
 import msyd.io as io
 
 
-cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
+cdef int _MIN_REALIGN_THRESH = 200 # min length to realign regions
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 
