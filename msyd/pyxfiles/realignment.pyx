@@ -305,7 +305,7 @@ cpdef generate_seqdict(fafin, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
         fafin[org].fetch(region = chrdict[org],
                          start = interval.data,
-                         end = interval.data + interval.end - interval.begin)
+                         end = interval.data + interval.end - interval.begin).upper()
         for interval in sorted(mappingtrees[org])])
         for org in mappingtrees}
 
