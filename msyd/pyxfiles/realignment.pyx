@@ -646,9 +646,10 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
-                    if refend - refstart > 1000:
-                        print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
-                        print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
+                    # debug: emit non-aligning sequences
+                    #if refend - refstart > 1000:
+                    #    print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
+                    #    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
                     continue
 
                 # syns should be sorted
