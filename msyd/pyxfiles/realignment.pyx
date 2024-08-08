@@ -536,16 +536,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             #    logger.info(mappingtrees)
             #    logger.info(seqdict)
 
-            if not seqdict or all([len(x) < MIN_REALIGN_THRESH for x in seqdict.values()]): # if all sequences have been discarded, skip realignment
-                #logger.info("Not aligning, not enough non-reference sequence found!")
-                old = syn
-                if not output_only_realign:
-                    ret.append(syn)
-                syn = next(syniter)[1][0]
-                continue
-
             ## Realign iteratively until all synteny is found
-            while len(seqdict) > 2: # realign until there is only one sequence left
+            while sum([1 if len(x) >= MIN_REALIGN_THRESH else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
