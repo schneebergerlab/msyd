@@ -31,7 +31,8 @@ import msyd.pansyn as pansyn
 import msyd.io as io
 
 
-cdef int _MIN_REALIGN_THRESH = 200 # min length to realign regions
+cdef int _MIN_REALIGN_LEN = 200 # min length to realign regions
+cdef int _MIN_SYN_ID = 90 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 
@@ -47,7 +48,7 @@ cpdef listdict_to_mts(lists):
     for org, lst in lists.items():
         tree = IntervalTree()
         for offset, length in lst:
-            if length > _MIN_REALIGN_THRESH: # filter again for sufficient len
+            if length > _MIN_REALIGN_LEN: # filter again for sufficient len
                 tree[posdict[org]:posdict[org] + length] = offset
                 posdict[org] += length + _NULL_CNT # add interval + spacer
 
@@ -87,7 +88,7 @@ cpdef construct_mts(merasyns, old, syn):
                     # no +1 because the end is not inclusive
                     prev[1] += l
 
-            if l > _MIN_REALIGN_THRESH: # otherwise add to the tree if it's large enough
+            if l > _MIN_REALIGN_LEN: # otherwise add to the tree if it's large enough
                 listdict[org].append( (offsetdict[org], l) )
 
             # all up to the end of this region has been added
@@ -96,7 +97,7 @@ cpdef construct_mts(merasyns, old, syn):
     # see if there's any sequence left to realign after processing the merasyn regions
     for org, offset in offsetdict.items():
         l = syn.ranges_dict[org].start - offset
-        if l >= _MIN_REALIGN_THRESH:
+        if l >= _MIN_REALIGN_LEN:
             listdict[org].append( (offset, l) )
 
     for org in old.ranges_dict:
@@ -156,12 +157,12 @@ cpdef subtract_mts(mappingtrees, merasyns):
 
             # remove overlap from start, add as separate offset if large enough
             l = rng.start - curint.data
-            if l > _MIN_REALIGN_THRESH:
+            if l > _MIN_REALIGN_LEN:
                 orglist.append( (curint.data, l) )
 
             # set curint to what remains after removing this merasyn if large enough
             l = curint.data + curint.end - curint.begin - rng.end
-            if l > _MIN_REALIGN_THRESH:
+            if l > _MIN_REALIGN_LEN:
                 curdict[org] = Interval(curint.end - l, curint.end, rng.end)
                 #orglist.append( (rng.end, l) )
             else:
@@ -288,7 +289,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     #print(alns[6])
     #alns[6] = alns[6].astype('float')
 
-    alns = alns.loc[alns[6] > 90] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
+    alns = alns.loc[alns[6] > _MIN_SYN_ID] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
     # count inverted alns as well
     #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
     #alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
@@ -423,7 +424,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None, output_only_realign=False):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None, output_only_realign=False):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all merasynteny.
@@ -431,9 +432,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
     :arguments: A DataFrame with core and merasyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
     :returns: A DataFrame with the added non-reference merasynteny
     """
-    if MIN_REALIGN_THRESH is not None and MIN_REALIGN_THRESH >= 0:
-        global _MIN_REALIGN_THRESH
-        _MIN_REALIGN_THRESH = int(MIN_REALIGN_THRESH)
+    if MIN_REALIGN_LEN is not None and MIN_REALIGN_LEN >= 0:
+        global _MIN_REALIGN_LEN
+        _MIN_REALIGN_LEN = int(MIN_REALIGN_LEN)
+    if MIN_SYN_ID is not None and MIN_SYN_ID >= 0:
+        global _MIN_SYN_ID
+        _MIN_SYN_ID = int(MIN_SYN_ID)
     if MAX_REALIGN is not None and MAX_REALIGN >= 0:
         global _MAX_REALIGN
         _MAX_REALIGN = int(MAX_REALIGN)
@@ -498,8 +502,8 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             #logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")#\n Full borders {old}, {syn}")
 
             # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
-            if end - start < _MIN_REALIGN_THRESH:
-                if all([syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_THRESH \
+            if end - start < _MIN_REALIGN_LEN:
+                if all([syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_LEN \
                         for org in syn.ranges_dict]):
                     if not output_only_realign:
                         ret.append(syn)
@@ -537,7 +541,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             #    logger.info(seqdict)
 
             ## Realign iteratively until all synteny is found
-            while sum([1 if len(x) >= MIN_REALIGN_THRESH else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
+            while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
                 print({id:len(seq) for id, seq in seqdict.items()})
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
