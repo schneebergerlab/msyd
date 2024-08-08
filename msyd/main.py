@@ -95,6 +95,7 @@ def main():
     call_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
+    call_parser.add_argument("--min-syn-id", dest="min_syn_id", help="% Identity required for a region to be called as syntenic during the realignment step. Default 90%.", type=int, default=-1)
     call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     call_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
 
@@ -206,7 +207,7 @@ def call(args):
         #TODO directly do in call to realignment
 
         # use reference synteny as base to identify all haplotypes
-        df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, pairwise=alndict if args.pairwise else None)
+        df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MIN_SYN_ID=args.min_syn_id, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, pairwise=alndict if args.pairwise else None)
 
         # garb = realign(df, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, cwd=args.tmp)
         # realign(syns, qrynames, fastas, MIN_REALIGN_LEN=None, MAX_REALIGN=None, mp_preset='asm5'):
