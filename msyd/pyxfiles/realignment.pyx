@@ -542,7 +542,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
 
             ## Realign iteratively until all synteny is found
             while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
-                print({id:len(seq) for id, seq in seqdict.items()})
+                #print({id:len(seq) for id, seq in seqdict.items()})
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
