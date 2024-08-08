@@ -573,11 +573,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
                 refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
 
-                if True:#refend - refstart > 5000 and len(syns) < 4:
-                    print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
-                    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
-
-
 
                 logger.debug(f"Realigning {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Seqdict lens: {[(k, len(v)) for k,v in seqdict.items()]}")
 
@@ -654,6 +649,9 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
+                    if True:#refend - refstart > 5000 and len(syns) < 4:
+                        print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
+                        print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
                     continue
 
                 # syns should be sorted
