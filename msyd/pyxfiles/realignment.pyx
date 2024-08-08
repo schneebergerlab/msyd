@@ -33,7 +33,7 @@ import msyd.io as io
 
 cdef int _MIN_REALIGN_THRESH = 100 # min length to realign regions
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
-cdef int _NULL_CNT = 0 # number of separators to use between blocks during alignment
+cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.INFO)
@@ -573,6 +573,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                 refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
                 refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
 
+                if True:#refend - refstart > 5000 and len(syns) < 4:
+                    print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
+                    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
+
+
+
                 logger.debug(f"Realigning {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Seqdict lens: {[(k, len(v)) for k,v in seqdict.items()]}")
 
                 if refstart > refend:
@@ -645,9 +651,6 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
                             io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
                             alns[org])#, ref=ref)
                         for org in syris if syris[org] is not None]
-
-                if refend - refstart > 5000 and len(syns) < 4:
-                    print('\n'.join([f">{id}\n{seq}" for id, seq in seqdict]))
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
