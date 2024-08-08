@@ -536,7 +536,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
             #    logger.info(mappingtrees)
             #    logger.info(seqdict)
 
-            if not seqdict: # if all sequences have been discarded, skip realignment
+            if not seqdict or all([len(x) == 0 for x in seqdict.values()]): # if all sequences have been discarded, skip realignment
                 #logger.info("Not aligning, not enough non-reference sequence found!")
                 old = syn
                 if not output_only_realign:
