@@ -144,7 +144,7 @@ cpdef subtract_mts(mappingtrees, merasyns):
             #assert rng.end <= curint.end - curint.begin + curint.data, "Synteny in a spacer offset detected! An alignment went into the separator. Most likely, something went wrong during alignment."
             if rng.end > curint.end - curint.begin + curint.data:
                 logger.debug(f"{rng.end}, {curint.end - curint.begin + curint.data}")
-                logger.warning("Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call.")
+                logger.warning("Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call ({rng.end} vs {curint.end - curint.begin + curint.data}).")
             
 
             # there was no interval overlapping this merasyn anyway, we don't need to subtract anything
@@ -538,6 +538,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
             ## Realign iteratively until all synteny is found
             while sum([1 if len(x) >= MIN_REALIGN_THRESH else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
+                print({id:len(seq) for id, seq in seqdict.items()})
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
