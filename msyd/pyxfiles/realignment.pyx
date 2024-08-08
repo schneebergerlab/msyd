@@ -649,7 +649,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_THRESH=None, MAX_REALIGN=None, N
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
-                    if True:#refend - refstart > 5000 and len(syns) < 4:
+                    if refend - refstart > 1000:
                         print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
                         print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
                     continue
