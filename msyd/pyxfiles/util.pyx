@@ -247,8 +247,8 @@ def tabularize_nos(df):
     maxdegree = max(x[1][0].get_degree() for x in df.iterrows())
     return [sum(1 for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
 
-def lensdict_to_table(lensdict, sep='\t', si=True):
-    header = '#deg' + sep + sep.join(lensdict.keys())
+def lensdict_to_table(lensdict, sep='\t', si=True, header=True):
+    header = 'deg' + sep + sep.join(lensdict.keys()) if header else ''
     table = '\n'.join(str(i) + sep + sep.join(siprefix(lensdict[org][i-1]) if si else str(lensdict[org][i-1]) for org in lensdict)
         for i in range(1, len(lensdict[list(lensdict.keys())[0]]) +1) 
         )

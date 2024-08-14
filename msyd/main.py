@@ -160,6 +160,7 @@ def main():
     stats_parser.add_argument("--separator", "-s", dest="sep", help="Separator to use for printing the stats. Default is tab (for TSV), set to ',' for CSV.", type=str, default="\t")
     stats_parser.add_argument("-p", "--prefix", dest='siprefix', action='store_true', default=False, help="Whether to attach SI prefixes to the output for human readability. If not supplied, print exact numbers.")
     stats_parser.add_argument("-a", "--aggregate", dest='agg', action='store_true', default=False, help="If passed, will report summary statistics for all haplotypes instead of by organism.")
+    stats_parser.add_argument("--no-header", dest='header', action='store_false', default=True, help="If passed, msyd will not print a header for the CSV.")
     #stats_parser.add_argument("-r", "--reference", dest='agg', action='store_true', default=False, help="If passed, will report summary statistics")
 
     #fact_parser = subparsers.add_parser("fact",
@@ -350,7 +351,7 @@ def stats(args):
     if args.agg:
         print(util.get_stats(syns), file=args.outfile)
     else:
-        print(util.lensdict_to_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix), file=args.outfile)
+        print(util.lensdict_to_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix, header=args.header), file=args.outfile)
     logger.info(f"Finished running msyd stats, output printed to {args.outfile.name}.")
 
 def fact(args):
