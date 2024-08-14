@@ -95,9 +95,9 @@ def main():
     call_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
-    call_parser.add_argument("--min-syn-id", dest="min_syn_id", help="% Identity required for a region to be called as syntenic during the realignment step. Default 90%.", type=int, default=-1)
+    call_parser.add_argument("--min-syn-id", dest="min_syn_id", help="% Identity required for a region to be called as syntenic during the realignment step. Default 80%.", type=int, default=80)
     call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
-    call_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm5'.", type=str, default="asm5")
+    call_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm20'.", type=str, default="asm20")
 
     # view subparser
     view_parser = subparsers.add_parser("view",
@@ -143,7 +143,7 @@ def main():
     realign_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     realign_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .pff file. Has no effect when --syn is specified.")
     realign_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 100 bp.", type=int, default=-1)
-    realign_parser.add_argument("--min-syn-id", dest="min_syn_id", help="% Identity required for a region to be called as syntenic during the realignment step. Default 90%.", type=int, default=-1)
+    realign_parser.add_argument("--min-syn-id", dest="min_syn_id", help="% Identity required for a region to be called as syntenic during the realignment step. Default 80%.", type=int, default=80)
     realign_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     realign_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm20'.", type=str, default="asm20")
 

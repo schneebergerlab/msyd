@@ -32,7 +32,7 @@ import msyd.io as io
 
 
 cdef int _MIN_REALIGN_LEN = 200 # min length to realign regions
-cdef int _MIN_SYN_ID = 90 # minimum % identity for a region to be considered syntenic
+cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 
@@ -424,7 +424,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm10', ncores=1, pairwise=None, output_only_realign=False):
+cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all merasynteny.
