@@ -419,7 +419,7 @@ def compile_filter(exp: str):
     match = re.fullmatch("(in)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         #TODO error handling?
-        rng = Range.read_pff(None, match[2])
+        rng = Range.read_psf(None, match[2])
         return lambda x: x.ref in rng
 
     # chr filter
@@ -459,20 +459,20 @@ def length_compare(syns, alns, cores=1):
         syns = syns[1:]
         alns = alns[1:]
 
-def pff_to_file(df, path):
+def psf_to_file(df, path):
     """Convenience wrapper for to_format to save to a file directly
     """
     import msyd.io
     with open(path, 'wt') as f:
-        msyd.io.to_pff(df, f)
+        msyd.io.to_psf(df, f)
 
-def pff_to_string(df, save_cigars=False):
+def psf_to_string(df, save_cigars=False):
     """Convenience wrapper for to_format, saves to a stringbuffer, returns the string.
     Mainly meant for printing small-ish callsets.
     """
     import msyd.io
     with io.StringIO() as buf:
-        msyd.io.to_pff(df, buf, save_cigars=save_cigars)
+        msyd.io.to_psf(df, buf, save_cigars=save_cigars)
         return buf.get_value()
 
 cpdef chrom_to_int(chrom):

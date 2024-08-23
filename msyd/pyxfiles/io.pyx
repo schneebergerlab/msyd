@@ -591,7 +591,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
+cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
     """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
@@ -678,7 +678,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     buf.flush()
 
 cdef write_multisyns(multisyns, buf, orgs, save_cigars=False):
-    """Function to write a set of multisyns in a single PFF-style annotation to buf.
+    """Function to write a set of multisyns in a single PSF-style annotation to buf.
     Does not write the BED-like first part of the annotation.
     :param multisyns: list of multisyn objects to write
     :param buf: buffer to write to
@@ -687,22 +687,22 @@ cdef write_multisyns(multisyns, buf, orgs, save_cigars=False):
     buf.write('\t'.join(
         [';'.join(
             [','.join( # <range>,<haplotype organism>,[<CIGAR>]
-                [multisyn.ranges_dict[org].to_pff(), multisyn.ref.org]\
+                [multisyn.ranges_dict[org].to_psf(), multisyn.ref.org]\
                 if not (save_cigars and multisyn.cigars_dict) else
-                [multisyn.ranges_dict[org].to_pff(), multisyn.ref.org, multisyn.cigars_dict[org].to_string()]
+                [multisyn.ranges_dict[org].to_psf(), multisyn.ref.org, multisyn.cigars_dict[org].to_string()]
                   )
              if org in multisyn.ranges_dict else
-                     (','.join([multisyn.ref.to_pff(), multisyn.ref.org]) # add orgs used as a reference when realigning
+                     (','.join([multisyn.ref.to_psf(), multisyn.ref.org]) # add orgs used as a reference when realigning
                      if multisyn.ref.org == org else '-') # if there is no synteny, put a minus
              for multisyn in multisyns])
          for org in orgs])
       )
     buf.write("\n")
 
-cpdef read_pff(fin):
+cpdef read_psf(fin):
     """
-    Takes a file object or path to a file in PFF format and reads it in as a DataFrame of Multisynteny objects.
-    Supports the new version of PFF format; for legacy files, use the deprecated version of this function.
+    Takes a file object or path to a file in PSF format and reads it in as a DataFrame of Multisynteny objects.
+    Supports the new version of PSF format; for legacy files, use the deprecated version of this function.
     """
     syns = deque()
     if isinstance(fin, str):
@@ -718,14 +718,14 @@ cpdef read_pff(fin):
         #try:
         #    anno = line[3]
         #except IndexError:
-        #    logger.error(f"Invalid line encountered while reading PFF: {line}")
+        #    logger.error(f"Invalid line encountered while reading PSF: {line}")
 
         refrng = Range('ref', line[0], None, int(line[1]), int(line[2]))
 
         # split once to reuse in multisyn construction loop
         samplecells = [cell.split(';') for cell in line[4:]]
 
-        # a single line may contain multiple merasyn records if the PFF is collapsed
+        # a single line may contain multiple merasyn records if the PSF is collapsed
         for i in range(len(samplecells[0])): # will iterate just once for single records
             reforg = 'ref'
             syn = Multisyn(None, {}, None)
@@ -736,7 +736,7 @@ cpdef read_pff(fin):
 
                 vals = samplecell[i].split(',')
                 reforg = vals[1] # should be the same in all records, but we don't know which ones are present, so set it each time to be sure
-                syn.ranges_dict[sample] = Range.read_pff(sample, vals[0])
+                syn.ranges_dict[sample] = Range.read_psf(sample, vals[0])
                 
                 # read cigars if present
                 if len(vals) > 2:
@@ -755,7 +755,7 @@ cpdef read_pff(fin):
                     if syn.cigars_dict and reforg in syn.cigars_dict:
                         del syn.cigars_dict[reforg]
                 else:
-                    logger.error(f"Error while reading PFF: Specified reference not found in PFF!\n Line: {line}")
+                    logger.error(f"Error while reading PSF: Specified reference not found in PSF!\n Line: {line}")
                     raise ValueError("Reference not found in line!")
 
             syns.append(syn)
@@ -763,10 +763,10 @@ cpdef read_pff(fin):
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
 
 
-cpdef DEPRECATED_read_pff(f):
-    """DEPRECATED: reads the pre-0.1 version of the PFF format. Use the new read function instead, unless working with legacy files.
+cpdef DEPRECATED_read_psf(f):
+    """DEPRECATED: reads the pre-0.1 version of the PSF format. Use the new read function instead, unless working with legacy files.
 
-    Takes a file object or path to a file in PFF format and reads it in as a DataFrame.
+    Takes a file object or path to a file in PSF format and reads it in as a DataFrame.
     """
     if isinstance(f, str):
         f = open(f, 'rt')
@@ -775,8 +775,8 @@ cpdef DEPRECATED_read_pff(f):
     for l in f:
         l = l.strip().split('\t')
         if l[0] == 'SYN': # line contains a multisyn region
-            syn = Multisyn(Range.read_pff("ref", l[1]), # extract reference range
-                {orgs[i]:Range.read_pff(orgs[i], cell.split(",")[0]) # extract ranges dict
+            syn = Multisyn(Range.read_psf("ref", l[1]), # extract reference range
+                {orgs[i]:Range.read_psf(orgs[i], cell.split(",")[0]) # extract ranges dict
                         for i, cell in enumerate(l[2:]) if cell != '.'},
                 {orgs[i]:cigar.cigar_from_string(cell.split(',')[1])
                  for i, cell in enumerate(l[2:]) if cell != '.' and len(cell.split(',')) > 1} # extract cigars dict

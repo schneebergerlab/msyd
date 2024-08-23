@@ -29,7 +29,7 @@ class Position:
         #return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
         return f"Position({self.org}, {self.chr}, {self.pos})"
 
-    def to_pff(self):
+    def to_psf(self):
         """Transform this `Position` into population synteny file format
         """
         #return f"{self.chr}:{self.haplo}:{self.pos}"
@@ -70,22 +70,22 @@ class Range:
         #return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
         return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
 
-    def to_pff(self):
-        """Transform this `Range` into the form specified by PFF
+    def to_psf(self):
+        """Transform this `Range` into the form specified by PSF
         """
         #return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
         return f"{self.chr}:{self.start}-{self.end}"
 
-    def to_pff_org(self):
-        """Transform this `Range` into the form specified by PFF, with the sample name being prepended as specified for the realigned reference haplotype
+    def to_psf_org(self):
+        """Transform this `Range` into the form specified by PSF, with the sample name being prepended as specified for the realigned reference haplotype
         """
         #return f"{self.org}:{self.chr}:{self.haplo}:{self.start}-{self.end}"
         return f"{self.org}:{self.chr}:{self.start}-{self.end}"
 
 
-    def read_pff(org:str, cell: str):
-        """Parse a Range in PFF format
-        PFF format is :-separated and must contain the chromosome first, then followed by a haplotype (optional) and a start and end position separated by -.
+    def read_psf(org:str, cell: str):
+        """Parse a Range in PSF format
+        PSF format is :-separated and must contain the chromosome first, then followed by a haplotype (optional) and a start and end position separated by -.
         If the end position is before the start position, the range is treated as inverted.
         `org` specifies the organism the returned range should have. If this range is just used for filtering, None may be passed.
         Examples: Chr1:mat:1000-2000, Chr3:10000-50000
@@ -94,7 +94,7 @@ class Range:
         #print(cell)
         cellarr = cell.split(':')
         if len(cellarr) < 2 or len(cellarr) > 4:
-            raise ValueError(f"Invalid PFF Range string: {cell}")
+            raise ValueError(f"Invalid PSF Range string: {cell}")
         if len(cellarr) == 4: # if a ref name is specified in the cell, that overrides the argument
             org = cellarr[0]
             cellarr = cellarr[1:]

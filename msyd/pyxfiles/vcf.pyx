@@ -57,7 +57,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
 
     if not set(vcfin.header.samples).issubset(orgs):
         removing = set(vcfin.header.samples).difference(orgs)
-        logger.warning(f"Input VCF contains organisms not in PFF file! Double-Check names used in .tsv. Removing samples {removing} from VCF")
+        logger.warning(f"Input VCF contains organisms not in PSF file! Double-Check names used in .tsv. Removing samples {removing} from VCF")
         vcfin.subset_samples(orgs)
 
     # read reference if it hasn't been read already
@@ -195,7 +195,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     #vcfin.close()
 
 cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike], add_syn_anns=True):
-    # quick and dirty reduction function, TODO write proper one when integrating with PFF variation merging
+    # quick and dirty reduction function, TODO write proper one when integrating with PSF variation merging
 
     if len(vcfs) < 1:
         logger.error("reduce_vcfs called with empty vcfs!")
@@ -318,7 +318,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
 
 cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike], condense_errors=True):
     logger.info(f"Merging {lf} and {rf} into {of}")
-    # TODO reimplement this with common framework with merge pffs
+    # TODO reimplement this with common framework with merge psfs
     # do all this in memory to be faster
     lvcf = pysam.VariantFile(lf, 'r')
     rvcf = pysam.VariantFile(rf, 'r')

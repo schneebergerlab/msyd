@@ -340,8 +340,8 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
 
     # shouldn't need any overlap removal
     if base:
-        logger.info("reading in PFF for incremental calling")
-        syns.append(io.read_pff(base))
+        logger.info("reading in PSF for incremental calling")
+        syns.append(io.read_psf(base))
 
     return reduce_find_overlaps(syns, cores, **kwargs)
 # END
