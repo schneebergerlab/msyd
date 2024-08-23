@@ -4,10 +4,11 @@ msyd is still under active development, so expect some bugs and changes!
 If in doubt about the behaviour of msyd or how it might change, feel free to reach out by opening an issue!
 
 ## Changelog
-* (08.03.2024) Parallelise the alignment step when using `call --realign`
+2024-08-23: As of now, the realignment step requires a patched version of minimap2 that exposes some configuration options not exposed in the default version. Compare also lh3/minimap2#1240. The patched version is available [here](https://github.com/lrauschning/minimap2/tree/mappy) temporarily.
+
 ## Installation
 msyd can be installed by a call to `setup.py` as `python ./setup.py install [--user]` or with `pip install .` in the base directory of the repository.
-Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy`, `scipy`, `mappy/minimap2`, `intervaltree` and `syri >= 1.6.5`.
+Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy`, `scipy`, `mappy` (minimap2; see changelog above), `intervaltree` and `syri >= 1.6.5`.
 The requirements are listed in `requirements.txt` and can be installed via conda or another package manager from this file.
 
 ## Usage
