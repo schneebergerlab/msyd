@@ -208,7 +208,7 @@ cdef class Cigar:
         return (sdrop, edrop, tmp)
 
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
-    cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
+    cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
