@@ -10,6 +10,7 @@ from cpython cimport array
 import array
 
 from libcpp.vector cimport vector
+from libcpp.unordered_set cimport unordered_set
 
 import msyd.util as util
 
@@ -25,13 +26,13 @@ cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
 cdef cig_aln_types = set(['M', 'X', '='])
 cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
-cdef c_reffwd = set([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
-cdef c_reffwd_noclip = set([ord('M'), ord('D'), ord('='), ord('X')])
-cdef c_qryfwd = set([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
-cdef c_qryfwd_noclip = set([ord('M'), ord('I'), ord('='), ord('X')])
-cdef c_cig_types = set([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
-cdef c_cig_aln_types = set([ord('M'), ord('X'), ord('=')])
-cdef c_cig_clips = set([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+cdef unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
+cdef unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
+cdef unordered_set[char] c_qryfwd = unordered_set[char]([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
+cdef unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
+cdef unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
+cdef unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
+cdef unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
 cdef bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
 
@@ -97,10 +98,10 @@ cdef class Cigar:
         """
         return self.get_len_of_type(c_reffwd_noclip if ref else c_qryfwd_noclip)
 
-    def get_len_of_type(self, typeset):
+    cdef get_len_of_type(self, unordered_set[char] typeset):
         cdef unsigned int buf = 0
         for tup in self.tups:
-            if tup.t in typeset:
+            if typeset.count(tup.t): # contains method still not supported until C++20
                 buf += tup.n
         return buf
 
@@ -108,7 +109,7 @@ cdef class Cigar:
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').
         """
-        return self.get_len_of_type({ord('=')})/len(self)
+        return self.get_len_of_type(unordered_set[char]({ord('=')}))/len(self)
 
     def __len__(self):
         cdef unsigned int buf = 0
@@ -165,7 +166,7 @@ cdef class Cigar:
         """
         cdef size_t start = 0
         for tup in self.tups:
-            if tup.t not in c_cig_clips: # wtf is up here? why is this converted to a dict, but this is not done in get_len_of_type?
+            if not c_cig_clips.count(tup.t): # wtf is up here? why is this converted to a dict, but this is not done in get_len_of_type?
                 # must be something with the context? no idea
                 break
             start += 1
@@ -227,8 +228,8 @@ cdef class Cigar:
             unsigned int ind = 0 # position currently being evaluated for skipping
             unsigned int skip = 0 # bases skipped in the other sequence
             # two sets containing the CIGAR codes incrementing one or the other strand
-            fwd = c_reffwd if ref else c_qryfwd 
-            altfwd = c_qryfwd if ref else c_reffwd
+            unordered_set[char] fwd = c_reffwd if ref else c_qryfwd 
+            unordered_set[char] altfwd = c_qryfwd if ref else c_reffwd
             int rem = n # tally how much is still left to remove
             Cigt cur = self.tups[ind] if start else self.tups[self.tups.size()-1]
 
@@ -237,9 +238,9 @@ cdef class Cigar:
         while rem >= 0 and ind < self.tups.size():
             cur = self.tups[ind] if start else self.tups[self.tups.size()-ind -1]
             # increment appropriate counters depending on which strand this cgi forwards
-            if cur.t in altfwd:
+            if altfwd.count(cur.t):
                 skip += cur.n
-            if cur.t in fwd:
+            if fwd.count(cur.t):
                 rem -= cur.n
             ind += 1
 
@@ -247,7 +248,7 @@ cdef class Cigar:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar len on ref/alt: {self.get_len(ref=ref)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
-        if cur.t in altfwd: # remove overadded value
+        if altfwd.count(cur.t): # remove overadded value
             skip += rem
 
         if only_pos:
