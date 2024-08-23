@@ -14,33 +14,34 @@ import msyd.io as io
 import msyd.util as util
 import msyd.cigar
 from msyd.cigar import Cigar
-from msyd.coords import Pansyn, Range, Position
+from msyd.coords import Range, Position
+from msyd.multisyn import Multisyn
 
 cdef int MIN_SYN_THRESH = 30
 
 logger = util.CustomFormatter.getlogger(__name__)
 
 
-def filter_pansyn(pansyn, drop_small=True, drop_private=True):
+def filter_multisyn(multisyn, drop_small=True, drop_private=True):
     """
-    Tests if a pansyn should be added to the output by checking degree and length.
+    Tests if a multisyn should be added to the output by checking degree and length.
     Unless `drop_private` is set to false, will drop private regions (i.e. merasynteny of degree one)
-    If `drop_small` is not set to `False`, will mutate the input pansyn to remove any organisms where the region is smaller than `MIN_SYN_THRESH`.
+    If `drop_small` is not set to `False`, will mutate the input multisyn to remove any organisms where the region is smaller than `MIN_SYN_THRESH`.
     """
-    if not pansyn: # filter empty objects to handle failures
+    if not multisyn: # filter empty objects to handle failures
         return False
-    if len(pansyn.ref) < MIN_SYN_THRESH: # filter small regions
+    if len(multisyn.ref) < MIN_SYN_THRESH: # filter small regions
         return False
 
-    # delete small syntenic regions from the pansyn object, mutates pansyn but that should be fine in this case
+    # delete small syntenic regions from the multisyn object, mutates multisyn but that should be fine in this case
     if drop_small:
-        droplist = [org for org, rng in pansyn.ranges_dict.items() if len(rng) < MIN_SYN_THRESH]
+        droplist = [org for org, rng in multisyn.ranges_dict.items() if len(rng) < MIN_SYN_THRESH]
         for org in droplist:
-            del pansyn.ranges_dict[org]
-            if pansyn.cigars_dict:
-                del pansyn.cigars_dict[org]
+            del multisyn.ranges_dict[org]
+            if multisyn.cigars_dict:
+                del multisyn.cigars_dict[org]
 
-    if drop_private and pansyn.get_degree() < 2: # filter regions without non-reference synteny
+    if drop_private and multisyn.get_degree() < 2: # filter regions without non-reference synteny
         return False
 
     return True
@@ -54,11 +55,11 @@ def find_overlaps(left, right, only_core=False):
     #print("l:", left, "r:", right)
 
     if right is None or right.empty:
-        logger.error("find_overlap called with no pansyn regions (right)!")
+        logger.error("find_overlap called with no multisyn regions (right)!")
         #raise ValueError("right is empty!")
         return None
     if left is None or left.empty:
-        logger.error("find_overlap called with no pansyn regions (left)!")
+        logger.error("find_overlap called with no multisyn regions (left)!")
         #raise ValueError("left is empty!")
         return None
 
@@ -69,14 +70,14 @@ def find_overlaps(left, right, only_core=False):
 
     cdef int cov = 0 # store the last position in the ref that has been covered in ret
 
-    # helper Fn to only add filtered pansyns to the final output
-    # calls filter_pansyn and if only_core is set additionally filters for core synteny
-    def add_filtered(pansyn):
-        if filter_pansyn(pansyn):
+    # helper Fn to only add filtered multisyns to the final output
+    # calls filter_multisyn and if only_core is set additionally filters for core synteny
+    def add_filtered(multisyn):
+        if filter_multisyn(multisyn):
             # filter non-core-syntenic regions in case that's relevant
-            if only_core and pansyn.get_degree() < l.get_degree() + r.get_degree():
+            if only_core and multisyn.get_degree() < l.get_degree() + r.get_degree():
                 return
-            ret.append(pansyn)
+            ret.append(multisyn)
     
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
@@ -145,7 +146,7 @@ def find_overlaps(left, right, only_core=False):
 
             break
 
-    if not only_core: # if calling crosssyn, also add remaining pansyn if there is any
+    if not only_core: # if calling crosssyn, also add remaining multisyn if there is any
         for l in lit:
             l = l[1][0]
             add_filtered(l)
@@ -171,13 +172,13 @@ def find_overlaps(left, right, only_core=False):
 
 
 # given a bam file and corresponding SYNAL range df,
-# Transform them into one list of Pansyn objects
+# Transform them into one list of Multisyn objects
 def match_synal(syn, aln, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
-    It returns a dataframe containing the regions with the corresponding CIGAR string as a `Pansyn` object.
+    It returns a dataframe containing the regions with the corresponding CIGAR string as a `Multisyn` object.
     :params: syn: SYNAL dataframe, aln: alignment dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
-    :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Pansyn` objects.
+    :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Multisyn` objects.
     """
     ret = deque()
     syniter = syn.iterrows()
@@ -194,15 +195,15 @@ def match_synal(syn, aln, ref='a'):
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
                 cg = msyd.cigar.cigar_from_string(alnr['cg'])
                 rng = synr[1]
-                pansyn = Pansyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
+                multisyn = Multisyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1
 
                 ## Correct mismatches between CIGAR and coordinate len
 
                 # check on ref
-                if not len(pansyn.ref) == cg.get_len():
-                    logger.warning(f"CIGAR len ({cg.get_len()}) not matching coordinate len ({len(pansyn.ref)}) on ref! Adjusting end to match CIGAR len (this might be because of clipping).")
-                    pansyn.ref.end = pansyn.ref.start + cg.get_len() - 1
+                if not len(multisyn.ref) == cg.get_len():
+                    logger.warning(f"CIGAR len ({cg.get_len()}) not matching coordinate len ({len(multisyn.ref)}) on ref! Adjusting end to match CIGAR len (this might be because of clipping).")
+                    multisyn.ref.end = multisyn.ref.start + cg.get_len() - 1
 
                 # check on org
                 if not len(rng) == cg.get_len(ref=False):
@@ -211,7 +212,7 @@ def match_synal(syn, aln, ref='a'):
                     rng.end = rng.start + cg.get_len(ref=False) -1
 
 
-                ret.append(pansyn)
+                ret.append(multisyn)
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
@@ -323,7 +324,7 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     else:
         syns = [
                 pd.DataFrame(
-                    [ Pansyn(ref=row[1][0],
+                    [ Multisyn(ref=row[1][0],
                         ranges_dict={row[1][1].org:row[1][1]}, cigars_dict = None)
                         for row in s.iterrows()]) for s in syns]
 
@@ -348,11 +349,11 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
 def reduce_find_overlaps(syns, cores, **kwargs):
     if len(syns) == 0:
         return None
-    pansyns = None
+    multisyns = None
     ovlap = functools.partial(find_overlaps, **kwargs)
     if cores > 1:
-        pansyns = util.parallel_reduce(ovlap, syns, cores)
+        multisyns = util.parallel_reduce(ovlap, syns, cores)
     else:
-        pansyns = functools.reduce(ovlap, syns)
+        multisyns = functools.reduce(ovlap, syns)
 
-    return pansyns
+    return multisyns

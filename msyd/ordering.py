@@ -104,7 +104,7 @@ def order_greedy(df, orgs=None, score_fn=syn_score, maximize=True, ref=True):
     """A simple, greedy algorithm ordering a list of organisms while trying to maximize (or minimize, depending on `maximize`) the similarity score between each organism and the next one.
     The first organism is chosen at random.
 
-    :param df: a `DataFrame` of `Pansyn` objects, as produced by `find_multisyn()`.
+    :param df: a `DataFrame` of `Multisyn` objects, as produced by `find_multisyn()`.
     :param orgs: a sequence of organism names. If `None`, all the org names in `df` are used.
     :type orgs: Set[str]
 

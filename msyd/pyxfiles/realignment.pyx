@@ -27,7 +27,7 @@ from syri.writeout import getsrtable
 
 import msyd.util as util
 import msyd.cigar as cigar
-import msyd.pansyn as pansyn
+import msyd.intersection as intersection
 import msyd.io as io
 
 
@@ -71,7 +71,7 @@ cpdef construct_mts(merasyns, old, syn):
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
 
     for merasyn in merasyns:
-        # iterate through all pansyns found so far
+        # iterate through all multisyns found so far
         for org, rng in merasyn.ranges_dict.items():
             #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
             l = rng.start - offsetdict[org] # len of the region to be added
@@ -110,7 +110,7 @@ cpdef construct_mts(merasyns, old, syn):
 
 cpdef subtract_mts(mappingtrees, merasyns):
     """
-    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by pansyn objects in `merasyns` subtracted.
+    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by multisyn objects in `merasyns` subtracted.
     Used to remove merasynteny found during realignment from the mappingtrees, to do further realignment.
     """
     # core iteration is the same as in construct_mts, except we don't need to store the offsets
@@ -429,7 +429,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all merasynteny.
     
-    :arguments: A DataFrame with core and merasyn regions called by find_pansyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
+    :arguments: A DataFrame with core and merasyn regions called by find_multisyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
     :returns: A DataFrame with the added non-reference merasynteny
     """
     if MIN_REALIGN_LEN is not None and MIN_REALIGN_LEN >= 0:
@@ -639,7 +639,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
                         alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
                         #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
                         #print(mappingtrees[org])
-                syns = [pansyn.match_synal(
+                syns = [intersection.match_synal(
                             io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
                             alns[org])#, ref=ref)
                         for org in syris if syris[org] is not None]
@@ -655,7 +655,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
                 # syns should be sorted
                 # TODO: MG Question: what is the use of this function?
                 # leon: I've found that sometimes, syri calls would overlap a bit,
-                # which the pansyn identification doesn't like
+                # which the multisyn identification doesn't like
                 # this checks this isn't the case and corrects it in case it finds it
                 # should probably not be strictly necessary here as we call syri ourselves
                 # but doesn't hurt to check either
@@ -663,16 +663,16 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
                 
                 # print(syns)
                 ## Find merasyn in the syri calls
-                pansyns = syns
-                pansyns = pansyn.reduce_find_overlaps(syns, cores=1)
+                multisyns = syns
+                multisyns = intersection.reduce_find_overlaps(syns, cores=1)
 
-                # no need to recalculate the tree if no pansynteny was found
-                if pansyns is None or pansyns.empty:
+                # no need to recalculate the tree if no multisynteny was found
+                if multisyns is None or multisyns.empty:
                     logger.info("No multisynteny was found in this round!")
                     continue
 
                 # Add all merasyns with alphabetical sorting by reference name
-                merasyns[ref] = [psyn[1][0] for psyn in pansyns.iterrows()]
+                merasyns[ref] = [psyn[1][0] for psyn in multisyns.iterrows()]
                 added = sum([len(x.ref) for x in merasyns[ref]])
 
                 logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merasyns))}) of merasynteny.")

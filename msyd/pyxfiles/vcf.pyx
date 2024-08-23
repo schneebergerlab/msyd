@@ -13,8 +13,6 @@ import pandas as pd
 
 import pysam
 
-from msyd.coords import Range
-from msyd.coords import Pansyn
 from msyd.vars import SNV
 import msyd.util as util
 import msyd.cigar as cigar
@@ -88,7 +86,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         inpath += ".gz" # no way to turn off automatic compression, apparently
         vcfin = pysam.VariantFile(inpath)
 
-    # add pansyn regions and contained records
+    # add multisyn regions and contained records
     for syn in syns.iterrows():
         syn = syn[1][0]
         rng = syn.ref
@@ -102,19 +100,19 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             else: # ignore regions not present in this org
                 continue
         
-        # add the pansyn region, if specified
+        # add the multisyn region, if specified
         if add_syn_anns:
             try:
                 add_syn_ann(syn, vcfout, ref=ref, no=syncounter, add_cigar=add_cigar, add_identity=add_identity)
             except ValueError:
-                logger.error(f"Error adding pansyn annotation for region {syn} to VCF. Check if the chromosome names match!")
+                logger.error(f"Error adding multisyn annotation for region {syn} to VCF. Check if the chromosome names match!")
             syncounter +=1
 
         # debugging
         #pos = 0
         #oldrec = None
 
-        # write the small variants in the pansyn region
+        # write the small variants in the multisyn region
         for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
             # double check if the chr has been added, was throwing errors for some reason...
             if rec.chrom not in header_chrs:
@@ -301,7 +299,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
 
     #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
 
-    # write the pansyn annotation
+    # write the multisyn annotation
     for org in ovcf.header.samples:
         if org in syn.get_orgs():
             rng = syn.ranges_dict[org]

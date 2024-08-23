@@ -51,7 +51,7 @@ def read_pff2(pff):
 
 def find_invhaps(f):
     """
-    Read realigned PFF and call inversions. Later, this function would be called directly within the main.py and the pansyn blocks would be parsed as arguments.
+    Read realigned PFF and call inversions. Later, this function would be called directly within the main.py and the multisyn blocks would be parsed as arguments.
     """
     from msyd.util import CustomFormatter
     from msyd.io import read_pff, readsyriout

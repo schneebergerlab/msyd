@@ -3,6 +3,8 @@
 # distutils: language = c++
 # cython: language_level = 3
 
+#DEPRECATED
+
 import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)

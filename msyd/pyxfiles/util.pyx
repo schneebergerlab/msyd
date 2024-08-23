@@ -180,23 +180,23 @@ def parse_input_tsv(fin):
 # set of utility funcitons for calling a few preset configurations of find_multisyn using either a list of syri/aln files directly or a tsv containing this information
 # For more information, see the find_multisyn docstring
 def coresyn_from_tsv(path, **kwargs):
-    import msyd.pansyn as pansyn
-    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
+    import msyd.intersection as intersection
+    return intersection.find_multisyn(*parse_input_tsv(path), only_core=True, **kwargs)
 def crosssyn_from_tsv(path, **kwargs):
-    import msyd.pansyn as pansyn
-    return pansyn.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
+    import msyd.intersection as intersection
+    return intersection.find_multisyn(*parse_input_tsv(path), only_core=False, **kwargs)
 def coresyn_from_lists(syns, alns, **kwargs):
-    import msyd.pansyn as pansyn
-    return pansyn.find_multisyn(syns, alns, only_core=True, **kwargs)
+    import msyd.intersection as intersection
+    return intersection.find_multisyn(syns, alns, only_core=True, **kwargs)
 def crosssyn_from_lists(syns, alns, **kwargs):
-    import msyd.pansyn as pansyn
-    return pansyn.find_multisyn(syns, alns, only_core=False, **kwargs)
+    import msyd.intersection as intersection
+    return intersection.find_multisyn(syns, alns, only_core=False, **kwargs)
 
 def get_orgs_from_df(df):
-    """Small utility function to get all organism from a DataFrame of `Pansyn` objects.
-    :param df: A `DataFrame` containing `Pansyn` objects.
+    """Small utility function to get all organism from a DataFrame of `Multisyn` objects.
+    :param df: A `DataFrame` containing `Multisyn` objects.
     :param_type df: `pandas.DataFrame`
-    :returns: A `set` containing all of the organisms in a DataFrame of `pansyn` objects.
+    :returns: A `set` containing all of the organisms in a DataFrame of `Multisyn` objects.
     """
     if df.empty:
         logger.error(f"get_orgs_from_df called with empty dataframe: {df}")
@@ -229,13 +229,13 @@ def tabularize_lens_byorg(df):
     outdict = {org: [0]*(maxdegree) for org in get_orgs_from_df(df)}
     outdict['ref'] = [0]*(maxdegree)
 
-    for _, pansyn in df.iterrows():
-        pansyn = pansyn[0]
-        deg = pansyn.get_degree()
+    for _, multisyn in df.iterrows():
+        multisyn = multisyn[0]
+        deg = multisyn.get_degree()
         # add ref
-        outdict[pansyn.ref.org][deg-1] += len(pansyn.ref)
+        outdict[multisyn.ref.org][deg-1] += len(multisyn.ref)
         # add orgs
-        for org, rng in pansyn.ranges_dict.items():
+        for org, rng in multisyn.ranges_dict.items():
             outdict[org][deg-1] += len(rng)
 
     return outdict
@@ -255,7 +255,7 @@ def lensdict_to_table(lensdict, sep='\t', si=True, header=True):
     return header + '\n' + table
 
 def get_stats(df):
-    """Utility function to output some stats for a df containing computed pansyn objects.
+    """Utility function to output some stats for a df containing computed multisyn objects.
     Calls get_len and tabularize_lens, prettyprints their output.
     """
     tot_len = get_len(df)
@@ -281,8 +281,8 @@ def siprefix(x):
 def get_call_stats(syns, alns, **kwargs):
     """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats
     """
-    import msyd.pansyn as pansyn
-    df = pansyn.find_multisyn(syns, alns, **kwargs)
+    import msyd.intersection as intersection
+    df = intersection.find_multisyn(syns, alns, **kwargs)
     return get_stats(df)
 
 
@@ -292,30 +292,30 @@ def eval_combinations(syns, alns, cores=1):
     ret = ""
     for only_core, SYNAL in [(False, False), (False, True), (True, False), (True, True)]:
         ret += "core" if only_core else "all"
-        ret += " pansynteny, "
+        ret += " multisynteny, "
         ret += "exact" if SYNAL else "approximate"
         ret += ":\n"
         ret += get_call_stats(syns, alns, only_core=only_core, SYNAL=SYNAL)
     return ret
 
-def filter_pansyns(df, predicate):
+def filter_multisyns(df, predicate):
     #TODO refactor to use Cpp vectors later
     # remember appropriate preallocation
     inds = df[0].apply(predicate)
     return df.loc[inds]
 
 def apply_filtering(df, exp):
-    return filter_pansyns(df, compile_filter(exp))
+    return filter_multisyns(df, compile_filter(exp))
 
 def filter_multisyn_df(df, rng, only_contained=False):
-    """DEPRECATED, use filter_pansyns or apply_filtering instead
+    """DEPRECATED, use filter_multisyns or apply_filtering instead
     Misc function for filtering a DF produced by find_multisyn for a certain range.
     Only the position on the reference is taken into account.
     Only the chromosome, start and end of the supplied `Range` are used, org and chromosome information is discarded.
 
-    :param df: `find_multisyn` `DataFrame` of `Pansyn` objects.
-    :type df: `DataFrame[Pansyn]`
-    :param rng: `Range` for selecting the `Pansyn` objects.
+    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
+    :type df: `DataFrame[Multisyn]`
+    :param rng: `Range` for selecting the `Multisyn` objects.
     :param only_contained: switches between selecting any region intersecting or contained in the specified `Range`.
     :type only_contained: bool
     """
@@ -348,7 +348,7 @@ def compile_filter(exp: str):
 
     # Ideas for DSL for filtering:
     # primitives: Range, degree >= number, len, chr, maybe alignment quality?
-    # have preprocessor turn is pansyn into degree >= number of seqs
+    # have preprocessor turn is multisyn into degree >= number of seqs
     # connections: and, or, xor, not
     """
     from msyd.coords import Range
@@ -445,8 +445,8 @@ def filter_multisyn_df_chr(df, chr):
     """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
     Does essentially the same thing as `filter_multsyn_df`, but only uses chromosome information
 
-    :param df: `find_multisyn` `DataFrame` of `Pansyn` objects.
-    :type df: `DataFrame[Pansyn]`
+    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
+    :type df: `DataFrame[Multisyn]`
     :param chr: Chromosome to select.
     :type chr: `str`
     """

@@ -3,6 +3,9 @@
 # distutils: language = c++
 # cython: language_level = 3
 
+## The code in this file is currently not exposed on the CLI, and is largely untested.
+## I left it as part of the msyd package, and it may be used via the CLI
+
 import msyd.cigar
 from msyd.cigar import Cigar#, cig_clips, cig_aln_types
 import msyd.util as util
@@ -21,7 +24,7 @@ TODOs
 – write frontend:
     • maybe have a convenience function imputing everything given two bam files?
     • maybe have a convenience function automatically detecting core/cross synteny from such imputed bams?
-    • maybe have a fucntion that automatically imputes along all pansyntenic regions?
+    • maybe have a fucntion that automatically imputes along all multisyntenic regions?
     => convenience functions may be moved to util
 """
 

@@ -23,7 +23,7 @@ from gc import collect
 cimport numpy as np
 
 from msyd.coords import Range
-from msyd.coords import Pansyn
+from msyd.multisyn import Multisyn
 from msyd.vars import SNV
 import msyd.util as util
 import msyd.cigar as cigar
@@ -516,7 +516,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
     for org in orgs:
         out.header.add_sample(org)
 
-    # add each pansyn object
+    # add each multisyn object
     for syn in syns.iterrows():
         syn = syn[1][0]
 
@@ -592,7 +592,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
     out.close()
 
 cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
-    """Takes a df containing `Pansyn` objects and writes them in pansynteny file format to `buf`.
+    """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
     # output organisms in lexicalic ordering
@@ -628,7 +628,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
                     else:
                         privs.append(syn)
                 syn = next(syniter)[1][0]
-        except StopIteration: # try/catch block internal, so things still get written after we run out of pansyn regions
+        except StopIteration: # try/catch block internal, so things still get written after we run out of multisyn regions
             pass
 
         # first, write non-ref-position merasynteny
@@ -637,27 +637,27 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
         if collapse_mesyn:
             if mesyns: # do not add anything if mesyns is empty
                 buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}-{meracounter+len(mesyns)-1}", '']))
-                write_pansyns(mesyns, buf, orgs, save_cigars=save_cigars)
+                write_multisyns(mesyns, buf, orgs, save_cigars=save_cigars)
                 meracounter += len(mesyns)
             if privs: # do not add anything if mesyns is empty
                 buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}-{privcounter+len(privs)-1}", '']))
-                write_pansyns(mesyns, buf, orgs, save_cigars=save_cigars)
+                write_multisyns(mesyns, buf, orgs, save_cigars=save_cigars)
                 meracounter += len(mesyns)
         else:
             for mesyn in mesyns:
                 buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", '']))
-                write_pansyns([mesyn], buf, orgs, save_cigars=save_cigars)
+                write_multisyns([mesyn], buf, orgs, save_cigars=save_cigars)
                 meracounter += 1
             for priv in privs:
                 buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{meracounter}", '']))
-                write_pansyns([priv], buf, orgs, save_cigars=save_cigars)
+                write_multisyns([priv], buf, orgs, save_cigars=save_cigars)
                 privcounter += 1
 
         # write mesyn regions that have a position on reference at their appropriate position
         for refmesyn in refmesyns:
             ref = refmesyn.ref
             buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}" if refmesyn.get_degree() > 1 else f"PRIVATE{privcounter}", '']))
-            write_pansyns([refmesyn], buf, orgs, save_cigars=save_cigars)
+            write_multisyns([refmesyn], buf, orgs, save_cigars=save_cigars)
             if refmesyn.get_degree() > 1:
                 meracounter += 1
             else:
@@ -669,7 +669,7 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
             coreend = ref.end
             corechr = ref.chr
             buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", '']))
-            write_pansyns([syn], buf, orgs, save_cigars=save_cigars)
+            write_multisyns([syn], buf, orgs, save_cigars=save_cigars)
             corecounter += 1
         else:
             break
@@ -677,31 +677,31 @@ cpdef save_to_pff(df, buf, save_cigars=True, collapse_mesyn=True):
     buf.write("\n")
     buf.flush()
 
-cdef write_pansyns(pansyns, buf, orgs, save_cigars=False):
-    """Function to write a set of pansyns in a single PFF-style annotation to buf.
+cdef write_multisyns(multisyns, buf, orgs, save_cigars=False):
+    """Function to write a set of multisyns in a single PFF-style annotation to buf.
     Does not write the BED-like first part of the annotation.
-    :param pansyns: list of pansyn objects to write
+    :param multisyns: list of multisyn objects to write
     :param buf: buffer to write to
     :param orgs: ordering of organisms to use (should be sorted)
     """
     buf.write('\t'.join(
         [';'.join(
             [','.join( # <range>,<haplotype organism>,[<CIGAR>]
-                [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org]\
-                if not (save_cigars and pansyn.cigars_dict) else
-                [pansyn.ranges_dict[org].to_pff(), pansyn.ref.org, pansyn.cigars_dict[org].to_string()]
+                [multisyn.ranges_dict[org].to_pff(), multisyn.ref.org]\
+                if not (save_cigars and multisyn.cigars_dict) else
+                [multisyn.ranges_dict[org].to_pff(), multisyn.ref.org, multisyn.cigars_dict[org].to_string()]
                   )
-             if org in pansyn.ranges_dict else
-                     (','.join([pansyn.ref.to_pff(), pansyn.ref.org]) # add orgs used as a reference when realigning
-                     if pansyn.ref.org == org else '-') # if there is no synteny, put a minus
-             for pansyn in pansyns])
+             if org in multisyn.ranges_dict else
+                     (','.join([multisyn.ref.to_pff(), multisyn.ref.org]) # add orgs used as a reference when realigning
+                     if multisyn.ref.org == org else '-') # if there is no synteny, put a minus
+             for multisyn in multisyns])
          for org in orgs])
       )
     buf.write("\n")
 
 cpdef read_pff(fin):
     """
-    Takes a file object or path to a file in PFF format and reads it in as a DataFrame of Pansynteny objects.
+    Takes a file object or path to a file in PFF format and reads it in as a DataFrame of Multisynteny objects.
     Supports the new version of PFF format; for legacy files, use the deprecated version of this function.
     """
     syns = deque()
@@ -722,13 +722,13 @@ cpdef read_pff(fin):
 
         refrng = Range('ref', line[0], None, int(line[1]), int(line[2]))
 
-        # split once to reuse in pansyn construction loop
+        # split once to reuse in multisyn construction loop
         samplecells = [cell.split(';') for cell in line[4:]]
 
         # a single line may contain multiple merasyn records if the PFF is collapsed
         for i in range(len(samplecells[0])): # will iterate just once for single records
             reforg = 'ref'
-            syn = Pansyn(None, {}, None)
+            syn = Multisyn(None, {}, None)
             for sample, samplecell in zip(samples, samplecells):
                 #logger.info(f"Parsing {samplecell}")
                 if samplecell[i] == '-': # skip empty records
@@ -774,8 +774,8 @@ cpdef DEPRECATED_read_pff(f):
     orgs = f.readline().strip()[1:].split("\t")[2:] # 0 is ANN, 1 is ref
     for l in f:
         l = l.strip().split('\t')
-        if l[0] == 'SYN': # line contains a pansyn region
-            syn = Pansyn(Range.read_pff("ref", l[1]), # extract reference range
+        if l[0] == 'SYN': # line contains a multisyn region
+            syn = Multisyn(Range.read_pff("ref", l[1]), # extract reference range
                 {orgs[i]:Range.read_pff(orgs[i], cell.split(",")[0]) # extract ranges dict
                         for i, cell in enumerate(l[2:]) if cell != '.'},
                 {orgs[i]:cigar.cigar_from_string(cell.split(',')[1])
