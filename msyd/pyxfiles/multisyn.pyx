@@ -9,6 +9,8 @@ import traceback
 #import cython
 import logging
 
+from libcpp.vector cimport vector
+
 from msyd.cigar import Cigar
 import msyd.util as util
 from msyd.coords import Range
@@ -17,7 +19,7 @@ logger = util.CustomFormatter.getlogger(__name__)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering
-class Multisyn:
+cdef class Multisyn:
     """
     A class representing a region syntenic among a set of genomes.
     The parameter `ranges_dict` is a dictionary of genomic `synctools.Range`es storing the location this syntenic region has on each organism.
@@ -300,15 +302,18 @@ cdef class Multisyn_container:
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     """
+    cdef vector[Multisyn] multisyns
 
-    def __init__(self, cap: int):
+    def __cinit__(self, cap: int):
         """
         `cap` specifies the initial capacity the vector backing should be initialised with.
         """
-        pass
+        self.multisyns = vector[Multisyn]()
+        if cap:
+            self.reserve(cap)
 
     def __len__(self):
-        pass
+        return self.multisyns.size()
 
     def __repr__(self):
         return self.to_string(10)
@@ -319,16 +324,38 @@ cdef class Multisyn_container:
     def __getitem__(self, key: int):
         """
         `key` may be an index, or a tuple for a slice.
-        TODO handle slicing – copy to smaller Multisyn_container maybe?
         """
+        #TODO handle slicing – copy to smaller Multisyn_container maybe?
+        if len(key) > 1:
+            raise NotImplemented("Slicing not yet supported!")
+        return self.getat(key)
+
+    cdef getat(self, pos:int):
+        return self.vector.at(pos)
+
+    cdef copy_slice(self, start:int, end:int):
         pass
 
-    def push_back(self, ms: Multisyn):
+    cpdef push_back(self, ms: Multisyn):
         """
         Append a new Multisyn.
-        Check that its sorted?
         """
-        pass
+        #TODO check if sorted?
+        self.vector.push_back(ms)
+
+    cpdef reserve(self, cap:int):
+        """
+        Pre-allocate to contain `cap` elements.
+        """
+        self.vector.reserve(cap)
+
+    cpdef shrink_to_fit(self):
+        """
+        Shrink the backing vector to the current contents.
+        Frees up memory, especially if this Container has been overallocated previously.
+        """
+        self.vector.shrink_to_fit()
+
 
     def find(self, org: str, start: int, end: int):
         """
@@ -352,7 +379,7 @@ cdef class Multisyn_container:
         ms = self[self.find_ind(org, pos)]
         return ms if pos in ms else None
 
-    def find_ind(self, org:str, pos: int):
+    cdef find_ind(self, org:str, pos: int):
         """
         Find the index at or immediately before `pos` using binary search.
         """
