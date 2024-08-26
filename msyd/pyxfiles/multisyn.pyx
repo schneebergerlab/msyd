@@ -22,7 +22,7 @@ class Multisyn:
     A class representing a region syntenic among a set of genomes.
     The parameter `ranges_dict` is a dictionary of genomic `synctools.Range`es storing the location this syntenic region has on each organism.
     This dictionary cannot be None.
-    Other attributes are `ref`, which stores the position on the reference -- this attribute can be `None` if using a reference-free algorithm, but none have been implemented so far.
+    Other attributes are `ref`, which stores the position on the genome used as a reference in calling this Multisyn. Different multisyn may have different references, and coordinates are only comparable between the same reference (as stored in `ref.org`).
     `cigars_dict` contains a dictionary of `cigar.Cigar` objects corresponding to the alignment of each `Range` to the reference.
     The attribute can be `None` if using approximate position calculation (usually for performance/memory reasons).\n
     Keys in `cigars_dict` correspond with indices in `ranges_dict`.\n
@@ -289,3 +289,73 @@ class Multisyn:
 
                 self.ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 self.cigars_dict[org] = cg
+
+
+
+cdef class Multisyn_container:
+    """
+    A datastructure for storing Multisyn objects on the same chromosome.
+    Multisyns are segregated by chromosome to allow efficient lock-free parallelism between different chromosomes.
+    Internally, Multisyns are stored in a C++ vector sorted by position on the first chosen reference. Merasyns that do not have a position on the first reference are sorted immediately after the coresyn before them, sorted alphabetically by their reference name and by position on that reference.
+    This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
+    This sorting is also used for iterating over the Multisyns during the synteny intersection step.
+    """
+
+    def __init__(self, cap: int):
+        """
+        `cap` specifies the initial capacity the vector backing should be initialised with.
+        """
+        pass
+
+    def __len__(self):
+        pass
+
+    def __repr__(self):
+        return self.to_string(10)
+
+    def to_string(self, n: int):
+        pass
+
+    def __getitem__(self, key: int):
+        """
+        `key` may be an index, or a tuple for a slice.
+        TODO handle slicing – copy to smaller Multisyn_container maybe?
+        """
+        pass
+
+    def push_back(self, ms: Multisyn):
+        """
+        Append a new Multisyn.
+        Check that its sorted?
+        """
+        pass
+
+    def find(self, org: str, start: int, end: int):
+        """
+        Return a slice of all multisyns overlapping with `start:end` (inclusive) on `org`.
+        """
+        #TODO check chromosome?
+        endind = self.find_ind(org, end)
+        # find the last position still covered here
+        while self[endind].ranges_dict[org].end < endind and endind < len(self):
+            endind += 1
+
+        #TODO does this work if start is not covered?
+        return self[self.find_ind(org, start):endind]
+
+    def find(self, org:str, pos: int):
+        """
+        Find the Multisyn covering `pos` on `org`.
+        Return None if that position is not covered.
+        """
+        #TODO check chromosome?
+        ms = self[self.find_ind(org, pos)]
+        return ms if pos in ms else None
+
+    def find_ind(self, org:str, pos: int):
+        """
+        Find the index at or immediately before `pos` using binary search.
+        """
+        pass
+
+
