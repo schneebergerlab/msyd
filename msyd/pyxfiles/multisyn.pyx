@@ -186,8 +186,7 @@ class Multisyn:
         self.drop_inplace(start, end)
 
     def drop(self, start, end):
-        #DEPRECATED
-        #, prop=False): 
+        #, prop=False): #DEPRECATED
         #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Multisyn` without CIGAR strings.
         """
         Returns a new `Multisyn` object with `start`/`end` positions from the start/end of this multisyntenic region removed, respecting cigar alignments if not `None`.
@@ -242,8 +241,7 @@ class Multisyn:
 
     #TODO? write test testing that this is equivalent to drop
     def drop_inplace(self, start, end):
-        #DEPRECATED
-        #, prop=False):
+        #, prop=False): #DEPRECATED
         #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Multisyn` without CIGAR strings.
         """
         Performs the same function as `drop`, but mutates this object instead of returning a new one.
