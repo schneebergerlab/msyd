@@ -264,6 +264,7 @@ def readSAMBAM(fin, type='B'):
             bchr = aln.query_name
             seq = aln.query_sequence
             cg = "".join([str(i[1]) + cgdict[i[0]] for i in aln.cigartuples if i[0] not in [4,5]])
+
             coords[index] = [astart, aend, bstart, bend, alen, blen, iden, adir, bdir, achr, bchr, cg, seq]
 
         ## Give warning for chromosomes which do not have any primary alignment
@@ -338,6 +339,25 @@ alnfilelookup = {
         'bam': readSAMBAM,
         'paf': readPAF
         }
+
+def split_alndf_by_chrom(alndf, chromid="achr"):
+    """
+    Takes a DF of alignments, returns a Dictionary mapping chromosome names to alignments on them.
+    As Chromosome names, the contents of the `chromid` arg are taken.
+    Fairly inefficient, would be faster to do this already while reading in the alns.
+    """
+    out = dict()
+    for chrom in alndf[chromid].unique():
+        out[chrom] = alndf[alndf[chromid] == chrom]
+        #out[chrom] = pd.DataFrame(alndf[alndf[chromid] == chrom])
+    return out
+
+def collate_by_chrom(alndfs, chromid="achr"):
+    out = defaultdict(list)
+    for alndf in alndfs:
+        for chrom, alns in split_alndf_by_chrom(alndf, chromid=chromid):
+            out[chrom].append(alns)
+    return out
 
 cpdef read_alnsfile(fin):
     """
@@ -443,6 +463,7 @@ cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', q
 cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
+    Returns the output as a dict containing one Dataframe per chromosome.
     """
     # columns to look for as start/end positions
     refchr = ref + "chr"
@@ -456,40 +477,43 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
     qrystart = qry + "start"
     qryend = qry + "end"
 
-    buf = deque()
+
     merged = pd.concat([rawsyriout.loc[rawsyriout['type'] == ann if 'type' in rawsyriout.columns else rawsyriout['vartype'] == ann] for ann in anns]) # different syri versions seem to use different names for the type
-    # if implementing filtering later, filter here
 
-    for row in merged.iterrows():
-        row = row[1]
-        # removed util.chrom_to_int, was causing problems
-        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
-            ])
+    out = dict()
+    buf = deque()
+    chrom = merged[1, refchr]
+    for _, row in merged.iterrows():
+        if row[refchr] == chrom:
+            buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
+                Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+                ])
+        else:
+            out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
+            chrom = row[refchr]
+            buf = deque([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
+                Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+                ])
 
-    return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
+    return out
 
-def extract_syri_regions_to_list_from_files(fins, qrynames, cores=1, **kwargs):
+def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
     """
-    `extract_syri_regions`, but for processing a list of inputs
+    `extract_syri_regions`, but for processing a list of inputs.
+    Will return a 
     """
     if len(fins) != len(qrynames):
         logger.error(f"Infiles and qrynames lists lengths not matching. Offending lists: {fins} and {qrynames}")
-    partial = lambda x, qryname: extract_syri_regions_from_file(x, qryorg=qryname, **kwargs)
 
-    if cores == 1:
-        syns = [partial(fin, qryname) for fin, qryname in zip(fins, qrynames)]
-    else:
-        # `partial` requires two parameters, only 1 is given here. would crash ?
-        with Pool(cores) as pool:
-            syns = pool.map(partial, fins)
+    out = defaultdict(list)
+    # optionally parallelize i/o like this?
+    #with Pool(cores) as pool:
+    #    for pool.map(lambda fin, qryname: extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs,), zip(fins, qrynames):
+    for fin, qryname in zip(fins, qrynames):
+        for org, syndf in extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs):
+            out[org].append(syndf)
 
-    return syns
-    #return [extract_syri_regions(fin, **kwargs,\
-    #        #reforg=fin.split('/')[-1].split('_')[0],\
-    #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
-    #        for fin in fins]
-
+    return out
 
 cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
     #TODO add functionality to incorporate reference information as optional argument
