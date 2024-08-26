@@ -45,12 +45,12 @@ def main():
         The ordering is determined such that adjacent organisms share as many basepairs of multisynteny  as possible.
         """)
     order_parser.set_defaults(func=order)
-    order_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read multisynteny information from.")
+    order_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PSF file to read multisynteny information from.")
 
     ## plotting subparser
     #plot_parser = subparsers.add_parser("plot", description="Prints a lengths df for plotting to stdout. Can be piped to a file and plotted with tests/plot.R .")
     #plot_parser.set_defaults(func=plot)
-    #plot_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF or VCF file to read multisynteny information from.")
+    #plot_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PSF or VCF file to read multisynteny information from.")
 
     ## Filter subparser
     #filter_parser = subparsers.add_parser("filter",
@@ -61,7 +61,7 @@ def main():
     #    """)
     #filter_parser.set_defaults(func=filter)
     #filter_parser.add_argument("--vcf", dest='invcf', required=True, type=argparse.FileType('r'), help="The .vcf file to filter and write to -o.")
-    #filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read multisynteny information from.")
+    #filter_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PSF file to read multisynteny information from.")
     #filter_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the filtered VCF.")
     #filter_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="The reference to use for the synteny annotated in the output VCF")
 
@@ -77,15 +77,15 @@ def main():
         """)
     call_parser.set_defaults(func=call)
     call_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="The .tsv file to read SyRI output, alignment and VCF files in from. For more details, see the Readme.")
-    call_parser.add_argument("-o", dest='psf', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
+    call_parser.add_argument("-o", dest='psf', required=True, type=argparse.FileType('wt'), help="Where to save the output PSF file (see format.md)")
     call_parser.add_argument("-m", "--merge-vcf", dest='vcf', type=argparse.FileType('wt'), help="Merge the VCFs specified in the input table, store the merged VCF at the path specified. Does not currently work with --realign, as non-ref haplotypes do not have coordinates on the reference that VCF records can be fetched from.")
     call_parser.add_argument("-a", "--all", dest='all', action='store_true', default=False, help="Merge all VCF records instead of only records annotated in multisyntenic regions.")
     call_parser.add_argument("-x", "--complex", dest='no_complex', action='store_const', const=False, default=True, help="Do not filter the input VCFs to only contain SNPs and INDELs")
     call_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="Reference to use for the VCF output")
-    call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PFF file containing a previous multisynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
+    call_parser.add_argument("--incremental", dest='incremental', type=argparse.FileType('r'), help="A PSF file containing a previous multisynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
     call_parser.add_argument("-c", dest="cores", help="Number of cores to use for parallel computation. Multisyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 1.", type=int, default=1)
     call_parser.add_argument("--core", dest='core', action='store_true', default=False, help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
-    call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Yields more contiguous regions and faster runtime, but calls may not be exact to the base level.")
+    call_parser.add_argument("--syn", "-s", dest='SYNAL', action='store_const', const=False, default=True, help="Use SYN instead of SYNAL SyRI annotations. Fast, but error-prone and inaccurate. Not recommended.")
     call_parser.add_argument("--no-cigars", dest='cigars', action='store_const', const=False, default=True, help="Don't store CIGAR strings in the saved .psf file. Has no effect when --syn is specified.")
     call_parser.add_argument("--realign", "-ali", dest='realign', action='store_true', default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("--pairwise", dest='pairwise', required=False, type=argparse.FileType('r'), help="Path to a TSV containing paths to full pairwise alignments that msyd will read in from disk during realignment if this parameter is passed. Otherwise, individual regions will be realigned on the fly with minimap2/mappy. This is useful if you already have pairwise alignments, or want to use a different aligner.")
@@ -99,22 +99,22 @@ def main():
 
     # view subparser
     view_parser = subparsers.add_parser("view",
-        help="Filter, convert or analyze existing PFF Files",
+        help="Filter, convert or analyze existing PSF Files",
         description="""
         Used for filtering VCF files to only contain calls in multisyntenic regions for now.
         Additional functionality will be implemented later.
         """)
     view_parser.set_defaults(func=view)
-    view_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read multisynteny information from.")
+    view_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PSF file to read multisynteny information from.")
     view_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the output. File format is determined automatically from the extension, but can be overridden by supplying any of the --o flags.")
     view_parser.add_argument("-e", dest='expr', action='store', type=str, help="Expression to use for filtering the multisyntenic regions. This is done before --intersect is evaluated if also supplied")
     view_parser.add_argument("-p", dest='print', action='store_const', const=10, help="Print the first 10 regions after filtering, mainly for debugging")
     view_parser.add_argument("-r", "--reference", dest='ref', type=argparse.FileType('r'), help="If saving to VCF, the reference to use can be specified with this flag")
-    view_parser.add_argument("--intersect", dest='intersect', type=argparse.FileType('r'), help="VCF File to intersect with the PFF file given with -i. Will only keep annotations within multisyntenic regions")
+    view_parser.add_argument("--intersect", dest='intersect', type=argparse.FileType('r'), help="VCF File to intersect with the PSF file given with -i. Will only keep annotations within multisyntenic regions")
     view_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
 
-    view_parser.add_argument("--opsf", dest='filetype', action='store_const', const='psf', help="store output in PFF format")
-    view_parser.add_argument("--opsf-nocg", dest='filetype', action='store_const', const='psf-nocg', help="store output in PFF format, discarding cigar strings")
+    view_parser.add_argument("--opsf", dest='filetype', action='store_const', const='psf', help="store output in PSF format")
+    view_parser.add_argument("--opsf-nocg", dest='filetype', action='store_const', const='psf-nocg', help="store output in PSF format, discarding cigar strings")
     view_parser.add_argument("--ovcf", dest='filetype', action='store_const', const='vcf', help="store output in VCF format, discarding cigar strings")
 
     merge_parser = subparsers.add_parser("merge",
@@ -128,14 +128,14 @@ def main():
     merge_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to store the merged VCF.")
 
     realign_parser = subparsers.add_parser("realign",
-        help="Iteratively realign a set of genomes based on a PFF file",
+        help="Iteratively realign a set of genomes based on a PSF file",
         description="""
         Exposes the realignment functionality in msyd call directly.
-        Useful for realigning only a specific region by prefiltering the PFF.
+        Useful for realigning only a specific region by prefiltering the PSF.
         """)
     realign_parser.set_defaults(func=realign)
-    realign_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read multisynteny information from.")
-    realign_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to save the output PFF file (see format.md)")
+    realign_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PSF file to read multisynteny information from.")
+    realign_parser.add_argument("-o", dest='outfile', required=True, type=argparse.FileType('wt'), help="Where to save the output PSF file (see format.md)")
     realign_parser.add_argument("-t", dest='tsvfile', required=True, type=argparse.FileType('r'), help="TSV containing the sample names and path to genome fastas.")
     realign_parser.add_argument("-p", "--pairwise", dest='pairwise', required=False, type=argparse.FileType('r'), help="Path to a TSV containing paths to full pairwise alignments that msyd will read in from disk if this parameter is passed. Otherwise, individual regions will be realigned on the fly with minimap2/mappy. This is useful if you already have pairwise alignments, or want to use a different aligner.")
     realign_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
@@ -147,13 +147,13 @@ def main():
 
 
     stats_parser = subparsers.add_parser("stats",
-        help="Compute some statistics on a PFF file",
+        help="Compute some statistics on a PSF file",
         description="""
-        Computes some basic statistics on a PFF file.
+        Computes some basic statistics on a PSF file.
         Useful as input for plotting or to get a feel for the dataset.
         """)
     stats_parser.set_defaults(func=stats)
-    stats_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PFF file to read multisynteny information from.")
+    stats_parser.add_argument("-i", dest='infile', required=True, type=argparse.FileType('r'), help="PSF file to read multisynteny information from.")
     stats_parser.add_argument("-o", dest='outfile', default='-', type=argparse.FileType('wt'), help="Where to send the statistics to. Default stdout.")
     stats_parser.add_argument("--separator", "-s", dest="sep", help="Separator to use for printing the stats. Default is tab (for TSV), set to ',' for CSV.", type=str, default="\t")
     stats_parser.add_argument("-p", "--prefix", dest='siprefix', action='store_true', default=False, help="Whether to attach SI prefixes to the output for human readability. If not supplied, print exact numbers.")
@@ -223,7 +223,7 @@ def call(args):
     print(util.get_stats(df))
 
     # save output
-    logger.info(f"Saving msyd calls to PFF at {args.psf.name}")
+    logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
     io.save_to_psf(df, args.psf, save_cigars=args.cigars)
 
     # if specified, merge the VCFs
@@ -334,7 +334,7 @@ def realign(args):
     resyns = realignment.realign(syns, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MIN_SYN_ID=args.min_syn_id, MAX_REALIGN=args.max_realign, pairwise=alndict if args.pairwise else None)
     print(util.get_stats(resyns))
 
-    logger.info(f"Saving to {args.outfile.name} in PFF format.")
+    logger.info(f"Saving to {args.outfile.name} in PSF format.")
     io.save_to_psf(resyns, args.outfile, save_cigars=args.cigars)
     logger.info(f"Finished running msyd realign, output saved to {args.outfile.name}.")
 
