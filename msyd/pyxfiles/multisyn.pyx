@@ -35,6 +35,8 @@ cdef class Multisyn:
     For sorting, the `ref` field needs to be set.
 
     """
+
+
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
     def __init__(self, ref:Range, ranges_dict, cigars_dict):
         #if not ranges_dict:

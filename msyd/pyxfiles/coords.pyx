@@ -18,7 +18,7 @@ logger = util.CustomFormatter.getlogger(__name__)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
-class Position:
+cdef class Position:
     def __init__(self, org:str, chr:int, haplo:str, pos: int):
         self.org = org
         self.chr = chr
@@ -58,7 +58,7 @@ class Position:
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 #@cython.total_ordering
-class Range:
+cdef class Range:
     def __init__(self, org:str, chr:str, haplo, start: int, end: int):
         self.org = org
         self.chr = chr
