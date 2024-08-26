@@ -508,7 +508,8 @@ def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
     out = defaultdict(list)
     # optionally parallelize i/o like this?
     with Pool(cores) as pool:
-        for chrom, syndf in pool.map(lambda fin, qryname: extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs,), zip(fins, qrynames)):
+        annoying_workaround = partial(extract_syri_regions_from_file, **kwargs)
+        for chrom, syndf in pool.map(annoying_workaround, zip(fins, qrynames)):
     #for fin, qryname in zip(fins, qrynames):
     #   for chrom, syndf in extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs):
             out[chrom].append(syndf)
