@@ -173,16 +173,16 @@ def find_overlaps(left, right, only_core=False):
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Multisyn objects
-def match_synal(syn, aln, ref='a'):
+def match_synal(syndf, alndf, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
     It returns a dataframe containing the regions with the corresponding CIGAR string as a `Multisyn` object.
-    :params: syn: SYNAL dataframe, aln: alignment dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
+    :params: syndf: SYNAL dataframe, alndf: alignment dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Multisyn` objects.
     """
     ret = deque()
-    syniter = syn.iterrows()
-    alniter = aln.iterrows()
+    syniter = syndf.iterrows()
+    alniter = alndf.iterrows()
     refchr = ref + "chr"
     refstart = ref + "start"
     refend = ref + "end"
@@ -218,7 +218,7 @@ def match_synal(syn, aln, ref='a'):
         except StopIteration:
             break
 
-    if len(ret) <= 0.1*len(syn):
+    if len(ret) <= 0.1*len(syndf):
         logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
     return pd.DataFrame(list(ret))
 
@@ -289,7 +289,7 @@ cdef remove_overlap(syn):
     return syn
 # END
 
-def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, overlapping=True, **kwargs):
+def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, disable_overlapcheck=False, **kwargs):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -303,11 +303,31 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     :param only_core: Whether to output all cross synteny or only core syntenic regions.
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
-    from msyd.scripts.io import extract_syri_regions_to_list_from_files
 
-    syns = extract_syri_regions_to_list_from_files(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
+    syndict = prepare_input(qrynames, syris, alns, cores=cores, sort=sort, ref=ref, SYNAL=SYNAL, disable_overlapcheck=disable_overlapcheck)
+
+    print(syndict)
+
+    #TODO might need to be parallelized by hand
+    def workaround(chrom, syndfs):
+        return chrom, reduce_find_overlaps(syndfs, cores=1, **kwargs)
+
+    with multiprocessing.Pool(cores) as pool:
+        return dict(pool.map(workaround, syndict.items()))
+
+        
+
+def prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
+    """
+    Fetches input from filenames given to it; mostly parallelized.
+    :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
+    This allows seamless parallelization between chromosome IDs
+    """
+    from msyd.io import extract_from_filelist
+
+    syndict = extract_from_filelist(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
-        syns = [x.sort_values(x.columns[0]) for x in syns]
+        syndict = {chrom: [syndf.sort_values(syndf.columns[0]) for syndf in syndfs]for chrom, syndfs in syndict}
 
     #alnfilelookup = {
     #        'sam': io.readSAMBAM,
@@ -315,35 +335,48 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     #        'paf': io.readPAF
     #        }
 
-    if alns and SYNAL:
-        #TODO log
-        alns = [io.alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
-        alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # only count non-inverted alignments as syntenic
-
-        syns = [match_synal(*x, ref=ref) for x in zip(syns, alns)]
-    else:
-        syns = [
-                pd.DataFrame(
-                    [ Multisyn(ref=row[1][0],
+    if not (SYNAL and alns):
+        logger.warning("No alignments found or `--syn` passed! Assuming all synteny to be exactly identical. This is fast but error-prone and inaccurate.")
+        return {chrom:[pd.DataFrame([Multisyn(ref=row[1][0],
                         ranges_dict={row[1][1].org:row[1][1]}, cigars_dict = None)
                         for row in s.iterrows()]) for s in syns]
+                for chrom, syns in syndict}
 
+    #with multiprocessing.Pool(cores) as pool:
+    #    alns = pool.map(lambda aln: io.alnfilelookup[aln.split('.')[-1]](aln), alns)
+    #    alns = pool.map(lambda aln: aln[(aln.adir==1) & (aln.bdir==1)], alns) # pre-filter to non-inverted alns
+    alns = [io.alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
+    alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # pre-filter to non-inverted alns
+        
+    # this step is single-threaded; TODO parallelize?
+    alndict = io.collate_by_chrom(alns, chromid=ref+'chr')
+
+    print(syndict)
+    print(alndict)
+    for chrom in syndict: #TODO maybe parallelize over chrs instead
+        #syndict[chrom] = pool.map(lambda syndf, alndf: match_synal(syndf, alndf, ref=ref), zip(syndict[chrom], alndict[chrom]))
+        syndict[chrom] = [match_synal(syndf, alndf, ref=ref) for syndf, alndf in zip(syndict[chrom], alndict[chrom])]
+            
+    return syndict
+
+
+def process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, **kwargs):
     # remove overlap
-    if overlapping:
+    if not disable_overlapcheck:
         if cores == 1:
-            syns = [remove_overlap(syn) for syn in syns]
+            syndfs = [remove_overlap(syndf) for syndf in syndfs]
         else:
             with multiprocessing.Pool(cores) as pool:
-                syns = pool.map(remove_overlap, syns)
+                syndfs = pool.map(remove_overlap, syndfs)
 
     logger.info("overlap removed")
 
     # shouldn't need any overlap removal
     if base:
         logger.info("reading in PSF for incremental calling")
-        syns.append(io.read_psf(base))
+        syndfs.append(base)
 
-    return reduce_find_overlaps(syns, cores, **kwargs)
+    return reduce_find_overlaps(syndfs, cores, **kwargs)
 # END
 
 def reduce_find_overlaps(syns, cores, **kwargs):

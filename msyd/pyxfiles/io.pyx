@@ -355,7 +355,7 @@ def split_alndf_by_chrom(alndf, chromid="achr"):
 def collate_by_chrom(alndfs, chromid="achr"):
     out = defaultdict(list)
     for alndf in alndfs:
-        for chrom, alns in split_alndf_by_chrom(alndf, chromid=chromid):
+        for chrom, alns in split_alndf_by_chrom(alndf, chromid=chromid).items():
             out[chrom].append(alns)
     return out
 
@@ -482,18 +482,20 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
 
     out = dict()
     buf = deque()
-    chrom = merged[1, refchr]
+    chrom = merged.at[1, refchr]
     for _, row in merged.iterrows():
-        if row[refchr] == chrom:
-            buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-                Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
-                ])
-        else:
+        # write buffer to out if necessary
+        if row[refchr] != chrom:
             out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
             chrom = row[refchr]
-            buf = deque([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-                Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
-                ])
+            buf = deque()
+        # append current line to buffer
+        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
+            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+            ])
+
+    # add last chr
+    out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
 
     return out
 
@@ -507,11 +509,11 @@ def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
 
     out = defaultdict(list)
     # optionally parallelize i/o like this?
-    with Pool(cores) as pool:
-        annoying_workaround = partial(extract_syri_regions_from_file, **kwargs)
-        for chrom, syndf in pool.map(annoying_workaround, zip(fins, qrynames)):
-    #for fin, qryname in zip(fins, qrynames):
-    #   for chrom, syndf in extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs):
+#    with Pool(cores) as pool:
+#        annoying_workaround = partial(extract_syri_regions_from_file, **kwargs)
+#        for chrom, syndf in pool.map(annoying_workaround, zip(fins, qrynames)):
+    for fin, qryname in zip(fins, qrynames):
+        for chrom, syndf in extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs).items():
             out[chrom].append(syndf)
 
     return out
