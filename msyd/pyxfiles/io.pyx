@@ -346,11 +346,7 @@ def split_alndf_by_chrom(alndf, chromid="achr"):
     As Chromosome names, the contents of the `chromid` arg are taken.
     Fairly inefficient, would be faster to do this already while reading in the alns.
     """
-    out = dict()
-    for chrom in alndf[chromid].unique():
-        out[chrom] = alndf[alndf[chromid] == chrom]
-        #out[chrom] = pd.DataFrame(alndf[alndf[chromid] == chrom])
-    return out
+    return {chrom: df for chrom, df in alndf.groupby(by=chromid)}
 
 def collate_by_chrom(alndfs, chromid="achr"):
     out = defaultdict(list)
