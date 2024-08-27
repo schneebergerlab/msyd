@@ -304,13 +304,13 @@ cdef class Multisyn_container:
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     """
-    cdef vector[Multisyn] multisyns
+    cdef list[Multisyn] multisyns
 
     def __cinit__(self, cap: int):
         """
         `cap` specifies the initial capacity the vector backing should be initialised with.
         """
-        self.multisyns = vector[Multisyn]()
+        self.multisyns = list()
         if cap:
             self.reserve(cap)
 
