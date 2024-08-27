@@ -12,7 +12,10 @@ setup(name="msyd",
       url='https://github.com/schneebergerlab/msyd/',
       license='MIT License',
       ext_modules=cythonize([
-          Extension(f"msyd.{name.split('/')[-1].split('.')[0]}", [name])
+          Extension(f"msyd.{name.split('/')[-1].split('.')[0]}",
+                    [name],
+                    extra_compile_args=['-fopenmp'],
+                    extra_link_args=['-fopenmp'])
           for name in glob.iglob('msyd/pyxfiles/*.pyx')
           ]),
       packages=["msyd", "msyd.scripts"],
