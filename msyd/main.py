@@ -198,7 +198,6 @@ def call(args):
     # find reference synteny
     df = find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
 
-
     if args.realign:
         # read in full pairwise alns if supplied
         if args.pairwise:
@@ -220,7 +219,7 @@ def call(args):
         logger.info("Printing sample head to STDOUT")
         print(df.head())
 
-    print(util.get_stats(df))
+    print(util.get_map_stats(df))
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")

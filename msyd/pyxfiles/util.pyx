@@ -254,8 +254,20 @@ def lensdict_to_table(lensdict, sep='\t', si=True, header=True):
         )
     return header + '\n' + table
 
+def get_map_stats(dfmap, collapse_chrs=True):
+    """
+    Utility function to print stats for a map of chrom IDs to DFs.
+    If `collapse_chrs` is set to `False`, will output the stats separately per chromosome, by default merged stats will be printed.
+    """
+
+    if not collapse_chrs:
+        return '\n'.join([f"{chrom}:\n{get_stats(df)}" for chrom, df in dfmap.items()])
+    else:
+        return get_stats(pd.concat(dfmap.values()))
+
 def get_stats(df):
-    """Utility function to output some stats for a df containing computed multisyn objects.
+    """
+    Utility function to output some stats for a df containing computed multisyn objects.
     Calls get_len and tabularize_lens, prettyprints their output.
     """
     tot_len = get_len(df)

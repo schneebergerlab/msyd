@@ -311,7 +311,7 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     print(syndict)
 
     with multiprocessing.Pool(cores) as pool:
-        return dict(pool.map(process_syndfs, syndict.items()))
+        return dict(pool.map(_workaround, syndict.items()))
 
     #cdef list chromlist = list(syndict)
     #cdef int n = len(chromlist)
@@ -324,8 +324,12 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     #    with gil:
     #        syndict[chrom] = intersected
     # return syndict
-        
-        
+
+
+def _workaround(tup): # tup: [chrom, syndfs]
+    # Annoying workaround, because multiprocessing doesn't like lambdas
+    return tup[0], process_syndfs(tup[1])
+
 
 cpdef prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
@@ -361,8 +365,6 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=T
     # this step is single-threaded; TODO parallelize?
     alndict = io.collate_by_chrom(alns, chromid=ref+'chr')
 
-    print(syndict)
-    print(alndict)
     for chrom in syndict: #TODO maybe parallelize over chrs instead
         #syndict[chrom] = pool.map(lambda syndf, alndf: match_synal(syndf, alndf, ref=ref), zip(syndict[chrom], alndict[chrom]))
         syndict[chrom] = [match_synal(syndf, alndf, ref=ref) for syndf, alndf in zip(syndict[chrom], alndict[chrom])]
