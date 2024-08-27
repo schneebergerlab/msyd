@@ -10,6 +10,8 @@ import functools
 from collections import deque
 import multiprocessing
 
+from cython.parallel import prange
+
 import msyd.io as io
 import msyd.util as util
 import msyd.cigar
@@ -289,7 +291,7 @@ cdef remove_overlap(syn):
     return syn
 # END
 
-cpdef find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, disable_overlapcheck=False, only_core=False):
+def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, disable_overlapcheck=False, only_core=False):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -310,6 +312,18 @@ cpdef find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores
 
     with multiprocessing.Pool(cores) as pool:
         return dict(pool.map(process_syndfs, syndict.items()))
+
+    #cdef list chromlist = list(syndict)
+    #cdef int n = len(chromlist)
+    #cdef int i
+    #for i in prange(n, nogil=True):
+    #    with gil:
+    #        chrom = chromlist[i]
+    #        syndf = syndict[chrom]
+    #    intersected = process_syndfs(syndf)
+    #    with gil:
+    #        syndict[chrom] = intersected
+    # return syndict
         
         
 
