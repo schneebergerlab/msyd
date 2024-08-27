@@ -614,7 +614,17 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
+cpdef save_to_psf(dfmap, buf, save_cigars=True, collapse_mesyn=True):
+    """
+    Takes a map of chrom IDs to DFs containing multisyns and writes them to buf.
+    Preserves the sorting of the DFs, sorts chroms lexicallicaly.
+    Calls to `save_df_to_psf`.
+    """
+    #TODO parallelize?
+    for chrom in sorted(dfmap):
+        save_df_to_psf(dfmap[chrom], buf, save_cigars=save_cigars, collapse_mesyn=collapse_mesyn)
+
+cpdef save_df_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
     """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
