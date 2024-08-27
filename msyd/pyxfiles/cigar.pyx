@@ -40,7 +40,13 @@ cdef:
     retup = r"(\d+)([=XIDMNSHP])"
 
 # declared outside of Cigar to be accessible from python, might move back later
-cpdef cigar_from_string(str cg):
+cpdef Cigar cigar_from_string(str cg):
+    """
+    Takes a cigar string as input and returns a Cigar object
+    """
+    return Cigar.__new__(Cigar, tups=cigt_from_string(cg))
+
+cdef vector[Cigt] cigt_from_string(str cg):
     """
     Takes a cigar string as input and returns a Cigar tuple
     """
@@ -54,8 +60,11 @@ cpdef cigar_from_string(str cg):
             logger.error("Tried to construct a Cigar object with invalid type")
             raise ValueError("Not a CIGAR type!")
         tups.push_back(Cigt(int(match[0]), ord(match[1])))
- 
-    return Cigar.__new__(Cigar, tups)
+    
+    # free up unnecessarily reserved memory in case we were too pessimistic
+    tups.shrink_to_fit()
+
+    return tups
 
 # maybe implement cigar_from_full_string?
 cpdef cigar_from_bam(bam):    
@@ -71,7 +80,7 @@ cpdef cigar_from_bam(bam):
         assert(0 < tup[1] and tup[1] < 9)
         tups.push_back(Cigt(tup[0], bam_code_map[tup[1]]))
  
-    return Cigar.__new__(Cigar, tups)
+    return Cigar.__new__(Cigar, tups=tups)
 
 # small struct to contain the length and type of a cigar tuple
 cdef packed struct Cigt:
@@ -90,8 +99,14 @@ cdef class Cigar:
     #cdef array.array types # array storing the type of each cigar tuple
     cdef vector[Cigt] tups
 
-    def __cinit__(self, tup):
-        self.tups = tup
+    def __cinit__(self, tups=None):
+        """
+        tups is optional to support pickling; always set it otherwise!
+        """
+        if tups is not None:
+            self.tups = tups
+        else:
+            self.tups = vector[Cigt]()
 
     def get_len(self, bint ref=True):
         """
@@ -141,6 +156,22 @@ cdef class Cigar:
             return not self.equals(other)
         else:
             return True
+
+    def __repr__(self):
+        return f"Cigar({self.to_string()})"
+
+    def to_string(self):
+        return ''.join([str(tup.n) + chr(tup.t) for tup in self.tups])
+
+    def to_full_string(self):
+        return ''.join([chr(tup.t)*tup.n for tup in self.tups])
+
+    # support pickling, for use with multiprocessing
+    def __getstate__(self):
+        return self.to_string()
+
+    def __setstate__(self, state):
+        self.tups = cigt_from_string(state)
 
     def is_empty(self):
         return self.tups.empty()
@@ -274,15 +305,6 @@ cdef class Cigar:
 
         return (skip, Cigar(newtups))
 
-
-    def __repr__(self):
-        return f"Cigar({self.to_string()})"
-
-    def to_string(self):
-        return ''.join([str(tup.n) + chr(tup.t) for tup in self.tups])
-
-    def to_full_string(self):
-        return ''.join([chr(tup.t)*tup.n for tup in self.tups])
 
 
 #TODO rewrite with copying for cython
