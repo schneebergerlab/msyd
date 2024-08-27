@@ -20,23 +20,24 @@ logger = util.CustomFormatter.getlogger(__name__)
 ## constants
 
 #TODO try making these Cpp sets
-cdef reffwd = set(['M', 'D', 'N', '=', 'X'])
-cdef qryfwd = set(['M', 'I', 'S', '=', 'X'])
-cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
-cdef cig_aln_types = set(['M', 'X', '='])
-cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
+cdef:
+    reffwd = set(['M', 'D', 'N', '=', 'X'])
+    qryfwd = set(['M', 'I', 'S', '=', 'X'])
+    cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
+    cig_aln_types = set(['M', 'X', '='])
+    cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
-cdef unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
-cdef unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
-cdef unordered_set[char] c_qryfwd = unordered_set[char]([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
-cdef unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
-cdef unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
-cdef unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
-cdef unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+    unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
+    unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
+    unordered_set[char] c_qryfwd = unordered_set[char]([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
+    unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
+    unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
+    unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
+    unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
-cdef bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
+    bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
 
-cdef retup = r"(\d+)([=XIDMNSHP])"
+    retup = r"(\d+)([=XIDMNSHP])"
 
 # declared outside of Cigar to be accessible from python, might move back later
 cpdef cigar_from_string(str cg):
