@@ -289,7 +289,7 @@ cdef remove_overlap(syn):
     return syn
 # END
 
-def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, disable_overlapcheck=False, **kwargs):
+cpdef find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, disable_overlapcheck=False, only_core=False):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -308,16 +308,12 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
 
     print(syndict)
 
-    #TODO might need to be parallelized by hand
-    def workaround(chrom, syndfs):
-        return chrom, reduce_find_overlaps(syndfs, cores=1, **kwargs)
-
     with multiprocessing.Pool(cores) as pool:
-        return dict(pool.map(workaround, syndict.items()))
-
+        return dict(pool.map(process_syndfs, syndict.items()))
+        
         
 
-def prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
+cpdef prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
     Fetches input from filenames given to it; mostly parallelized.
     :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
@@ -360,7 +356,7 @@ def prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=Tru
     return syndict
 
 
-def process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, **kwargs):
+cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False):
     # remove overlap
     if not disable_overlapcheck:
         if cores == 1:
@@ -376,14 +372,14 @@ def process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, **kwa
         logger.info("reading in PSF for incremental calling")
         syndfs.append(base)
 
-    return reduce_find_overlaps(syndfs, cores, **kwargs)
+    return reduce_find_overlaps(syndfs, cores, only_core=only_core)
 # END
 
-def reduce_find_overlaps(syns, cores, **kwargs):
+cpdef reduce_find_overlaps(syns, cores, only_core=False):
     if len(syns) == 0:
         return None
     multisyns = None
-    ovlap = functools.partial(find_overlaps, **kwargs)
+    ovlap = functools.partial(find_overlaps, only_core=only_core)
     if cores > 1:
         multisyns = util.parallel_reduce(ovlap, syns, cores)
     else:
