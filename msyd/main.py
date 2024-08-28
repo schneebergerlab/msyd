@@ -224,7 +224,7 @@ def call(args):
         logger.info("Printing sample head to STDOUT")
         print(df.head())
 
-    print(util.get_map_stats(df))
+    print(util.get_map_stats(syndict))
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
