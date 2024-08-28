@@ -185,6 +185,7 @@ def call(args):
     import msyd.io as io
     import msyd.imputation as imputation
     import msyd.realignment as realignment
+    import msyd.intersection as intersection
     from msyd.coords import Range
     import msyd.ordering as ordering
 
