@@ -310,11 +310,11 @@ def view(args):
     # save
     logger.info(f"Writing to {args.outfile.name} in {args.filetype} format")
     if args.filetype == 'psf':
-        io.save_to_psf(df, args.outfile)
+        io.save_to_psf(syndict, args.outfile)
     elif args.filetype == 'vcf':
-        io.save_to_vcf(df, args.outfile, args.ref.name if args.ref else None)
+        io.save_to_vcf(syndict, args.outfile, args.ref.name if args.ref else None)
     elif args.filetype == 'psf-nocg' or args.filetype == 'psf-nocigar':
-        io.save_to_psf(df, args.outfile, save_cigars=False)
+        io.save_to_psf(syndict, args.outfile, save_cigars=False)
     else:
         logger.error(f"Couldn't determine filetype for {args.filetype}")
         return
