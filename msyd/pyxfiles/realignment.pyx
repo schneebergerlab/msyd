@@ -424,7 +424,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
+cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all merasynteny.
@@ -445,12 +445,19 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
         global _NULL_CNT
         _NULL_CNT = int(NULL_CNT)
 
-    # return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores, cwd=cwd)
+    cores = min(len(syndict), ncores)
 
-# cpdef process_gaps(df, qrynames, fastas, mp_preset, ncores, cwd):
+    with Pool(cores) as pool:
+        return dict(pool.map(_workaround, [(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict]))
+
+cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
+    return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5]))
+
+cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
     # init stuff
-    ret = deque()#pd.DataFrame()
-    n = len(qrynames) + 1 # to account for reference
+    cdef:
+        ret = deque()#pd.DataFrame()
+        int n = len(qrynames) + 1 # to account for reference
     if not n == len(fastas) + 1:
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
