@@ -222,18 +222,20 @@ def call(args):
 
     if args.print:
         logger.info("Printing sample head to STDOUT")
-        print(df.head())
+        print(syndict)#df.head())
 
     print(util.get_map_stats(syndict))
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
-    io.save_to_psf(df, args.psf, save_cigars=args.cigars)
+    io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
 
     # if specified, merge the VCFs
     if args.vcf:
         logger.info(f"Merging VCFs into {args.vcf.name}")
         ref = None
+        # merge all dfs into one
+        df = pd.concat(syndict.values())
         if args.ref:
             logger.info("Reading in Reference")
             ref = io.readfasta(args.ref.name)
@@ -279,8 +281,8 @@ def order(args):
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("order")
 
-    df = io.read_psf(args.infile)
-    print(ordering.order_hierarchical(df, orgs=None, score_fn=ordering.syn_score))
+    syndict = io.read_psf(args.infile)
+    print(ordering.order_hierarchical(pd.concat(syndict.values()), orgs=None, score_fn=ordering.syn_score))
     logger.info("Finished running msyd order")
 
 def view(args):
@@ -288,7 +290,7 @@ def view(args):
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("view")
     logger.info(f"reading multisynteny from {args.infile.name}")
-    df = io.read_psf(args.infile)
+    syndict = io.read_psf(args.infile)
     if not args.filetype: # determine filetype if not present
         args.filetype = args.outfile.name.split(".")[-1]
         logger.info(f"No output filetype specified - guessing from OUTFILE extension")
@@ -296,11 +298,11 @@ def view(args):
     # do further processing here
     if args.expr:
         logger.info(f"Applying filter: {args.expr}")
-        df = util.apply_filtering(df, args.expr)
+        syndict = {chrom:util.apply_filtering(df, args.expr) for chrom, df in syndict.items()}
 
     if args.print:
-        print(df.head(args.print))
-    print(util.get_stats(df))
+        print(syndict)#df.head(args.print))
+    print(util.get_stats(syndict))
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
