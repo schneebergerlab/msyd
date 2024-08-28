@@ -475,6 +475,9 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
 
 
     merged = pd.concat([rawsyriout.loc[rawsyriout['type'] == ann if 'type' in rawsyriout.columns else rawsyriout['vartype'] == ann] for ann in anns]) # different syri versions seem to use different names for the type
+    print(merged)
+    if merged.empty:
+        logger.error(f"No annotation of type in {anns} found!")
 
     out = dict()
     buf = deque()
