@@ -200,7 +200,7 @@ def call(args):
     syndict = intersection.prepare_input(qrynames, syns, alns, cores=args.cores, SYNAL=args.SYNAL, base=args.incremental)
     logger.info("Read input files")
 
-    syndict = process_syndicts(syndict, cores=args.cores)
+    syndict = intersection.process_syndicts(syndict, cores=args.cores)
     logger.info("Intersected synteny")
 
     if args.realign:
