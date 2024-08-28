@@ -448,7 +448,8 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
     cores = min(len(syndict), ncores)
 
     with Pool(cores) as pool:
-        return dict(pool.map(_workaround, [(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict]))
+        print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
+        return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict]))
 
 cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
     return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5]))
@@ -646,6 +647,8 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
                         alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
                         #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
                         #print(mappingtrees[org])
+                #TODO get cigars directly from syri DF, save call to extraction and match_synal call
+                # => more efficient that way
                 syns = [intersection.match_synal(
                             io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
                             alns[org])#, ref=ref)
@@ -786,7 +789,7 @@ cdef syri_get_syntenic(alns):
         synData[['aseq', 'bseq', 'id', 'parent', 'dupclass']] = '-'     # Setting `id` and `parent` as `-`. This does not fit normal syri output but here it should inconsequential as these columns are (probably) not used anyway
 
         synData['vartype'] = 'SYNAL'
-        synData = synData[['achr', 'astart', 'aend', 'aseq', 'bseq', 'bchr', 'bstart', 'bend', 'id', 'parent', 'vartype', 'dupclass']]
+        synData = synData[['achr', 'astart', 'aend', 'aseq', 'bseq', 'bchr', 'bstart', 'bend', 'id', 'parent', 'vartype', 'dupclass', 'cigar']]
         syris[org] = synData
         # print(synData.columns)
     # skip regions that were skipped or could not be aligned, or only contain inverted alignments
