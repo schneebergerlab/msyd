@@ -184,7 +184,6 @@ def call(args):
     # from msyd.script.io import find_multisyn
     import msyd.io as io
     import msyd.imputation as imputation
-    from msyd.intersection import find_multisyn
     import msyd.realignment as realignment
     from msyd.coords import Range
     import msyd.ordering as ordering
@@ -196,7 +195,12 @@ def call(args):
 
     qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
     # find reference synteny
-    df = find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
+    #syndicts = intersection.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
+    syndict = intersection.prepare_input(qrynames, syns, alns, cores=args.cores, SYNAL=args.SYNAL, base=args.incremental)
+    logger.info("Read input files")
+
+    syndict = process_syndicts(syndict, cores=args.cores)
+    logger.info("Intersected synteny")
 
     if args.realign:
         # read in full pairwise alns if supplied

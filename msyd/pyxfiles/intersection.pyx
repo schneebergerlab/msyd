@@ -291,7 +291,7 @@ cdef remove_overlap(syn):
     return syn
 # END
 
-def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1, SYNAL=True, disable_overlapcheck=False, only_core=False):
+def find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -306,10 +306,15 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syndict = prepare_input(qrynames, syris, alns, cores=cores, sort=sort, ref=ref, SYNAL=SYNAL, disable_overlapcheck=disable_overlapcheck)
+    syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL, disable_overlapcheck=disable_overlapcheck)
 
-    print(syndict)
+    return process_syndicts(syndict, cores=cores)
 
+
+def process_syndicts(syndict, cores=4):
+    """
+    Small fn to do parallel processing of a dictionary of syndfs per chromosome.
+    """
     with multiprocessing.Pool(cores) as pool:
         return dict(pool.map(_workaround, syndict.items()))
 
@@ -331,7 +336,7 @@ def _workaround(tup): # tup: [chrom, syndfs]
     return tup[0], process_syndfs(tup[1])
 
 
-cpdef prepare_input(qrynames, syris, alns, cores=1, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
+cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
     Fetches input from filenames given to it; mostly parallelized.
     :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
