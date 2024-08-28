@@ -210,7 +210,7 @@ def call(args):
         #TODO directly do in call to realignment
 
         # use reference synteny as base to identify all haplotypes
-        df = realignment.realign(df, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MIN_SYN_ID=args.min_syn_id, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, pairwise=alndict if args.pairwise else None)
+        syndict = realignment.realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MIN_SYN_ID=args.min_syn_id, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, pairwise=alndict if args.pairwise else None)
 
         # garb = realign(df, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, cwd=args.tmp)
         # realign(syns, qrynames, fastas, MIN_REALIGN_LEN=None, MAX_REALIGN=None, mp_preset='asm5'):
@@ -334,8 +334,9 @@ def realign(args):
 
     logger.info(f"realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
-    syns = io.read_psf(args.infile)
-    resyns = realignment.realign(syns, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MIN_SYN_ID=args.min_syn_id, MAX_REALIGN=args.max_realign, pairwise=alndict if args.pairwise else None)
+    syndict = io.read_psf(args.infile)
+    logger.info("Read input file")
+    resyns = realignment.realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MIN_SYN_ID=args.min_syn_id, MAX_REALIGN=args.max_realign, pairwise=alndict if args.pairwise else None)
     print(util.get_stats(resyns))
 
     logger.info(f"Saving to {args.outfile.name} in PSF format.")
