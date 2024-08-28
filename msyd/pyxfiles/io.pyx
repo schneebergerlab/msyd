@@ -481,7 +481,7 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
 
     out = dict()
     buf = deque()
-    chrom = merged.at[1, refchr]
+    chrom = merged.iloc[0].at[refchr] #merged.at[1, refchr] # throws an error if the first index is not 1
     for _, row in merged.iterrows():
         # write buffer to out if necessary
         if row[refchr] != chrom:
