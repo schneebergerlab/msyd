@@ -24,6 +24,9 @@ cdef int MIN_SYN_THRESH = 30
 logger = util.CustomFormatter.getlogger(__name__)
 
 
+cpdef int get_min_syn_thresh():
+    return MIN_SYN_THRESH
+
 def filter_multisyn(multisyn, drop_small=True, drop_private=True):
     """
     Tests if a multisyn should be added to the output by checking degree and length.
@@ -262,9 +265,9 @@ cdef remove_overlap(syn):
         # will not catch overlap between non-adjacent regions!
         #assert(set(cur.ranges_dict) == set(prev.ranges_dict))
         for org in cur.ranges_dict: # should be on the same chr
-            if org not in prev.ranges_dict or cur.ranges_dict[org] is None:
+            if org not in prev.ranges_dict or cur.ranges_dict[org] is None or prev.ranges_dict[org] is None:
                 continue
-            assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr)
+            assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr) # prev.ranges_dict[org] is None sometimes?? O.o
 
             ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start + 1 # indices are inclusive
             if ov > 0:
@@ -277,6 +280,10 @@ cdef remove_overlap(syn):
                     cur.ranges_dict[org] = None # set to None instead
                     if cur.cigars_dict:
                         del cur.cigars_dict[org]
+                    # technically, on `org` the following syns should now be compared
+                    # however that would require storing the last region for every org separately
+                    # for a case that shouldn't ever occur
+                    # => just delete it and skip comparisons
                     continue
 
                 # there is overlap on org
