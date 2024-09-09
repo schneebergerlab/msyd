@@ -604,7 +604,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
-                    if len(refseq) > 50000:
+                    if False: #ncores > 1 and len(refseq) > 50000:
                         logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
                         alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                         with Pool(processes=ncores) as pool:
