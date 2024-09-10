@@ -80,7 +80,7 @@ cdef class Multisyn:
         return len(self.ranges_dict) + 1 # count the ref as well
 
     def get_orgs(self):
-        return self.ranges_dict.keys()
+        return self.get_organisms()
     def get_organisms(self):
         return self.ranges_dict.keys()
 
