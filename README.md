@@ -8,7 +8,7 @@ If in doubt about the behaviour of msyd or how it might change, feel free to rea
 
 ## Installation
 msyd can be installed by a call to `setup.py` as `python ./setup.py install [--user]` or with `pip install .` in the base directory of the repository.
-Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy`, `scipy`, `mappy` (minimap2; see changelog above), `intervaltree` and `syri >= 1.6.5`.
+Requirements for running msyd are `python >= 3.8`, `Cython`, `pysam >= 0.21.0`, `pandas`, `numpy`, `scipy`, `mappy` (minimap2; see changelog above), `intervaltree` and `syri >= 1.6.5`, as well as a C++ compiler supporting OpenMP.
 The requirements are listed in `requirements.txt` and can be installed via conda or another package manager from this file.
 
 ## Usage

@@ -264,6 +264,7 @@ def readSAMBAM(fin, type='B'):
             bchr = aln.query_name
             seq = aln.query_sequence
             cg = "".join([str(i[1]) + cgdict[i[0]] for i in aln.cigartuples if i[0] not in [4,5]])
+
             coords[index] = [astart, aend, bstart, bend, alen, blen, iden, adir, bdir, achr, bchr, cg, seq]
 
         ## Give warning for chromosomes which do not have any primary alignment
@@ -338,6 +339,21 @@ alnfilelookup = {
         'bam': readSAMBAM,
         'paf': readPAF
         }
+
+def split_alndf_by_chrom(alndf, chromid="achr"):
+    """
+    Takes a DF of alignments, returns a Dictionary mapping chromosome names to alignments on them.
+    As Chromosome names, the contents of the `chromid` arg are taken.
+    Fairly inefficient, would be faster to do this already while reading in the alns.
+    """
+    return {chrom: df for chrom, df in alndf.groupby(by=chromid)}
+
+def collate_by_chrom(alndfs, chromid="achr"):
+    out = defaultdict(list)
+    for alndf in alndfs:
+        for chrom, alns in split_alndf_by_chrom(alndf, chromid=chromid).items():
+            out[chrom].append(alns)
+    return out
 
 cpdef read_alnsfile(fin):
     """
@@ -443,6 +459,7 @@ cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', q
 cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
     """
     Given a syri output file, extract all regions matching a given annotation.
+    Returns the output as a dict containing one Dataframe per chromosome.
     """
     # columns to look for as start/end positions
     refchr = ref + "chr"
@@ -456,40 +473,48 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
     qrystart = qry + "start"
     qryend = qry + "end"
 
-    buf = deque()
-    merged = pd.concat([rawsyriout.loc[rawsyriout['type'] == ann if 'type' in rawsyriout.columns else rawsyriout['vartype'] == ann] for ann in anns]) # different syri versions seem to use different names for the type
-    # if implementing filtering later, filter here
 
-    for row in merged.iterrows():
-        row = row[1]
-        # removed util.chrom_to_int, was causing problems
+    merged = pd.concat([rawsyriout.loc[rawsyriout['type'] == ann if 'type' in rawsyriout.columns else rawsyriout['vartype'] == ann] for ann in anns]) # different syri versions seem to use different names for the type
+    if merged.empty:
+        logger.error(f"No annotation of type in {anns} found!")
+
+    out = dict()
+    buf = deque()
+    chrom = merged.iloc[0].at[refchr] #merged.at[1, refchr] # throws an error if the first index is not 1
+    for _, row in merged.iterrows():
+        # write buffer to out if necessary
+        if row[refchr] != chrom:
+            out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
+            chrom = row[refchr]
+            buf = deque()
+        # append current line to buffer
         buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
             Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
             ])
 
-    return pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
+    # add last chr
+    out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
 
-def extract_syri_regions_to_list_from_files(fins, qrynames, cores=1, **kwargs):
+    return out
+
+def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
     """
-    `extract_syri_regions`, but for processing a list of inputs
+    `extract_syri_regions`, but for processing a list of inputs.
+    Will return a 
     """
     if len(fins) != len(qrynames):
         logger.error(f"Infiles and qrynames lists lengths not matching. Offending lists: {fins} and {qrynames}")
-    partial = lambda x, qryname: extract_syri_regions_from_file(x, qryorg=qryname, **kwargs)
 
-    if cores == 1:
-        syns = [partial(fin, qryname) for fin, qryname in zip(fins, qrynames)]
-    else:
-        # `partial` requires two parameters, only 1 is given here. would crash ?
-        with Pool(cores) as pool:
-            syns = pool.map(partial, fins)
+    out = defaultdict(list)
+    # optionally parallelize i/o like this?
+#    with Pool(cores) as pool:
+#        annoying_workaround = partial(extract_syri_regions_from_file, **kwargs)
+#        for chrom, syndf in pool.map(annoying_workaround, zip(fins, qrynames)):
+    for fin, qryname in zip(fins, qrynames):
+        for chrom, syndf in extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs).items():
+            out[chrom].append(syndf)
 
-    return syns
-    #return [extract_syri_regions(fin, **kwargs,\
-    #        #reforg=fin.split('/')[-1].split('_')[0],\
-    #        qryorg=fin.split('/')[-1].split('_')[-1].split('syri')[0])\
-    #        for fin in fins]
-
+    return out
 
 cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
     #TODO add functionality to incorporate reference information as optional argument
@@ -591,7 +616,17 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
+cpdef save_to_psf(dfmap, buf, save_cigars=True, collapse_mesyn=True):
+    """
+    Takes a map of chrom IDs to DFs containing multisyns and writes them to buf.
+    Preserves the sorting of the DFs, sorts chroms lexicallicaly.
+    Calls to `save_df_to_psf`.
+    """
+    #TODO parallelize?
+    for chrom in sorted(dfmap):
+        save_df_to_psf(dfmap[chrom], buf, save_cigars=save_cigars, collapse_mesyn=collapse_mesyn)
+
+cpdef save_df_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
     """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """

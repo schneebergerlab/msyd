@@ -29,9 +29,11 @@ import msyd.util as util
 import msyd.cigar as cigar
 import msyd.intersection as intersection
 import msyd.io as io
+from msyd.multisyn import Multisyn
+from msyd.coords import Range
 
 
-cdef int _MIN_REALIGN_LEN = 200 # min length to realign regions
+cdef int _MIN_REALIGN_LEN = 1000 # min length to realign regions
 cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
@@ -424,7 +426,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
+cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
     """
     Function to find gaps between two coresyn regions and realign them to a new reference.
     Discovers all merasynteny.
@@ -445,12 +447,20 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
         global _NULL_CNT
         _NULL_CNT = int(NULL_CNT)
 
-    # return process_gaps(df, qrynames, fastas, mp_preset=mp_preset, ncores=ncores, cwd=cwd)
+    cores = min(len(syndict), ncores)
 
-# cpdef process_gaps(df, qrynames, fastas, mp_preset, ncores, cwd):
+    with Pool(cores) as pool:
+        print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
+        return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
+
+cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
+    return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5]))
+
+cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
     # init stuff
-    ret = deque()#pd.DataFrame()
-    n = len(qrynames) + 1 # to account for reference
+    cdef:
+        ret = deque()#pd.DataFrame()
+        int n = len(qrynames) + 1 # to account for reference
     if not n == len(fastas) + 1:
         logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
         raise ValueError("Wrong number of fastas!")
@@ -594,7 +604,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
-                    if len(refseq) > 50000:
+                    if False: #ncores > 1 and len(refseq) > 50000:
                         logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
                         alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                         with Pool(processes=ncores) as pool:
@@ -622,27 +632,12 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
                         alns[org] = None
 
                 #logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
-                #print(ref, refseq)
-                #print(seqdict)
-
                 ## run syri
                 logger.debug("Running syri")
-                syris = syri_get_syntenic(alns)
-                # TODO MG: Replaced getsyriout with the synteny identification method from syri. Consider parallelizing this because for repetitive regions this loop would be expensive as well.
+                syns = syri_get_syntenic(ref, alns)
 
-                ## Match ALNs, in preparation for merasyn identification
-                for org in syris:
-                    if syris[org] is not None:
-                        #print("===", org, mappingtrees[org][0], "against", ref, reftree[0], reftree[-1], "===")
-                        #print(syris[org])
-
-                        alns[org].columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg']
-                        #print(alns[org][['astart', 'aend', 'alen', 'bstart', 'bend', 'blen', 'bdir', 'iden']])
-                        #print(mappingtrees[org])
-                syns = [intersection.match_synal(
-                            io.extract_syri_regions(syris[org], reforg=ref, qryorg=org, anns=["SYNAL"]),
-                            alns[org])#, ref=ref)
-                        for org in syris if syris[org] is not None]
+                #syns = list(filter(lambda x: x is not None, syris.values()))
+                print(syns)
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
@@ -663,8 +658,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
                 
                 # print(syns)
                 ## Find merasyn in the syri calls
-                multisyns = syns
-                multisyns = intersection.reduce_find_overlaps(syns, cores=1)
+                multisyns = intersection.reduce_find_overlaps(syns.values(), cores=ncores)
 
                 # no need to recalculate the tree if no multisynteny was found
                 if multisyns is None or multisyns.empty:
@@ -723,7 +717,7 @@ cpdef realign(df, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_R
 # END
 
 
-cdef syri_get_syntenic(alns):
+cdef syri_get_syntenic(reforg, alns):
     # Synteny call parameters
     BRT = 20
     TUC = 1000
@@ -731,7 +725,7 @@ cdef syri_get_syntenic(alns):
     T = 50
     invgl = 1000000
 
-    syris = {}
+    syns = {}
 
     #NOTE: for large regions, it might make sense to parallelize the syri call
     # per organism, turning the for loop below into a parallelized map
@@ -739,12 +733,14 @@ cdef syri_get_syntenic(alns):
     for org in alns:
         if alns[org] is None: continue
         coords = alns[org]
+        # check Chrs
         try:
             assert coords.aChr.nunique() == 1
             assert coords.bChr.nunique() == 1
         except AssertionError:
             logger.error(
                 f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+
         # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
         chromr = list(coords.aChr)[0]  # there should only ever be one chr anyway
         chromq = list(coords.bChr)[0]
@@ -752,10 +748,11 @@ cdef syri_get_syntenic(alns):
         if not samechrids:
             coords.bChr.replace(chromq, chromr, inplace=True)
         chromo = chromr
+
         coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
         syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
                       coordsData.bEnd.values, T)
-
+        # clean up graph
         blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
         for block in blocks:
             i = 0
@@ -769,6 +766,7 @@ cdef syri_get_syntenic(alns):
             if len(scores) > 0:
                 block.bestParent(block.parents[scores.index(max(scores))], max(scores))
 
+        # get path through the graph
         synPath = getSynPath(blocks)
         synData = coordsData.iloc[synPath].copy()
 
@@ -776,15 +774,30 @@ cdef syri_get_syntenic(alns):
             synData.bChr.replace(chromr, chromq, inplace=True)
 
         synData.columns = list(map(str.lower, synData.columns))
-        synData[['aseq', 'bseq', 'id', 'parent', 'dupclass']] = '-'     # Setting `id` and `parent` as `-`. This does not fit normal syri output but here it should inconsequential as these columns are (probably) not used anyway
 
-        synData['vartype'] = 'SYNAL'
-        synData = synData[['achr', 'astart', 'aend', 'aseq', 'bseq', 'bchr', 'bstart', 'bend', 'id', 'parent', 'vartype', 'dupclass']]
-        syris[org] = synData
+        # return early if there is no large-scale synteny
+        MIN_SYN_THRESH = intersection.get_min_syn_thresh()
+        if synData.empty or\
+                (synData['aend'] - synData['astart']).sum() < MIN_SYN_THRESH or\
+                (synData['bend'] - synData['bstart']).sum() < MIN_SYN_THRESH:
+            continue
+
+        #subset to only relevant columns for the realignment
+        synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
+
+
+        # make into multisyn objects, store in dataframe
+        buf = deque()
+        for _, syn in synData.iterrows():
+            buf.append(Multisyn(ref=Range(reforg, syn['achr'], None, syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], None, syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
+
+        syns[org] = pd.DataFrame(list(buf))
         # print(synData.columns)
     # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
-    return syris
+    #TODO return objects as Multisyn objects, matchin gcigars immediately?
+    print(syns)
+    return syns
 
 # Idea for additional fn
 # finds private regions by scanning through the genome for regions not covered by any merasyn

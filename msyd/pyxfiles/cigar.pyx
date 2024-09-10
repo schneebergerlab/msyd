@@ -20,26 +20,33 @@ logger = util.CustomFormatter.getlogger(__name__)
 ## constants
 
 #TODO try making these Cpp sets
-cdef reffwd = set(['M', 'D', 'N', '=', 'X'])
-cdef qryfwd = set(['M', 'I', 'S', '=', 'X'])
-cdef cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
-cdef cig_aln_types = set(['M', 'X', '='])
-cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
+cdef:
+    reffwd = set(['M', 'D', 'N', '=', 'X'])
+    qryfwd = set(['M', 'I', 'S', '=', 'X'])
+    cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
+    cig_aln_types = set(['M', 'X', '='])
+    cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
 
-cdef unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
-cdef unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
-cdef unordered_set[char] c_qryfwd = unordered_set[char]([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
-cdef unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
-cdef unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
-cdef unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
-cdef unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+    unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
+    unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
+    unordered_set[char] c_qryfwd = unordered_set[char]([ord('M'), ord('I'), ord('S'), ord('='), ord('X')])
+    unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
+    unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
+    unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
+    unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
-cdef bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
+    bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
 
-cdef retup = r"(\d+)([=XIDMNSHP])"
+    retup = r"(\d+)([=XIDMNSHP])"
 
 # declared outside of Cigar to be accessible from python, might move back later
-cpdef cigar_from_string(str cg):
+cpdef Cigar cigar_from_string(str cg):
+    """
+    Takes a cigar string as input and returns a Cigar object
+    """
+    return Cigar.__new__(Cigar, tups=cigt_from_string(cg))
+
+cdef vector[Cigt] cigt_from_string(str cg):
     """
     Takes a cigar string as input and returns a Cigar tuple
     """
@@ -53,8 +60,11 @@ cpdef cigar_from_string(str cg):
             logger.error("Tried to construct a Cigar object with invalid type")
             raise ValueError("Not a CIGAR type!")
         tups.push_back(Cigt(int(match[0]), ord(match[1])))
- 
-    return Cigar.__new__(Cigar, tups)
+    
+    # free up unnecessarily reserved memory in case we were too pessimistic
+    tups.shrink_to_fit()
+
+    return tups
 
 # maybe implement cigar_from_full_string?
 cpdef cigar_from_bam(bam):    
@@ -70,7 +80,7 @@ cpdef cigar_from_bam(bam):
         assert(0 < tup[1] and tup[1] < 9)
         tups.push_back(Cigt(tup[0], bam_code_map[tup[1]]))
  
-    return Cigar.__new__(Cigar, tups)
+    return Cigar.__new__(Cigar, tups=tups)
 
 # small struct to contain the length and type of a cigar tuple
 cdef packed struct Cigt:
@@ -89,8 +99,14 @@ cdef class Cigar:
     #cdef array.array types # array storing the type of each cigar tuple
     cdef vector[Cigt] tups
 
-    def __cinit__(self, tup):
-        self.tups = tup
+    def __cinit__(self, tups=None):
+        """
+        tups is optional to support pickling; always set it otherwise!
+        """
+        if tups is not None:
+            self.tups = tups
+        else:
+            self.tups = vector[Cigt]()
 
     def get_len(self, bint ref=True):
         """
@@ -140,6 +156,22 @@ cdef class Cigar:
             return not self.equals(other)
         else:
             return True
+
+    def __repr__(self):
+        return f"Cigar({self.to_string()})"
+
+    def to_string(self):
+        return ''.join([str(tup.n) + chr(tup.t) for tup in self.tups])
+
+    def to_full_string(self):
+        return ''.join([chr(tup.t)*tup.n for tup in self.tups])
+
+    # support pickling, for use with multiprocessing
+    def __getstate__(self):
+        return self.to_string()
+
+    def __setstate__(self, state):
+        self.tups = cigt_from_string(state)
 
     def is_empty(self):
         return self.tups.empty()
@@ -273,15 +305,6 @@ cdef class Cigar:
 
         return (skip, Cigar(newtups))
 
-
-    def __repr__(self):
-        return f"Cigar({self.to_string()})"
-
-    def to_string(self):
-        return ''.join([str(tup.n) + chr(tup.t) for tup in self.tups])
-
-    def to_full_string(self):
-        return ''.join([chr(tup.t)*tup.n for tup in self.tups])
 
 
 #TODO rewrite with copying for cython
