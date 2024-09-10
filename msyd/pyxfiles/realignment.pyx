@@ -33,7 +33,7 @@ from msyd.multisyn import Multisyn
 from msyd.coords import Range
 
 
-cdef int _MIN_REALIGN_LEN = 200 # min length to realign regions
+cdef int _MIN_REALIGN_LEN = 1000 # min length to realign regions
 cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
