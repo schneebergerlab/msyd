@@ -591,7 +591,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
+cpdef save_to_psf(df, buf, save_cigars=True, force_ref_pos=False):
     """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
@@ -605,7 +605,7 @@ cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
         int coreend = 0
         str corechr = ''
 
-    buf.write("#CHR\tSTART\tEND\tANN\t")
+    buf.write("#CHR\tSTART\tEND\tANN\tREF\tCHR\tSTART\tEND\t")
     buf.write("\t".join(orgs))
     buf.write("\n")
 
@@ -634,30 +634,28 @@ cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
         # first, write non-ref-position merasynteny
         # write to the first position it can be
         # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
-        if collapse_mesyn:
-            if mesyns: # do not add anything if mesyns is empty
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}-{meracounter+len(mesyns)-1}", '']))
-                write_multisyns(mesyns, buf, orgs, save_cigars=save_cigars)
-                meracounter += len(mesyns)
-            if privs: # do not add anything if mesyns is empty
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}-{privcounter+len(privs)-1}", '']))
-                write_multisyns(mesyns, buf, orgs, save_cigars=save_cigars)
-                meracounter += len(mesyns)
-        else:
-            for mesyn in mesyns:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", '']))
-                write_multisyns([mesyn], buf, orgs, save_cigars=save_cigars)
-                meracounter += 1
-            for priv in privs:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{meracounter}", '']))
-                write_multisyns([priv], buf, orgs, save_cigars=save_cigars)
-                privcounter += 1
+        for mesyn in mesyns:
+            if force_ref_pos:
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, mesyn.ref.start, mesyn.ref.end, '']))
+            else:
+                buf.write('\t'.join(['.', '.', '.', f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, mesyn.ref.start, mesyn.ref.end, '']))
+            write_multisyn(mesyn, buf, orgs, save_cigars=save_cigars)
+            meracounter += 1
+
+        for priv in privs:
+            if force_ref_pos:
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, priv.ref.start, priv.ref.end, '']))
+            else:
+                buf.write('\t'.join(['.', '.', '.', f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, priv.ref.start, priv.ref.end, '']))
+
+            write_multisyns([priv], buf, orgs, save_cigars=save_cigars)
+            privcounter += 1
 
         # write mesyn regions that have a position on reference at their appropriate position
         for refmesyn in refmesyns:
             ref = refmesyn.ref
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}" if refmesyn.get_degree() > 1 else f"PRIVATE{privcounter}", '']))
-            write_multisyns([refmesyn], buf, orgs, save_cigars=save_cigars)
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}" if refmesyn.get_degree() > 1 else f"PRIVATE{privcounter}", ref.org, '.', '.', '.', '']))
+            write_multisyn(refmesyn, buf, orgs, save_cigars=save_cigars)
             if refmesyn.get_degree() > 1:
                 meracounter += 1
             else:
@@ -668,8 +666,8 @@ cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
             ref = syn.ref
             coreend = ref.end
             corechr = ref.chr
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", '']))
-            write_multisyns([syn], buf, orgs, save_cigars=save_cigars)
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", ref.org, '.', '.', '.', '']))
+            write_multisyn(syn, buf, orgs, save_cigars=save_cigars)
             corecounter += 1
         else:
             break
@@ -677,26 +675,20 @@ cpdef save_to_psf(df, buf, save_cigars=True, collapse_mesyn=True):
     buf.write("\n")
     buf.flush()
 
-cdef write_multisyns(multisyns, buf, orgs, save_cigars=False):
-    """Function to write a set of multisyns in a single PSF-style annotation to buf.
+cdef write_multisyn(multisyn, buf, orgs, save_cigars=False):
+    """Function to write a multisyn object in PSF style to buf.
     Does not write the BED-like first part of the annotation.
-    :param multisyns: list of multisyn objects to write
+    :param multisyn: multisyn object to write
     :param buf: buffer to write to
     :param orgs: ordering of organisms to use (should be sorted)
     """
-    buf.write('\t'.join(
-        [';'.join(
-            [','.join( # <range>,<haplotype organism>,[<CIGAR>]
-                [multisyn.ranges_dict[org].to_psf(), multisyn.ref.org]\
-                if not (save_cigars and multisyn.cigars_dict) else
-                [multisyn.ranges_dict[org].to_psf(), multisyn.ref.org, multisyn.cigars_dict[org].to_string()]
-                  )
-             if org in multisyn.ranges_dict else
-                     (','.join([multisyn.ref.to_psf(), multisyn.ref.org]) # add orgs used as a reference when realigning
-                     if multisyn.ref.org == org else '-') # if there is no synteny, put a minus
-             for multisyn in multisyns])
+    buf.write('\t'.join([(multisyn.ranges_dict[org].to_psf()\
+                if not (save_cigars and multisyn.cigars_dict) else\
+                ','.join([multisyn.ranges_dict[org].to_psf(), multisyn.cigars_dict[org].to_string()]) )
+         if org in multisyn.ranges_dict else
+         (multisyn.ref.to_psf() if multisyn.ref.org == org else '.') # if there is no synteny, put a .
          for org in orgs])
-      )
+              )
     buf.write("\n")
 
 cpdef read_psf(fin):
