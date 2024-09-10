@@ -636,17 +636,17 @@ cpdef save_to_psf(df, buf, save_cigars=True, force_ref_pos=False):
         # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
         for mesyn in mesyns:
             if force_ref_pos:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, mesyn.ref.start, mesyn.ref.end, '']))
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             else:
-                buf.write('\t'.join(['.', '.', '.', f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, mesyn.ref.start, mesyn.ref.end, '']))
+                buf.write('\t'.join(['.', '.', '.', f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             write_multisyn(mesyn, buf, orgs, save_cigars=save_cigars)
             meracounter += 1
 
         for priv in privs:
             if force_ref_pos:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, priv.ref.start, priv.ref.end, '']))
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
             else:
-                buf.write('\t'.join(['.', '.', '.', f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, priv.ref.start, priv.ref.end, '']))
+                buf.write('\t'.join(['.', '.', '.', f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
 
             write_multisyns([priv], buf, orgs, save_cigars=save_cigars)
             privcounter += 1
