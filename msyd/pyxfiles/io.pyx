@@ -700,53 +700,37 @@ cpdef read_psf(fin):
     if isinstance(fin, str):
         fin = open(fin, 'rt')
 
+    #CHR  START  END  ANN  REF  CHR  START  END  G1  G2  G3...
     line = fin.readline().strip().split()
-    samples = line[4:]
+    samples = line[8:] # store sample name order as in file
+    # should be lexicalic, but who knows
     for line in fin:
-        # if line == '': continue
-        # if line is None: continue
         line = line.strip().split()
         if line == []: continue
-        #try:
-        #    anno = line[3]
-        #except IndexError:
-        #    logger.error(f"Invalid line encountered while reading PSF: {line}")
 
-        refrng = Range('ref', line[0], None, int(line[1]), int(line[2]))
+        reforg = line[4]
 
+        refrng = Range('ref', line[0], None, int(line[1]), int(line[2])) if reforg == 'ref'\
+            else Range(reforg, line[5], None, int(line[6]), int(line[7]))
 
-        reforg = 'ref'
-        syn = Multisyn(None, {}, None)
-        for sample, samplecell in zip(samples, samplecells):
-            #logger.info(f"Parsing {samplecell}")
-            if samplecell[i] == '.': # skip empty records
+        syn = Multisyn(refrng, {}, None)
+
+        for org, entry in zip(samples, line[8:]):
+            if entry == '.' or org == reforg: # skip empty records and ref
                 continue
 
-            vals = samplecell[i].split(',')
-            reforg = vals[1] # should be the same in all records, but we don't know which ones are present, so set it each time to be sure
-            syn.ranges_dict[sample] = Range.read_psf(sample, vals[0])
+            vals = entry.split(',')
+            syn.ranges_dict[org] = Range.read_psf(org, vals[0])
             
             # read cigars if present
-            if len(vals) > 2:
+            if len(vals) > 1:
                 if syn.cigars_dict:
-                    syn.cigars_dict[sample] = cigar.cigar_from_string(vals[2])
+                    syn.cigars_dict[org] = cigar.cigar_from_string(vals[1])
                 else: # initialise if it hasn't been already
-                    syn.cigars_dict = {sample: cigar.cigar_from_string(vals[2])}
-
-        if reforg == 'ref':
-            syn.ref = refrng
-        else:
-            if reforg in syn.ranges_dict:
-                syn.ref = syn.ranges_dict[reforg]
-                del syn.ranges_dict[reforg] # a ref shouldn't also be in the samples
-                # remove alignment , would just be a full match anyway
-                if syn.cigars_dict and reforg in syn.cigars_dict:
-                    del syn.cigars_dict[reforg]
-            else:
-                logger.error(f"Error while reading PSF: Specified reference not found in PSF!\n Line: {line}")
-                raise ValueError("Reference not found in line!")
-
-            syns.append(syn)
+                    syn.cigars_dict = {org: cigar.cigar_from_string(vals[1])}
+        # add read in syn to output
+        syns.append(syn)
+    # clean up, return
     fin.close()
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
 
