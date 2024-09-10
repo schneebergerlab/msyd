@@ -250,7 +250,7 @@ cdef remove_overlap(syn):
         ov = prev.ref.end - cur.ref.start +1
         if ov > 0:
             # there is overlap on ref
-            logger.warning(f"Found {ov} bp overlap on reference at {cur.ref.start}, dropping from latter record!")
+            logger.warning(f"Found {ov} bp overlapping synteny on reference at {cur.ref.start}, trimming latter record!")
             logger.debug(f"Cur before dropping: {cur}")
             cur.drop_inplace(ov, 0) # call drop_inplace to mutate the dataframe from a reference
             logger.debug(f"Cur after dropping: {cur}")
@@ -285,7 +285,7 @@ cdef remove_overlap(syn):
                     continue
 
                 # there is overlap on org
-                logger.warning(f"Found {ov} bp overlap on {org} at {cur.ranges_dict[org].start}, dropping from latter record!")
+                logger.warning(f"Found {ov} bp overlapping synteny on {org} at {cur.ranges_dict[org].start}, trimming latter record!")
                 logger.debug(f"Overlapping on {org}: {prev}, {cur}")
                 logger.debug(f"Cur before dropping: {cur}")
                 cur.drop_on_org_inplace(ov, 0, org)
@@ -343,7 +343,7 @@ def find_multisyn(qrynames, syris, alns, base=None, sort=False, ref='a', cores=1
             with multiprocessing.Pool(cores) as pool:
                 syns = pool.map(remove_overlap, syns)
 
-    logger.info("overlap removed")
+    logger.info("overlapping synteny trimmed")
 
     # shouldn't need any overlap removal
     if base:
