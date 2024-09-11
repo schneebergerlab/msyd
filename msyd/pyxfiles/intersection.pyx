@@ -27,7 +27,7 @@ logger = util.CustomFormatter.getlogger(__name__)
 cpdef int get_min_syn_thresh():
     return MIN_SYN_THRESH
 
-def filter_multisyn(multisyn, drop_small=True, drop_private=True):
+cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
     """
     Tests if a multisyn should be added to the output by checking degree and length.
     Unless `drop_private` is set to false, will drop private regions (i.e. merasynteny of degree one)
@@ -50,13 +50,13 @@ def filter_multisyn(multisyn, drop_small=True, drop_private=True):
         return False
 
     return True
-
-def find_overlaps(left, right, only_core=False):
+    
+cpdef find_overlaps(left, right, only_core=False):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
     """
-    ret = deque()
+    cdef ret = deque()
     #print("l:", left, "r:", right)
 
     if right is None or right.empty:
@@ -68,22 +68,14 @@ def find_overlaps(left, right, only_core=False):
         #raise ValueError("left is empty!")
         return None
 
-    rit = right.iterrows()
-    lit = left.iterrows()
-    r = next(rit)[1][0]
-    l = next(lit)[1][0]
+    cdef:
+        rit = right.iterrows()
+        lit = left.iterrows()
+        r = next(rit)[1][0]
+        l = next(lit)[1][0]
 
     cdef int cov = 0 # store the last position in the ref that has been covered in ret
 
-    # helper Fn to only add filtered multisyns to the final output
-    # calls filter_multisyn and if only_core is set additionally filters for core synteny
-    def add_filtered(multisyn):
-        if filter_multisyn(multisyn):
-            # filter non-core-syntenic regions in case that's relevant
-            if only_core and multisyn.get_degree() < l.get_degree() + r.get_degree():
-                return
-            ret.append(multisyn)
-    
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
             # ensure that the chr matches, reset the covered region
@@ -106,10 +98,14 @@ def find_overlaps(left, right, only_core=False):
                 # add the region up to the overlap if it is large enough
                 intstart = max(starting.ref.start, cov + 1) # start of the non-overlapping region of interest
                 if not only_core and ovstart - intstart >= MIN_SYN_THRESH:
-                    add_filtered(starting.drop(intstart - starting.ref.start, 1 + starting.ref.end - ovstart))
+                    multisyn = starting.drop(intstart - starting.ref.start, 1 + starting.ref.end - ovstart)
+                    if filter_multisyn(multisyn):
+                        ret.append(multisyn)
 
                 # add overlap region
-                add_filtered(l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend))
+                multisyn = l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend)
+                if filter_multisyn(multisyn):
+                    ret.append(multisyn)
                 # everything up to the end of the overlap is covered now
                 cov = ovend
 
@@ -118,26 +114,37 @@ def find_overlaps(left, right, only_core=False):
             # includes the segment right of an overlap
             if l.ref.end > r.ref.end: # left is after right
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(r.drop(max(0, 1 + cov - r.ref.start), 0))
+                    multisyn = r.drop(max(0, 1 + cov - r.ref.start), 0)
+                    if filter_multisyn(multisyn):
+                        ret.append(multisyn)
+
                 cov = r.ref.end
                 r = next(rit)[1][0]
 
             elif r.ref.end > l.ref.end: # right is after left
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(l.drop(max(0, 1 + cov - l.ref.start), 0))
+                    multisyn = l.drop(max(0, 1 + cov - l.ref.start), 0)
+                    if filter_multisyn(multisyn):
+                        ret.append(multisyn)
                 cov = l.ref.end
                 l = next(lit)[1][0]
 
-                # if they stop at the same position, drop the one starting further left
+            # if they stop at the same position, drop the one starting further left
             elif l.ref.start > r.ref.start:
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(r.drop(max(0, 1 + cov - r.ref.start), 0))
+                    multisyn = r.drop(max(0, 1 + cov - r.ref.start), 0)
+                    if filter_multisyn(multisyn):
+                        ret.append(multisyn)
+
                 cov = r.ref.end
                 r = next(rit)[1][0]
 
             else: # do whatever
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
-                    add_filtered(l.drop(max(0, 1 + cov - l.ref.start), 0))
+                    multisyn = l.drop(max(0, 1 + cov - l.ref.start), 0)
+                    if filter_multisyn(multisyn):
+                        ret.append(multisyn)
+
                 cov = l.ref.end
                 l = next(lit)[1][0]
 
@@ -147,53 +154,48 @@ def find_overlaps(left, right, only_core=False):
                 ending = l if l.ref.end > r.ref.end else r
                 #print(cov, ending.ref, ending.ref.end - ending.ref.start, {org:cg.get_len(ref=True) for org, cg in ending.cigars_dict.items()})
                 if ending.ref.end - cov >= MIN_SYN_THRESH: # check if there is still something to add; if so, add it
-                    add_filtered(ending.drop(max(0, 1 + cov - ending.ref.start), 0))
+                    multisyn = ending.drop(max(0, 1 + cov - ending.ref.start), 0)
+                    if filter_multisyn(multisyn):
+                        ret.append(multisyn)
 
             break
 
     if not only_core: # if calling crosssyn, also add remaining multisyn if there is any
         for l in lit:
             l = l[1][0]
-            add_filtered(l)
+            if filter_multisyn(l):
+                ret.append(l)
         for r in rit:
             r = r[1][0]
-            add_filtered(l)
+            if filter_multisyn(r):
+                ret.append(r)
 
-    del rit
-    del lit
     if len(ret) == 0:
         return pd.DataFrame()
-    
-    ret = pd.DataFrame(data=list(ret))#sorted(list(ret))) # sorting shouldn't be necessary
-
-    total_len_left = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], left.iterrows())))
-    total_len_right = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], right.iterrows())))
-    total_len_ret = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], ret.iterrows())))
-    #logger.debug(f"left orgs: {util.get_orgs_from_df(left)}, right orgs: {util.get_orgs_from_df(right)}, ret orgs: {util.get_orgs_from_df(ret)}")
-    #logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
-
-    return ret#.sort_values(ret.columns[0])
+    else:
+        return pd.DataFrame(data=list(ret)) # shouldn't need sorting
 #END
 
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Multisyn objects
-def match_synal(syndf, alndf, ref='a'):
+cdef match_synal(syndf, alndf, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
     It returns a dataframe containing the regions with the corresponding CIGAR string as a `Multisyn` object.
     :params: syndf: SYNAL dataframe, alndf: alignment dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Multisyn` objects.
     """
-    ret = deque()
-    syniter = syndf.iterrows()
-    alniter = alndf.iterrows()
-    refchr = ref + "chr"
-    refstart = ref + "start"
-    refend = ref + "end"
+    cdef:
+        ret = deque()
+        syniter = syndf.iterrows()
+        alniter = alndf.iterrows()
+        str refchr = ref + "chr"
+        str refstart = ref + "start"
+        str refend = ref + "end"
+        synr = next(syniter)[1]
+        alnr = next(alniter)[1]
 
-    synr = next(syniter)[1]
-    alnr = next(alniter)[1]
     while True:
         try:
             org = synr[1].org
@@ -298,7 +300,7 @@ cdef remove_overlap(syn):
     return syn
 # END
 
-def find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False):
+cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -318,7 +320,7 @@ def find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a'
     return process_syndicts(syndict, cores=cores)
 
 
-def process_syndicts(syndict, cores=4):
+cpdef process_syndicts(syndict, cores=4):
     """
     Small fn to do parallel processing of a dictionary of syndfs per chromosome.
     """
@@ -338,7 +340,7 @@ def process_syndicts(syndict, cores=4):
     # return syndict
 
 
-def _workaround(tup): # tup: [chrom, syndfs]
+cpdef _workaround(tup): # tup: [chrom, syndfs]
     # Annoying workaround, because multiprocessing doesn't like lambdas
     return tup[0], process_syndfs(tup[1])
 
