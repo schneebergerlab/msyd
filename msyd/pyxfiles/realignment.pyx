@@ -789,7 +789,7 @@ cdef syri_get_syntenic(reforg, alns):
         # make into multisyn objects, store in dataframe
         buf = deque()
         for _, syn in synData.iterrows():
-            buf.append(Multisyn(ref=Range(reforg, syn['achr'], None, syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], None, syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
+            buf.append(Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
 
         syns[org] = pd.DataFrame(list(buf))
         # print(synData.columns)

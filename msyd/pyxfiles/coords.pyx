@@ -14,31 +14,34 @@ logger = util.CustomFormatter.getlogger(__name__)
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
 # A range takes a start and an end position. If the end < start, the range is defined as inverted
-#TODO use proper cython types, e.g. char for haplo
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 cdef class Position:
-    def __init__(self, org:str, chr:int, haplo:str, pos: int):
+    cdef:
+        str org
+        str chr
+        int pos
+
+    def __cinit__(self, org:str, chr:int, pos: int):
         self.org = org
         self.chr = chr
-        self.haplo = haplo
         self.pos = pos
 
     def __repr__(self):
-        #return f"Position({self.org}, {self.chr}, {self.haplo}, {self.pos})"
+        #return f"Position({self.org}, {self.chr}, {self.pos})"
         return f"Position({self.org}, {self.chr}, {self.pos})"
 
     def to_psf(self):
         """Transform this `Position` into population synteny file format
         """
-        #return f"{self.chr}:{self.haplo}:{self.pos}"
+        #return f"{self.chr}:{self.pos}"
         return f"{self.chr}:{self.pos}"
 
     def __eq__(l, r):
         if not isinstance(r, Position):
             return False
-        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
+        return l.org == r.org and l.chr == r.chr and \
                 l.pos == r.pos
 
     def __lt__(l, r):
@@ -53,63 +56,68 @@ cdef class Position:
             return False
 
     def __hash__(self):
-        return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.pos)
+        return hash(self.org) + hash(self.chr) + hash(self.pos)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 #@cython.total_ordering
 cdef class Range:
-    def __init__(self, org:str, chr:str, haplo, start: int, end: int):
+    cdef:
+        str org
+        str chr
+        int start
+        int end
+
+    def __cinit__(self, org:str, chr:str, start: int, end: int):
         self.org = org
         self.chr = chr
-        self.haplo = haplo
         self.start = start # inclusive
         self.end = end # inclusive
 
     def __repr__(self):
-        #return f"Range({self.org}, {self.chr}, {self.haplo}, {self.start}, {self.end})"
+        #return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
         return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
 
     def to_psf(self):
         """Transform this `Range` into the form specified by PSF
         """
-        #return f"{self.chr}:{self.haplo}:{self.start}-{self.end}"
+        #return f"{self.chr}:{self.start}-{self.end}"
         return f"{self.chr}:{self.start}-{self.end}"
 
     def to_psf_org(self):
         """Transform this `Range` into the form specified by PSF, with the sample name being prepended as specified for the realigned reference haplotype
         """
-        #return f"{self.org}:{self.chr}:{self.haplo}:{self.start}-{self.end}"
+        #return f"{self.org}:{self.chr}:{self.start}-{self.end}"
         return f"{self.org}:{self.chr}:{self.start}-{self.end}"
 
 
     def read_psf(org:str, cell: str):
         """Parse a Range in PSF format
-        PSF format is :-separated and must contain the chromosome first, then followed by a haplotype (optional) and a start and end position separated by -.
+        PSF format contains the chromosome identifier followed by a colon (:) and the start and end position separated by -.
+        Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.
         If the end position is before the start position, the range is treated as inverted.
         `org` specifies the organism the returned range should have. If this range is just used for filtering, None may be passed.
-        Examples: Chr1:mat:1000-2000, Chr3:10000-50000
+        Examples: Chr1:1000-2000, Chr3:10000-50000
         """
         #TODO error handling in here
         #print(cell)
         cellarr = cell.split(':')
-        if len(cellarr) < 2 or len(cellarr) > 4:
+        if len(cellarr) < 2 or len(cellarr) > 3:
             raise ValueError(f"Invalid PSF Range string: {cell}")
-        if len(cellarr) == 4: # if a ref name is specified in the cell, that overrides the argument
+        if len(cellarr) == 3: # if a ref name is specified in the cell, that overrides the argument
             org = cellarr[0]
             cellarr = cellarr[1:]
-        start = int(cellarr[-1].split('-')[0])
-        end = int(cellarr[-1].split('-')[1])
-        hapl = cellarr[1] if len(cellarr) == 3 else None
         chrom = cellarr[0] #util.chrom_to_int(cellarr[0])
-        # should chr be int'ed as well?
-        return Range(org, chrom, hapl, start, end)
+        posarr = cellarr[1].split('-')
+        start = int(posarr[0])
+        end = int(posarr[1])
+        return Range(org, chrom, start, end)
 
     
     def __eq__(l, r):
         if not isinstance(r, Range):
             return False
-        return l.org == r.org and l.chr == r.chr and l.haplo == r.haplo and \
+        return l.org == r.org and l.chr == r.chr and \
                 l.start == r.start & l.start == r.start
 
     # this operator sorts according to the END, not start value,
@@ -134,7 +142,7 @@ cdef class Range:
         return self.end - self.start + 1 # start is inclusive
 
     def __hash__(self):
-        return hash(self.org) + hash(self.chr) + hash(self.haplo) + hash(self.start) + hash(self.end)
+        return hash(self.org) + hash(self.chr) + hash(self.start) + hash(self.end)
 
     def __contains__(self, item):
         #TODO expand to work with variation superclass, how to handle transpositions?
@@ -166,7 +174,7 @@ cdef class Range:
             raise ValueError("ERROR: tried to drop more than Range length!")
         if start < 0 or end < 0:
             raise ValueError("ERROR: tried to drop negative value!")
-        return Range(self.org, self.chr, self.haplo, self.start + start, self.end - end)
+        return Range(self.org, self.chr, self.start + start, self.end - end)
 
     def is_inverted(self):
         return self.start <= self.end

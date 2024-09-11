@@ -444,7 +444,7 @@ cpdef extract_syri_snvs(fin):
             l = line.strip().split()
             if l[10] == 'SNP':
                 #TODO maybe store annotation information from fields 8-10
-                snv = SNV(Position('a', 'x', l[0], int(l[1])), Position('b', 'x', l[5], int(l[6])), l[4], l[5])
+                snv = SNV(Position('a', l[0], int(l[1])), Position('b', l[5], int(l[6])), l[4], l[5])
                 syri_regs.append(SNV)
 
     df = pd.DataFrame(list(syri_regs))#[[0, 1, 3, 4, 5, 6, 8, 9, 10]]
@@ -463,13 +463,11 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
     """
     # columns to look for as start/end positions
     refchr = ref + "chr"
-    refhaplo = "x"
     refstart = ref + "start"
     refend = ref + "end"
 
     qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
     qrychr = qry + "chr"
-    qryhaplo = "x"
     qrystart = qry + "start"
     qryend = qry + "end"
 
@@ -488,8 +486,8 @@ cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryo
             chrom = row[refchr]
             buf = deque()
         # append current line to buffer
-        buf.append([Range(reforg, row[refchr], refhaplo, row[refstart], row[refend]),
-            Range(qryorg, row[qrychr], qryhaplo, row[qrystart], row[qryend])
+        buf.append([Range(reforg, row[refchr], row[refstart], row[refend]),
+            Range(qryorg, row[qrychr],  row[qrystart], row[qryend])
             ])
 
     # add last chr
@@ -745,8 +743,8 @@ cpdef read_psf(fin):
 
         reforg = line[4]
 
-        refrng = Range('ref', line[0], None, int(line[1]), int(line[2])) if reforg == 'ref'\
-            else Range(reforg, line[5], None, int(line[6]), int(line[7]))
+        refrng = Range('ref', line[0], int(line[1]), int(line[2])) if reforg == 'ref'\
+            else Range(reforg, line[5], int(line[6]), int(line[7]))
 
         syn = Multisyn(refrng, {}, None)
 
@@ -791,7 +789,7 @@ cpdef read_old_psf(fin):
         #except IndexError:
         #    logger.error(f"Invalid line encountered while reading PSF: {line}")
 
-        refrng = Range('ref', line[0], None, int(line[1]), int(line[2]))
+        refrng = Range('ref', line[0], int(line[1]), int(line[2]))
 
         # split once to reuse in multisyn construction loop
         samplecells = [cell.split(';') for cell in line[4:]]
