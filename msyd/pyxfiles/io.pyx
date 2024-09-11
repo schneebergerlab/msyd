@@ -591,7 +591,7 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(df, buf, save_cigars=True, force_ref_pos=True):
+cpdef save_to_psf(df, buf, save_cigars=True, force_ref_pos=False):
     """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
