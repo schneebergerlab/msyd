@@ -19,7 +19,12 @@ logger = util.CustomFormatter.getlogger(__name__)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering
-cdef class Multisyn:
+#cdef
+class Multisyn:
+    #    cdef:
+    #        Range ref
+    #        dict ranges_dict
+    #        dict cigars_dict
     """
     A class representing a region syntenic among a set of genomes.
     The parameter `ranges_dict` is a dictionary of genomic `synctools.Range`es storing the location this syntenic region has on each organism.
