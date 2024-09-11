@@ -19,11 +19,15 @@ logger = util.CustomFormatter.getlogger(__name__)
 @functools.total_ordering # not sure how performant, TO/DO replace later?
 cdef class Position:
     cdef:
-        str org
-        str chr
-        int pos
+        public str org
+        public str chr
+        public int pos
 
-    def __cinit__(self, org:str, chr:int, pos: int):
+    def __cinit__(self, org:str = None, chr:str = None, pos:int = 0):
+    #def __init__(self, org:str, chr:str, pos:int):
+        """
+        All args are optional to support pickling; always set them otherwise!
+        """
         self.org = org
         self.chr = chr
         self.pos = pos
@@ -78,12 +82,16 @@ cdef class Position:
 #@cython.total_ordering
 cdef class Range:
     cdef:
-        str org
-        str chr
-        int start
-        int end
+        public str org
+        public str chr
+        public int start
+        public int end
 
-    def __cinit__(self, org:str, chr:str, start: int, end: int):
+    def __cinit__(self, org:str = None, chr:str = None, start:int = 0, end:int = 0):
+    #def __init__(self, org:str, chr:str, start:int, end:int):
+        """
+        All args are optional to support pickling; always set them otherwise!
+        """
         self.org = org
         self.chr = chr
         self.start = start # inclusive
