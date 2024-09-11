@@ -363,7 +363,7 @@ def compile_filter(exp: str):
     # have preprocessor turn is multisyn into degree >= number of seqs
     # connections: and, or, xor, not
     """
-    from msyd.coords import Range
+    import msyd.coords as coords
 
     if len(exp) < 1:
         logger.warning("compile_filter called with empty string. This expression will match everything!")
@@ -431,7 +431,7 @@ def compile_filter(exp: str):
     match = re.fullmatch("(in)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         #TODO error handling?
-        rng = read_psf_range(None, match[2])
+        rng = coords.read_psf_range(None, match[2])
         return lambda x: x.ref in rng
 
     # chr filter
