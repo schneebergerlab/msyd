@@ -35,8 +35,23 @@ cdef class Position:
     def to_psf(self):
         """Transform this `Position` into population synteny file format
         """
-        #return f"{self.chr}:{self.pos}"
         return f"{self.chr}:{self.pos}"
+
+    def to_psf_org(self):
+        """Transform this `Position` into population synteny file format, including the org
+        """
+        return f"{self.org}:{self.chr}:{self.pos}"
+
+    # support pickling, for use with multiprocessing
+    def __getstate__(self):
+        return self.to_psf_org()
+
+    def __setstate__(self, state):
+        # kind of ugly, but pickling requires to keep the object
+        rng = read_psf_pos(None, state)
+        self.org = rng.org
+        self.chr = rng.chr
+        self.start = rng.pos
 
     def __eq__(l, r):
         if not isinstance(r, Position):
@@ -90,30 +105,18 @@ cdef class Range:
         #return f"{self.org}:{self.chr}:{self.start}-{self.end}"
         return f"{self.org}:{self.chr}:{self.start}-{self.end}"
 
+    # support pickling, for use with multiprocessing
+    def __getstate__(self):
+        return self.to_psf_org()
 
-    def read_psf(org:str, cell: str):
-        """Parse a Range in PSF format
-        PSF format contains the chromosome identifier followed by a colon (:) and the start and end position separated by -.
-        Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.
-        If the end position is before the start position, the range is treated as inverted.
-        `org` specifies the organism the returned range should have. If this range is just used for filtering, None may be passed.
-        Examples: Chr1:1000-2000, Chr3:10000-50000
-        """
-        #TODO error handling in here
-        #print(cell)
-        cellarr = cell.split(':')
-        if len(cellarr) < 2 or len(cellarr) > 3:
-            raise ValueError(f"Invalid PSF Range string: {cell}")
-        if len(cellarr) == 3: # if a ref name is specified in the cell, that overrides the argument
-            org = cellarr[0]
-            cellarr = cellarr[1:]
-        chrom = cellarr[0] #util.chrom_to_int(cellarr[0])
-        posarr = cellarr[1].split('-')
-        start = int(posarr[0])
-        end = int(posarr[1])
-        return Range(org, chrom, start, end)
+    def __setstate__(self, state):
+        # kind of ugly, but pickling requires to keep the object
+        rng = read_psf_range(None, state)
+        self.org = rng.org
+        self.chr = rng.chr
+        self.start = rng.start
+        self.end = rng.end
 
-    
     def __eq__(l, r):
         if not isinstance(r, Range):
             return False
@@ -184,3 +187,43 @@ cdef class Range:
             return False
         if self.end < 0:
             return False
+
+cpdef read_psf_range(org:str, cell: str):
+    """Parse a Range in PSF format
+    PSF format contains the chromosome identifier followed by a colon (:) and the start and end position separated by -.
+    Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.
+    If the end position is before the start position, the range is treated as inverted.
+    `org` specifies the organism the returned range should have. If this range is just used for filtering, None may be passed.
+    Examples: Chr1:1000-2000, Chr3:10000-50000
+    """
+    #TODO error handling in here
+    #print(cell)
+    cellarr = cell.split(':')
+    if len(cellarr) < 2 or len(cellarr) > 3:
+        raise ValueError(f"Invalid PSF Range string: {cell}")
+    if len(cellarr) == 3: # if a ref name is specified in the cell, that overrides the argument
+        org = cellarr[0]
+        cellarr = cellarr[1:]
+
+    posarr = cellarr[1].split('-')
+    cdef:
+        str chrom = cellarr[0] #util.chrom_to_int(cellarr[0])
+        int start = int(posarr[0])
+        int end = int(posarr[1])
+    return Range(org, chrom, start, end)
+
+
+cpdef read_psf_pos(org:str, cell: str):
+    """Parse a point position in PSF format
+    PSF format contains the chromosome identifier followed by a colon (:) and the position.
+    Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.
+    Examples: Chr1:1000, Chr3:10000
+    """
+    cellarr = cell.split(':')
+    if len(cellarr) < 2 or len(cellarr) > 3:
+        raise ValueError(f"Invalid PSF Range string: {cell}")
+    if len(cellarr) == 3: # if a ref name is specified in the cell, that overrides the argument
+        org = cellarr[0]
+        cellarr = cellarr[1:]
+
+    return Position(org, cellarr[0], int(cellarr[1]))

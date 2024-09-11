@@ -431,7 +431,7 @@ def compile_filter(exp: str):
     match = re.fullmatch("(in)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         #TODO error handling?
-        rng = Range.read_psf(None, match[2])
+        rng = read_psf_range(None, match[2])
         return lambda x: x.ref in rng
 
     # chr filter
