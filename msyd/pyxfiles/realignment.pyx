@@ -450,7 +450,7 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
     cores = min(len(syndict), ncores)
 
     with Pool(cores) as pool:
-        print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
+        #print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
         return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
 
 cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
@@ -637,7 +637,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
                 syns = syri_get_syntenic(ref, alns)
 
                 #syns = list(filter(lambda x: x is not None, syris.values()))
-                print(syns)
+                #print(syns)
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
@@ -796,7 +796,7 @@ cdef syri_get_syntenic(reforg, alns):
     # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
     #TODO return objects as Multisyn objects, matchin gcigars immediately?
-    print(syns)
+    #print(syns)
     return syns
 
 # Idea for additional fn
