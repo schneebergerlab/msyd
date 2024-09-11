@@ -2,8 +2,8 @@
 Created 2024-09-11, Leon Rauschning
 
 In the msyd documentation and codebase, we use a number of terms specific to msyd, or in a different meaning than in general usage or other genomics contexts.
-Through the development of msyd, these terms have evolved somewhat.
-This glossary represents an attempt to capture the meaning of the most important terms and the intuition behind them as msyd is nearing release.
+Through the development of msyd, these terms have evolved somewhat – owing as much to the shifting nature of methods for multi-genomics analyses as to the idiosyncracies small groups like to develop.
+This glossary represents an attempt to capture the meaning of the most important terms and the intuition behind them as msyd is nearing release, in the hopes that it will be useful for working with msyd and its output.
 
 - Synteny: Two genomic regions are considered to be in synteny (syntenic to each other) when they are found in the same large-scale genomic context and align to each other. It can be thought of as the absence of structural variation. Synteny forms a backbone along the chromosomes of a species, and enables biological processes like meiotic paring and recombination. Contrary to other tools, SyRI and by extension msyd do not consider genome annotations when finding synteny.
 - Structural Variation (SV): Structural variants are large-scale differences in the genomes of a population. Various processes may cause structural variation, including transposon activity, double-strand breaks and non-homologous recombination. SVs may contain small variants like SNPs or indels, or other SVs.
