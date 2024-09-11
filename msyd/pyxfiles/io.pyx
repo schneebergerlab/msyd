@@ -640,7 +640,7 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, force_ref_pos=False):
         int coreend = 0
         str corechr = ''
 
-    buf.write("#CHR\tSTART\tEND\tANN\tREF\tCHR\tSTART\tEND\t")
+    buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
     buf.write("\t".join(orgs))
     buf.write("\n")
 
