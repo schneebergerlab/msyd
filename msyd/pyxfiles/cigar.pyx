@@ -239,6 +239,53 @@ cdef class Cigar:
         edrop, tmp = tmp.get_removed(e, ref=ref)
         return (sdrop, edrop, tmp)
 
+    cpdef trim_matching(self):
+        """
+        Trims a CIGAR string until both ends start with a matching (=) position.
+        :returns: The number of bases deleted in the query/ref and a new CIGAR guaranteed to start and end with =.
+        """
+        # trim from start until = found
+        cdef:
+            int start = 0
+            int qstart = 0
+            int rstart = 0
+        cdef Cigt cur = self.vector[start]
+        while cur.t != ord('='):
+            if c_reffwd.count(cur.t): # skip on r
+                rstart += cur.n
+            if c_qryfwd.count(cur.t): # skip on q
+                qstart += cur.n
+            # go forward in the loop
+            start += 1
+            cur = self.vector[start]
+
+        # trim from end until = found
+        cdef:
+            int end = self.vector.end()
+            int qend = 0
+            int rend = 0
+        cur = self.vector[end]
+        while cur.t != ord('='):
+            if c_reffwd.count(cur.t): # skip on r
+                rend += cur.n
+            if c_qryfwd.count(cur.t): # skip on q
+                qend += cur.n
+            # go forward in the loop
+            end -= 1
+            cur = self.vector[end]
+
+        # construct new cigar using indexes
+        cdef vector[Cigt] newcg = vector[Cigt]()
+        newcg.reserve(end - start)
+        # add Cigts to newcg
+        while start <= end:
+            newcg.push_back(self.vector[start])
+            start +=1
+
+        return qstart, qend, rstart, rend, Cigar(newcg)
+
+
+
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
         """
