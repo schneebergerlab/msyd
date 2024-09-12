@@ -239,11 +239,12 @@ cdef class Cigar:
         edrop, tmp = tmp.get_removed(e, ref=ref)
         return (sdrop, edrop, tmp)
 
-    cpdef trim_matching(self):
+    cpdef trim_matching(self, only_pos=True):
         """
         Trims a CIGAR string until both ends start with a matching (=) position.
         :returns: The number of bases deleted in the query/ref and a new CIGAR guaranteed to start and end with =.
         """
+        #TODO refactor to only ref, then call get_removed on max when trimming from multisyn
         # trim from start until = found
         cdef:
             int start = 0
@@ -274,6 +275,9 @@ cdef class Cigar:
             end -= 1
             cur = self.vector[end]
 
+        if only_pos:
+            return qstart, qend, rstart, rend
+
         # construct new cigar using indexes
         cdef vector[Cigt] newcg = vector[Cigt]()
         newcg.reserve(end - start)
@@ -283,8 +287,6 @@ cdef class Cigar:
             start +=1
 
         return qstart, qend, rstart, rend, Cigar(newcg)
-
-
 
     # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
