@@ -250,7 +250,7 @@ cdef class Cigar:
             int start = 0
             int qstart = 0
             int rstart = 0
-        cdef Cigt cur = self.vector[start]
+        cdef Cigt cur = self.tups[start]
         while cur.t != ord('='):
             if c_reffwd.count(cur.t): # skip on r
                 rstart += cur.n
@@ -258,14 +258,14 @@ cdef class Cigar:
                 qstart += cur.n
             # go forward in the loop
             start += 1
-            cur = self.vector[start]
+            cur = self.tups[start]
 
         # trim from end until = found
         cdef:
-            int end = self.vector.end()
+            int end = self.tups.size()
             int qend = 0
             int rend = 0
-        cur = self.vector[end]
+        cur = self.tups[end]
         while cur.t != ord('='):
             if c_reffwd.count(cur.t): # skip on r
                 rend += cur.n
@@ -273,7 +273,7 @@ cdef class Cigar:
                 qend += cur.n
             # go forward in the loop
             end -= 1
-            cur = self.vector[end]
+            cur = self.tups[end]
 
         if only_pos:
             return qstart, qend, rstart, rend
@@ -283,7 +283,7 @@ cdef class Cigar:
         newcg.reserve(end - start)
         # add Cigts to newcg
         while start <= end:
-            newcg.push_back(self.vector[start])
+            newcg.push_back(self.tups[start])
             start +=1
 
         return qstart, qend, rstart, rend, Cigar(newcg)
