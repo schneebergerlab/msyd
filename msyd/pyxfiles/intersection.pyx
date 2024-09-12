@@ -51,7 +51,7 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
 
     return True
     
-cpdef find_overlaps(left, right, only_core=False):
+cpdef find_overlaps(left, right, only_core=False, trim=True):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
@@ -100,11 +100,15 @@ cpdef find_overlaps(left, right, only_core=False):
                 if not only_core and ovstart - intstart >= MIN_SYN_THRESH:
                     multisyn = starting.drop(intstart - starting.ref.start, 1 + starting.ref.end - ovstart)
                     if filter_multisyn(multisyn):
+                        if trim:
+                            multisyn.trim_matching_inplace()
                         ret.append(multisyn)
 
                 # add overlap region
                 multisyn = l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend)
                 if filter_multisyn(multisyn):
+                    if trim:
+                        multisyn.trim_matching_inplace()
                     ret.append(multisyn)
                 # everything up to the end of the overlap is covered now
                 cov = ovend
@@ -116,6 +120,8 @@ cpdef find_overlaps(left, right, only_core=False):
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     multisyn = r.drop(max(0, 1 + cov - r.ref.start), 0)
                     if filter_multisyn(multisyn):
+                        if trim:
+                            multisyn.trim_matching_inplace()
                         ret.append(multisyn)
 
                 cov = r.ref.end
@@ -125,6 +131,8 @@ cpdef find_overlaps(left, right, only_core=False):
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     multisyn = l.drop(max(0, 1 + cov - l.ref.start), 0)
                     if filter_multisyn(multisyn):
+                        if trim:
+                            multisyn.trim_matching_inplace()
                         ret.append(multisyn)
                 cov = l.ref.end
                 l = next(lit)[1][0]
@@ -134,6 +142,8 @@ cpdef find_overlaps(left, right, only_core=False):
                 if not only_core and r.ref.end - cov >= MIN_SYN_THRESH:
                     multisyn = r.drop(max(0, 1 + cov - r.ref.start), 0)
                     if filter_multisyn(multisyn):
+                        if trim:
+                            multisyn.trim_matching_inplace()
                         ret.append(multisyn)
 
                 cov = r.ref.end
@@ -143,6 +153,8 @@ cpdef find_overlaps(left, right, only_core=False):
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
                     multisyn = l.drop(max(0, 1 + cov - l.ref.start), 0)
                     if filter_multisyn(multisyn):
+                        if trim:
+                            multisyn.trim_matching_inplace()
                         ret.append(multisyn)
 
                 cov = l.ref.end
@@ -156,6 +168,8 @@ cpdef find_overlaps(left, right, only_core=False):
                 if ending.ref.end - cov >= MIN_SYN_THRESH: # check if there is still something to add; if so, add it
                     multisyn = ending.drop(max(0, 1 + cov - ending.ref.start), 0)
                     if filter_multisyn(multisyn):
+                        if trim:
+                            multisyn.trim_matching_inplace()
                         ret.append(multisyn)
 
             break
@@ -164,10 +178,14 @@ cpdef find_overlaps(left, right, only_core=False):
         for l in lit:
             l = l[1][0]
             if filter_multisyn(l):
+                if trim:
+                    l.trim_matching_inplace()
                 ret.append(l)
         for r in rit:
             r = r[1][0]
             if filter_multisyn(r):
+                if trim:
+                    r.trim_matching_inplace()
                 ret.append(r)
 
     if len(ret) == 0:
