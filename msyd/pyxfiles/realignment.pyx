@@ -247,9 +247,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
             # check to make sure alns match cigar length
             if aln[4] != cg.get_len(ref=True):
-                    logger.error(f"Aln length not matching cigar length! {aln}")
+                    logger.error(f"[simple case] Aln length {aln[4]} not matching cigar length on ref {cg.get_len(ref=True)}! Occurred in {aln}")
             if aln[5] != cg.get_len(ref=False):
-                    logger.error(f"Aln length not matching cigar length! {aln}")
+                    logger.error(f"[simple case] Aln length {aln[5]} not matching cigar length on qry {cg.get_len(ref=False)}! Occurred in {aln}")
 
             alns.append(aln)
             continue
@@ -275,9 +275,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
                 # check to make sure alns match cigar length
                 if aln[4] != qcg.get_len(ref=True):
-                    logger.error(f"Aln length not matching cigar length on ref! Occurred in {aln} (cg len {qcg.get_len(ref=True)})")
+                    logger.error(f"Aln length {aln[4]} not matching cigar length on ref {qcg.get_len(ref=True)}! Occurred in {aln}")
                 if aln[5] != qcg.get_len(ref=False):
-                    logger.error(f"Aln length not matching cigar length on qry! Occurred in {aln} (cg len {qcg.get_len(ref=False)})")
+                    logger.error(f"Aln length {aln[5]} not matching cigar length on qry {qcg.get_len(ref=False)}! Occurred in {aln}")
                 alns.append(aln)
 
         # print('c')
