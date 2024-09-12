@@ -132,6 +132,17 @@ class Multisyn:
                 return False
                 #raise ValueError("ERROR in Multisyn.check()! CIGAR length not matching query length!")
 
+    def trim_matching_inplace(self):
+        """
+        Trims the alignment of this multisyn to remove mismatches at the start/end.
+        Mutates self!
+        """
+        if not self.cigars_dict: # can't trim if there are no alignments
+            return
+        trims = [cg.trim_matching(only_pos=True) for cg in self.cigars_dict.values()]
+        start = max(tup[2] for tup in trims)
+        end = max(tup[3] for tup in trims)
+        self.drop_inplace(start, end)
 
     def __add__(self, other):
         """
