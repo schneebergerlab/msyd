@@ -658,7 +658,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
                 
                 # print(syns)
                 ## Find merasyn in the syri calls
-                multisyns = intersection.reduce_find_overlaps(syns.values(), cores=ncores)
+                multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores)
 
                 # no need to recalculate the tree if no multisynteny was found
                 if multisyns is None or multisyns.empty:
