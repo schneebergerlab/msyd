@@ -262,7 +262,7 @@ cdef class Cigar:
 
         # trim from end until = found
         cdef:
-            int end = self.tups.size()
+            int end = self.tups.size() -1
             int qend = 0
             int rend = 0
         cur = self.tups[end]
