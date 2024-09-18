@@ -252,6 +252,7 @@ cdef class Cigar:
             int rstart = 0
         cdef Cigt cur = self.tups[start]
         while cur.t != ord('='):
+            print(start, qstart, rstart, cur)
             if c_reffwd.count(cur.t): # skip on r
                 rstart += cur.n
             if c_qryfwd.count(cur.t): # skip on q
@@ -259,6 +260,7 @@ cdef class Cigar:
             # go forward in the loop
             start += 1
             cur = self.tups[start]
+        print(start, qstart, rstart, cur)
 
         # trim from end until = found
         cdef:
@@ -267,6 +269,7 @@ cdef class Cigar:
             int rend = 0
         cur = self.tups[end]
         while cur.t != ord('='):
+            print(end, qend, rend, cur)
             if c_reffwd.count(cur.t): # skip on r
                 rend += cur.n
             if c_qryfwd.count(cur.t): # skip on q
@@ -274,6 +277,7 @@ cdef class Cigar:
             # go forward in the loop
             end -= 1
             cur = self.tups[end]
+        print(end, qend, rend, cur)
 
         if only_pos:
             return qstart, qend, rstart, rend
