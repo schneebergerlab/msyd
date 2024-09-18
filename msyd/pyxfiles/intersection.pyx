@@ -342,8 +342,11 @@ cpdef process_syndicts(syndict, cores=4):
     """
     Small fn to do parallel processing of a dictionary of syndfs per chromosome.
     """
-    with multiprocessing.Pool(cores) as pool:
-        return dict(pool.map(_workaround, syndict.items()))
+    if cores > 1:
+        with multiprocessing.Pool(cores) as pool:
+            return dict(pool.map(_workaround, syndict.items()))
+    else:
+        return dict(map(_workaround, syndict.items()))
 
     #cdef list chromlist = list(syndict)
     #cdef int n = len(chromlist)

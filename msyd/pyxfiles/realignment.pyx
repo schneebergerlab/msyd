@@ -449,9 +449,13 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
 
     cores = min(len(syndict), ncores)
 
-    with Pool(cores) as pool:
-        #print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
-        return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
+    if cores > 1:
+        with Pool(cores) as pool:
+            #print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
+            return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
+    else:
+        return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1) for chrom in syndict]))
+
 
 cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
     return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5]))
