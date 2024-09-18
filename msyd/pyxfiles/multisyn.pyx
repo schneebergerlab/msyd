@@ -143,7 +143,8 @@ class Multisyn:
         trims = [cg.trim_matching(only_pos=True) for cg in self.cigars_dict.values()]
         start = max(tup[2] for tup in trims)
         end = max(tup[3] for tup in trims)
-        self.drop_inplace(start, end)
+        if start > 0 or end > 0:
+            self.drop_inplace(start, end)
 
     def __add__(self, other):
         """
