@@ -292,18 +292,19 @@ cdef class Cigar:
 
         return qstart, qend, rstart, rend, Cigar(newcg)
 
-    # TODO maybe benchmark bints vs separate char's or argstruct or separate methods
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
 
-        if n == 0: # shortcut for a common path
-            if only_pos:
-                return 0
-            else:
-                return (0, self)
+        # would not remove starting I/D blocks if called with n=0
+        #if n == 0: # shortcut for a common path
+        #    if only_pos:
+        #        return 0
+        #    else:
+        #        return (0, self)
+
         # deleting from an empty record is fine, so long as 0 is deleted
         if self.tups.empty():
             logger.error("Trying to remove from an empty Cigar!")
@@ -333,26 +334,23 @@ cdef class Cigar:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar len on ref/alt: {self.get_len(ref=ref)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
-        if altfwd.count(cur.t): # remove overadded value
+        if altfwd.count(cur.t): # remove overadded value (rem < 0)
             skip += rem
 
         if only_pos:
             return skip
-        # TODO try changing backing vector and only storing index
         
         cdef vector[Cigt] newtups = vector[Cigt]()
         newtups.reserve(self.tups.size() - ind + 1)
+        # Add remainder to front/back as new tuple
         if start:
-            # if there is a remainder, add it to the front
             if rem < 0:
                 newtups.push_back(Cigt(-rem, cur.t))
-            # TODO check if this is cythonized efficiently 
             for i in range(ind, self.tups.size()):
                 newtups.push_back(self.tups[i])
         else:
             for i in range(self.tups.size()-ind):
                 newtups.push_back(self.tups[i])
-            # if there is a remainder, add it to the back
             if rem < 0:
                 newtups.push_back(Cigt(-rem, cur.t))
 
