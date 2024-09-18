@@ -140,7 +140,7 @@ class Multisyn:
         if not self.cigars_dict: # can't trim if there are no alignments
             return
 
-        print(self)
+        print(self.cigars_dict)
 
         trims = [cg.trim_matching(only_pos=True) for cg in self.cigars_dict.values()]
         start = max(tup[2] for tup in trims)
