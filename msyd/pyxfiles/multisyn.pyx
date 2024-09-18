@@ -144,6 +144,7 @@ class Multisyn:
         start = max(tup[2] for tup in trims)
         end = max(tup[3] for tup in trims)
         if start > 0 or end > 0:
+            print(start, end)
             self.drop_inplace(start, end)
 
     def __add__(self, other):
@@ -269,7 +270,6 @@ class Multisyn:
         Performs the same function as `drop`, but mutates this object instead of returning a new one.
         Mutates this `Multisyn` object to remove `start`/`end` positions from the start/end, respecting cigar alignments if not `None`.
         """
-        print(f"dropping {start}, {end}")
         if start < 0 or end < 0 or start + end > len(self.ref):
             logger.error(f"Tried to drop invalid start ({start}) or end ({end}) on this Multisyn with length on the reference {len(self.ref)}")
             raise ValueError("tried to drop invalid start/end!")
