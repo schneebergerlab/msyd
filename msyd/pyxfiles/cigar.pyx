@@ -298,12 +298,15 @@ cdef class Cigar:
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
 
-        # would not remove starting I/D blocks if called with n=0
-        #if n == 0: # shortcut for a common path
-        #    if only_pos:
-        #        return 0
-        #    else:
-        #        return (0, self)
+        # shortcut for a common path, where nothing needs to be removed
+        if n == 0 and (
+                (start and self.tups[0].t == ord('='))
+                or
+                (not start and self.tups[-1].t == ord('='))):
+            if only_pos:
+                return 0
+            else:
+                return (0, self)
 
         # deleting from an empty record is fine, so long as 0 is deleted
         if self.tups.empty():
