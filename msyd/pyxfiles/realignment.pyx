@@ -209,37 +209,27 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     if aligner is None:
         aligner = get_aligner(refseq, preset)
 
-    # logger.debug('Start align_concatseqs')
     m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
-    #logger.debug(f'Minimap2 alignment done.')
-    #print([str(x) for x in m])
-    alns = deque()
+
     # traverse alignments
-    #logger.debug('Traversing alignments')
+    alns = deque()
     for h in m:
-        # print('a')
         rstart: int = h.r_st
-        rend: int = h.r_en -1 # transform to inclusive range
+        rend: int = h.r_en -1 # use inclusive indices
         qstart: int = h.q_st
-        qend: int = h.q_en -1 # transform to inclusive range
+        qend: int = h.q_en -1 # use inclusive indices
         cg = cigar.cigar_from_bam(h.cigar)
-        #logger.debug(f"R: {rstart}-{rend}, len: {cg.get_len()}, Q: {qstart}-{qend}, len: {cg.get_len(ref=False)}")
-        #print(h.mapq)
+
         if rstart > rend:
+            # shouldn't ever occur, TODO maybe handle anyway?
             logger.error(f"Inverted on Reference: {h}")
             continue
-            # shouldn't ever occur, TODO maybe handle anyway?
-
-        #logger.info(f"rstart: {rstart}, rend: {rend}, qstart: {qstart}, qend: {qend}")
-        #logger.info(f"rtree: {str(reftree)}")
-        #logger.info(f"qtree: {str(qrytree)}")
 
         rstartov = list(reftree[rstart])[0]
         qstartov = list(qrytree[qstart])[0]
 
-        # simply append alignment if there is only one offset
+        # shortcut to simply append alignment if there is only one offset
         # as this happens quite often, this should save a lot of time
-        # print(f'reftree: {reftree}, qrytree: {qrytree}, rend: {rend}, qend: {qend}')
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
@@ -253,9 +243,8 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
             alns.append(aln)
             continue
-        else:
-            logger.warning(f"Multiple ({len(reftree[rstart:rend])}) offsets in one alignment!")
 
+        # multiple offsets in alignment; split for each offset
         for rint in sorted(reftree[rstart:rend]):
             # subset alignment to this reference offset interval
             qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
@@ -266,8 +255,6 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
                 rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
 
                 #TODO maybe filter out small alignments here?
-                #print("r:", rint.data, rstart, rend, rint.begin, rint.end, rendel, rstdel, qcg.get_len(ref=True))
-                #print("q:", qint.data, qstart, qend, qint.begin, qint.end, qendel, qstdel, qcg.get_len(ref=False))
                 aln = [rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
@@ -327,34 +314,34 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
     # iterate over all alns overlapping on both qry and ref
     alns = get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False)
-    #logger.debug(f"called with {rchrom}, {rstart}, {rend}, {qchrom}, {qstart}, {qend}, found overlapping {alns}")
+
     if alns is None:
         return None
     for _, aln in alns.iterrows():
-        # cut off alignments to only in the gap we are realigning
         cg = cigar.cigar_from_string(aln.cg)
 
         # check that aln lengths are correct
-        #if cg.get_len() != aln.aend - aln.astart + 1:
-        #    logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
-        #if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
-        #    logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
+        if cg.get_len() != aln.aend - aln.astart + 1:
+            logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
+        if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
+            logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
 
         #logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
         #print(cg.to_string())
+        # trim alns to only the gap we are realigning, to make subsequent drops more efficient
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
         # check that the positions after removing match
-        #if srem != qstart - aln.bstart:
-        #    logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
-        #if erem != aln.bend - qend:
-        #    logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
+        if srem != qstart - aln.bstart:
+            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
+        if erem != aln.bend - qend:
+            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
 
         ## check that lengths match
-        #if rend - rstart + 1 != cg.get_len(ref=True):
-        #    logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
-        #if qend - qstart + 1 != cg.get_len(ref=False):
-        #    logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
+        if rend - rstart + 1 != cg.get_len(ref=True):
+            logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
+        if qend - qstart + 1 != cg.get_len(ref=False):
+            logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
 
         # use cigar lens to force eager trimming of CIGARS
         # otherwise, I/D records at the end of the ALN could stick around, confusing later steps
@@ -368,6 +355,9 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     return pd.DataFrame(ret, columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg'])
 
 cdef syrify(alnsdf):
+    """
+    Helper fn to format alignment dfs into the format SyRI uses.
+    """
     if alnsdf is None:
         return None
     alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
@@ -624,7 +614,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
                                 alns[org] = None
                                 continue
 
-                            # TODO: Currently (12.03.2024), this seems to be the most time-consuming step
                             logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
                             alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
 
