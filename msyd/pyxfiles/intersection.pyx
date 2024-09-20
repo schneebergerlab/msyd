@@ -237,7 +237,9 @@ cdef match_synal(syndf, alndf, ref='a'):
                     rng.end = rng.start + cg.get_len(ref=False) -1
 
 
-                ret.append(multisyn)
+                # split the multisyns if there are any large indels in the alignments
+                ret.extend(multisyn.split_indels(MIN_SYN_THRESH))
+
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
