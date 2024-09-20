@@ -214,7 +214,7 @@ cdef class Cigar:
 
         self.tups.erase(self.tups.end()-i_end, self.tups.end())
 
-    def split_indels(self, unsigned int thresh, unordered_set[char] indelset = c_indel, unordered_set[char] offsetfwd = c_reffwd):
+    def split_indels(self, unsigned int thresh, unordered_set[char] indelset = c_indel):
         """
         Splits this CIGAR along indels larger than `thresh`.
         Indels are all CIGAR types contained in `indelset`.
@@ -223,8 +223,10 @@ cdef class Cigar:
         cdef:
             unsigned int ind = 0
             unsigned int lastind = 0
-            unsigned int offset = 0
-            unsigned int lastoffset = 0
+            unsigned int roffset = 0
+            unsigned int rlastoffset = 0
+            unsigned int qoffset = 0
+            unsigned int qlastoffset = 0
             list[Cigar] ret = []
             Cigt cur
             vector[Cigt] slice
@@ -240,18 +242,27 @@ cdef class Cigar:
                 while lastind < ind:
                     slice.push_back(self.tups[lastind])
 
-                ret.append((lastoffset, Cigar(slice)))
+                # start/end on r, start/end on q, new cg
+                ret.append((rlastoffset, roffset, qlastoffset, qoffset, Cigar(slice)))
                 
                 # reset the counters for next slicing
                 lastind = ind + 1
-                if offsetfwd.count(cur.t):
-                    lastoffset = offset + cur.n # add the current Cigt len
-                else:
-                    lastoffset = offset # do not add current Cigt len
 
-            # iterate loop
-            if offsetfwd.count(cur.t):
-                offset += cur.n
+                if c_reffwd.count(cur.t):
+                    rlastoffset = roffset + cur.n # add the current Cigt len
+                else:
+                    rlastoffset = roffset # do not add current Cigt len
+
+                if c_qryfwd.count(cur.t):
+                    qlastoffset = qoffset + cur.n # add the current Cigt len
+                else:
+                    qlastoffset = qoffset # do not add current Cigt len
+
+            # iterate loop, track current end on qry/ref
+            if c_reffwd.count(cur.t):
+                roffset += cur.n
+            if c_qryfwd.count(cur.t):
+                qoffset += cur.n
             ind += 1
 
         return ret
