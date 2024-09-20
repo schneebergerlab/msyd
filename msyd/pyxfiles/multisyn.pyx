@@ -152,6 +152,30 @@ class Multisyn:
                 print(start, end)
             self.drop_inplace(start, end)
 
+
+    def split_indels(self, thresh):
+        """
+
+        """
+        if len(self.ranges_dict) > 1:
+            logger.error("Splitting multisyns with more than 2 genomes not supported! Split before intersecting")
+            return ValueError("Splitting multisyns with more than 2 genomes not supported! Split before intersecting")
+
+        org = list(self.ranges_dict)[0]
+        altrng = self.ranges_dict[org]
+        splits = list(self.cigars.values())[0].split_indels(thresh=thresh)
+
+        # shortcut to avoid copying unnecessarily
+        if len(splits) == 0:
+            return [self]
+
+        return [Multisyn(
+                        Range(self.ref.org, self.ref.chrom, split[0], split[1]),
+                        {org: Range(altrng.org, altrng.chrom, split[2], split[3])},
+                        {org: split[4]}
+                        )
+                    for split in splits]
+
     def __add__(self, other):
         """
         Convenience function to concatenate two `Multisyn` objects.
