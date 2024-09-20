@@ -50,10 +50,10 @@ cdef vector[Cigt] cigt_from_string(str cg):
     """
     Takes a cigar string as input and returns a Cigar tuple
     """
+    cdef vector[Cigt] tups = vector[Cigt]()
     # preallocate assuming on average each tuple has two digit length
     # maybe try being more optimistic and assuming three-digit length
-    cdef vector[Cigt] tups = vector[Cigt](len(cg)//3)
-    #tups.reserve(int(len(cg)/3))
+    tups.reserve(int(len(cg)/3))
 
     for match in re.findall(retup, cg):
         if match[1] not in cig_types:
@@ -71,10 +71,10 @@ cpdef cigar_from_bam(bam):
     """
     Takes a List of Cigar tuples with BAM codes as input, returns as a Cigar struct.
     """
+    cdef vector[Cigt] tups = vector[Cigt]()
     # preallocate assuming on average each tuple has two digit length
     # maybe try being more optimistic and assuming three-digit length
-    cdef vector[Cigt] tups = vector[Cigt](len(bam))
-    #tups.reserve(len(bam))
+    tups.reserve(len(bam))
 
     for tup in bam:
         assert(0 < tup[1] and tup[1] < 9)
@@ -217,8 +217,8 @@ cdef class Cigar:
         """
         Returns a Cigar representing a reversed version of the alignment represented by this Cigar.
         """
-        cdef vector[Cigt] newtups = vector[Cigt](self.tups.size())
-        #newtups.reserve(self.tups.size())
+        cdef vector[Cigt] newtups = vector[Cigt]()
+        newtups.reserve(self.tups.size())
         for i in range(self.tups.size()):
             newtups.push_back(self.tups[self.tups.size() -i -1])
 
@@ -283,8 +283,8 @@ cdef class Cigar:
             return qstart, qend, rstart, rend
 
         # construct new cigar using indexes
-        cdef vector[Cigt] newcg = vector[Cigt](end - start)
-        #newcg.reserve(end - start)
+        cdef vector[Cigt] newcg = vector[Cigt]()
+        newcg.reserve(end - start)
         # add Cigts to newcg
         while start <= end:
             newcg.push_back(self.tups[start])
@@ -343,8 +343,8 @@ cdef class Cigar:
         if only_pos:
             return skip
         
-        cdef vector[Cigt] newtups = vector[Cigt](self.tups.size() -ind +1)
-        #newtups.reserve(self.tups.size() - ind + 1)
+        cdef vector[Cigt] newtups = vector[Cigt]()
+        newtups.reserve(self.tups.size() - ind + 1)
         # Add remainder to front/back as new tuple
         if start:
             if rem < 0:
