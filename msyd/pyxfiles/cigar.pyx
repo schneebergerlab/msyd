@@ -26,6 +26,7 @@ cdef:
     cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
     cig_aln_types = set(['M', 'X', '='])
     cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
+    indel = set(['D', 'I']) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
     unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
     unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
@@ -34,6 +35,7 @@ cdef:
     unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
     unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
     unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+    unordered_set[char] c_indel = unordered_set[char]([ord('D'), ord('I')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
 
     bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
 
@@ -198,8 +200,7 @@ cdef class Cigar:
         """
         cdef size_t start = 0
         for tup in self.tups:
-            if not c_cig_clips.count(tup.t): # wtf is up here? why is this converted to a dict, but this is not done in get_len_of_type?
-                # must be something with the context? no idea
+            if not c_cig_clips.count(tup.t):
                 break
             start += 1
 
@@ -212,6 +213,49 @@ cdef class Cigar:
             i_end += 1
 
         self.tups.erase(self.tups.end()-i_end, self.tups.end())
+
+    def split_indels(self, unsigned int thresh, unordered_set[char] indelset = c_indel, unordered_set[char] offsetfwd = c_reffwd):
+        """
+        Splits this CIGAR along indels larger than `thresh`.
+        Indels are all CIGAR types contained in `indelset`.
+        :returns: A list of split Cigar objects and their offset from the start of this Cigar on (0-based).
+        """
+        cdef:
+            unsigned int ind = 0
+            unsigned int lastind = 0
+            unsigned int offset = 0
+            unsigned int lastoffset = 0
+            list[Cigar] ret = []
+            Cigt cur
+            vector[Cigt] slice
+
+        while ind < self.tups.size():
+            cur = self.tups[ind]
+
+            if indelset.count(cur.t) and cur.n >= thresh:
+                # split required
+                # slicing is apparently super slow, so do the subsetting manually
+                slice = vector[Cigt]()
+                slice.reserve(ind - lastind)
+                while lastind < ind:
+                    slice.push_back(self.tups[lastind])
+
+                ret.append((lastoffset, Cigar(slice)))
+                
+                # reset the counters for next slicing
+                lastind = ind + 1
+                if offsetfwd.count(cur.t):
+                    lastoffset = offset + cur.n # add the current Cigt len
+                else:
+                    lastoffset = offset # do not add current Cigt len
+
+            # iterate loop
+            if offsetfwd.count(cur.t):
+                offset += cur.n
+            ind += 1
+
+        return ret
+
 
     def reverse(self):
         """
