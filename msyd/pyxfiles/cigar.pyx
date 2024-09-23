@@ -229,7 +229,7 @@ cdef class Cigar:
             unsigned int qlastoffset = 0
             list[Cigar] ret = []
             Cigt cur
-            vector[Cigt] slice
+            vector[Cigt] slc
 
         while ind < self.tups.size():
             cur = self.tups[ind]
@@ -237,15 +237,16 @@ cdef class Cigar:
             if indelset.count(cur.t) and cur.n >= thresh:
                 # split required
                 # slicing is apparently super slow, so do the subsetting manually
-                slice = vector[Cigt]()
-                slice.reserve(ind - lastind)
+                slc = vector[Cigt]()
+                slc.reserve(ind - lastind)
                 while lastind < ind:
-                    slice.push_back(self.tups[lastind])
+                    slc.push_back(self.tups[lastind])
+                    lastind += 1
 
                 # start/end on r, start/end on q, new cg
-                ret.append((rlastoffset, roffset, qlastoffset, qoffset, Cigar(slice)))
+                ret.append((rlastoffset, roffset, qlastoffset, qoffset, Cigar(tups=slc)))
                 
-                # reset the counters for next slicing
+                # reset the counter to slice after the split next time
                 lastind = ind + 1
 
                 if c_reffwd.count(cur.t):

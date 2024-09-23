@@ -163,15 +163,15 @@ class Multisyn:
 
         org = list(self.ranges_dict)[0]
         altrng = self.ranges_dict[org]
-        splits = list(self.cigars.values())[0].split_indels(thresh=thresh)
+        splits = list(self.cigars_dict.values())[0].split_indels(thresh=thresh)
 
         # shortcut to avoid copying unnecessarily
         if len(splits) == 0:
             return [self]
 
         return [Multisyn(
-                        Range(self.ref.org, self.ref.chrom, split[0], split[1]),
-                        {org: Range(altrng.org, altrng.chrom, split[2], split[3])},
+                        Range(self.ref.org, self.ref.chr, split[0], split[1]),
+                        {org: Range(altrng.org, altrng.chr, split[2], split[3])},
                         {org: split[4]}
                         )
                     for split in splits]
