@@ -19,7 +19,8 @@ from msyd.cigar import Cigar
 from msyd.coords import Range, Position
 from msyd.multisyn import Multisyn
 
-cdef int MIN_SYN_THRESH = 30
+cdef int MIN_SYN_THRESH = 50
+cdef int SPLIT_INDEL_THRESH = MIN_SYN_THRESH
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -34,6 +35,8 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
     If `drop_small` is not set to `False`, will mutate the input multisyn to remove any organisms where the region is smaller than `MIN_SYN_THRESH`.
     """
     if not multisyn: # filter empty objects to handle failures
+        return False
+    if not multisyn.check():
         return False
     if len(multisyn.ref) < MIN_SYN_THRESH: # filter small regions
         return False
@@ -238,7 +241,13 @@ cdef match_synal(syndf, alndf, ref='a'):
 
 
                 # split the multisyns if there are any large indels in the alignments
-                ret.extend(multisyn.split_indels(MIN_SYN_THRESH))
+                #ret.extend(multisyn.split_indels(SPLIT_INDEL_THRESH))
+                for msyn in multisyn.split_indels(SPLIT_INDEL_THRESH):
+                    if filter_multisyn(msyn) and msyn.check():
+                        ret.append(msyn)
+                    else:
+                        logger.error(f"Invalid Multisyn in: {msyn}")
+                #ret.extend(filter(filter_multisyn, x))
 
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
