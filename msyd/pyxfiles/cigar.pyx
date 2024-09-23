@@ -244,20 +244,22 @@ cdef class Cigar:
                     lastind += 1
 
                 # start/end on r, start/end on q, new cg
-                ret.append((rlastoffset, roffset, qlastoffset, qoffset, Cigar(tups=slc)))
+                # -1 b/c offset is start of next Cigt
+                ret.append((rlastoffset, roffset -1, qlastoffset, qoffset -1, Cigar(tups=slc)))
+                logger.info(f"{chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
                 
                 # reset the counter to slice after the split next time
                 lastind = ind + 1
 
                 if c_reffwd.count(cur.t):
-                    rlastoffset = roffset + cur.n # add the current Cigt len
+                    rlastoffset = roffset + cur.n # jump to after the current Cigt
                 else:
-                    rlastoffset = roffset # do not add current Cigt len
+                    rlastoffset = roffset # nothing to jump to
 
                 if c_qryfwd.count(cur.t):
-                    qlastoffset = qoffset + cur.n # add the current Cigt len
+                    qlastoffset = qoffset + cur.n # jump to after the current Cigt
                 else:
-                    qlastoffset = qoffset # do not add current Cigt len
+                    qlastoffset = qoffset # nothing to jump to
 
             # iterate loop, track current end on qry/ref
             if c_reffwd.count(cur.t):
