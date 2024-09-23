@@ -21,7 +21,7 @@ cdef class Position:
     cdef:
         public str org
         public str chr
-        public unsigned int pos
+        public unsigned long pos
 
     def __cinit__(self, org:str = None, chr:str = None, pos:int = 0):
     #def __init__(self, org:str, chr:str, pos:int):
@@ -84,8 +84,8 @@ cdef class Range:
     cdef:
         public str org
         public str chr
-        public unsigned int start
-        public unsigned int end
+        public unsigned long start
+        public unsigned long end
 
     def __cinit__(self, org:str = None, chr:str = None, start:int = 0, end:int = 0):
     #def __init__(self, org:str, chr:str, start:int, end:int):
