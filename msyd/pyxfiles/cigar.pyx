@@ -246,7 +246,7 @@ cdef class Cigar:
                 # start/end on r, start/end on q, new cg
                 # -1 b/c offset is start of next Cigt
                 ret.append((rlastoffset, roffset -1, qlastoffset, qoffset -1, Cigar(tups=slc)))
-                logger.info(f"{chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
+                #logger.info(f"{chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
                 
                 # reset the counter to slice after the split next time
                 lastind = ind + 1
@@ -310,7 +310,7 @@ cdef class Cigar:
             int rstart = 0
         cdef Cigt cur = self.tups[start]
         while cur.t != ord('='):
-            print(start, qstart, rstart, cur)
+            #print(start, qstart, rstart, cur)
             if c_reffwd.count(cur.t): # skip on r
                 rstart += cur.n
             if c_qryfwd.count(cur.t): # skip on q
@@ -318,7 +318,7 @@ cdef class Cigar:
             # go forward in the loop
             start += 1
             cur = self.tups[start]
-        print(start, qstart, rstart, cur)
+        #print(start, qstart, rstart, cur)
 
         # trim from end until = found
         cdef:
@@ -327,7 +327,7 @@ cdef class Cigar:
             int rend = 0
         cur = self.tups[end]
         while cur.t != ord('='):
-            print(end, qend, rend, cur)
+            #print(end, qend, rend, cur)
             if c_reffwd.count(cur.t): # skip on r
                 rend += cur.n
             if c_qryfwd.count(cur.t): # skip on q
@@ -335,7 +335,7 @@ cdef class Cigar:
             # go forward in the loop
             end -= 1
             cur = self.tups[end]
-        print(end, qend, rend, cur)
+        #print(end, qend, rend, cur)
 
         if only_pos:
             return qstart, qend, rstart, rend
