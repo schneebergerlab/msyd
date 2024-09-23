@@ -238,17 +238,8 @@ cdef match_synal(syndf, alndf, ref='a'):
                     # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
                     logger.warning(f"CIGAR len ({cg.get_len(ref=False)}) not matching coordinate len ({len(rng)}) on {org}! Adjusting end to match CIGAR len (this might be because of clipping).")
                     rng.end = rng.start + cg.get_len(ref=False) -1
-
-
-                # split the multisyns if there are any large indels in the alignments
-                #ret.extend(multisyn.split_indels(SPLIT_INDEL_THRESH))
-                for msyn in multisyn.split_indels(SPLIT_INDEL_THRESH):
-                    if filter_multisyn(msyn) and msyn.check():
-                        ret.append(msyn)
-                    else:
-                        logger.error(f"Invalid Multisyn in: {msyn}")
-                #ret.extend(filter(filter_multisyn, x))
-
+                
+                ret.append(multisyn)
                 synr = next(syniter)[1]
             alnr = next(alniter)[1]
         except StopIteration:
@@ -328,6 +319,22 @@ cdef remove_overlap(syn):
 
     return syn
 # END
+
+cpdef split_indels(syndf):
+        # split the multisyns if there are any large indels in the alignments
+    cdef ret = deque()
+
+    for _, multisyn in syndf.iterrows():
+        multisyn = multisyn[0]
+        # filter out short multisyns here
+        ret.extend([msyn for msyn in multisyn.split_indels(SPLIT_INDEL_THRESH)\
+                if filter_multisyn(msyn)])
+        #for msyn in multisyn.split_indels(SPLIT_INDEL_THRESH):
+        #    if filter_multisyn(msyn):
+        #        ret.append(msyn)
+        #ret.extend(filter(filter_multisyn, multisyn.split_indels(SPLIT_INDEL_THRESH))) # doesn't work for some reason?
+    return pd.DataFrame(list(ret))
+
 
 cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False):
     """
@@ -418,7 +425,7 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     return syndict
 
 
-cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False):
+cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, disable_indelsplitting=False, cores=1, only_core=False):
     # remove overlap
     if not disable_overlapcheck:
         if cores == 1:
@@ -426,6 +433,13 @@ cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, onl
         else:
             with multiprocessing.Pool(cores) as pool:
                 syndfs = pool.map(remove_overlap, syndfs)
+
+    if not disable_indelsplitting:
+        if cores == 1:
+            syndfs = [split_indels(syndf) for syndf in syndfs]
+        else:
+            with multiprocessing.Pool(cores) as pool:
+                syndfs = pool.map(split_indels, syndfs)
 
     logger.info("overlapping synteny trimmed")
 
