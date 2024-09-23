@@ -173,8 +173,8 @@ class Multisyn:
             return [self]
 
         return [Multisyn(
-                        Range(self.ref.org, self.ref.chr, split[0], split[1]),
-                        {org: Range(altrng.org, altrng.chr, split[2], split[3])},
+                        Range(self.ref.org, self.ref.chr, self.ref.start + split[0], self.ref.start + split[1]),
+                        {org: Range(altrng.org, altrng.chr, altrng.start + split[2], altrng.start + split[3])},
                         {org: split[4]}
                         )
                     for split in splits]
