@@ -136,6 +136,8 @@ class Multisyn:
         """
         Trims the alignment of this multisyn to remove mismatches at the start/end.
         Mutates self!
+        Looks for the earliest matching position in any of the alignments.
+        If there are extensive mismatches, this position might still not be identical in all (there might not even be a single shared position at all), but for reasonable alignments this should work fine.
         """
         if not self.cigars_dict: # can't trim if there are no alignments
             return
@@ -155,7 +157,8 @@ class Multisyn:
 
     def split_indels(self, thresh):
         """
-
+        Splits this Multisyn along indels longer than `thresh`.
+        Because aligners sometimes allow very large gaps (kbp-scale and more) in alignments and SyRI keeps these in the SYNAL annotations, this provides a way to treat these as structural rearrangements instead of as indels.
         """
         if len(self.ranges_dict) > 1:
             logger.error("Splitting multisyns with more than 2 genomes not supported! Split before intersecting")
