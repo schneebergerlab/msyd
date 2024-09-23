@@ -21,7 +21,7 @@ cdef class Position:
     cdef:
         public str org
         public str chr
-        public int pos
+        public unsigned int pos
 
     def __cinit__(self, org:str = None, chr:str = None, pos:int = 0):
     #def __init__(self, org:str, chr:str, pos:int):
@@ -84,8 +84,8 @@ cdef class Range:
     cdef:
         public str org
         public str chr
-        public int start
-        public int end
+        public unsigned int start
+        public unsigned int end
 
     def __cinit__(self, org:str = None, chr:str = None, start:int = 0, end:int = 0):
     #def __init__(self, org:str, chr:str, start:int, end:int):
@@ -188,13 +188,18 @@ cdef class Range:
         return Range(self.org, self.chr, self.start + start, self.end - end)
 
     def is_inverted(self):
-        return self.start <= self.end
+        return self.end <= self.start
 
     def check(self):
+        """
+        DEPRECATED, since declaring positions as unsigned ints
+        Does some basic sanity-checking if any positions are negative.
+        """
         if self.start < 0:
             return False
         if self.end < 0:
             return False
+        return True
 
 cpdef read_psf_range(org:str, cell: str):
     """Parse a Range in PSF format
