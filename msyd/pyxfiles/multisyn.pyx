@@ -101,36 +101,40 @@ class Multisyn:
         Returns `False` if any invariants are violated.
         :returns: `True` if the object is a valid `Multisyn` object, else `False`
         """
-
         if not self.ranges_dict:
+            logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict None!")
             return False
-            #raise ValueError("ERROR in Multisyn.check()! ranges_dict None!")
 
-        if not self.ref.check() or self.ref.is_inverted():
+        if self.ref.is_inverted():
+            logger.warning(f"Multisyn.check() found invalid Multisyn! Inverted reference {self.ref}!")
             return False
 
         for rng in self.ranges_dict.values():
-            if not rng.check() or rng.is_inverted():
+            if rng.is_inverted():
+                logger.warning(f"Multisyn.check() found invalid Multisyn! {rng} is inverted!")
                 return False
 
 
-        ## CIGAR checks
+        ## don't check cigars if there are none
         if not self.cigars_dict:
             return True
 
         if self.ranges_dict.keys() != self.cigars_dict.keys():
+            logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict keys not matching cigars_dict keys!")
             return False
-            #raise ValueError("ERROR in Multisyn.check()! ranges_dict keys not matching cigars_dict keys!")
         
         # length check
         reflen = len(self.ref)
         for org in self.get_organisms():
             if self.cigars_dict[org].get_len(ref=True) != reflen:
+                logger.warning(f"Multisyn.check() found invalid Multisyn! CIGAR len ({self.cigars_dict[org].get_len(ref=True)}) not matching reference len ({reflen}) on ref!")
                 return False
-                #raise ValueError("ERROR in Multisyn.check()! CIGAR length not matching reference length!")
             if self.cigars_dict[org].get_len(ref=False) != len(self.ranges_dict[org]):
+                logger.warning(f"Multisyn.check() found invalid Multisyn! CIGAR len ({self.cigars_dict[org].get_len(ref=False)}) not matching reference len ({self.ranges_dict[org]}) on {org}!")
                 return False
-                #raise ValueError("ERROR in Multisyn.check()! CIGAR length not matching query length!")
+
+        ## all checks passed
+        return True
 
     def trim_matching_inplace(self):
         """
