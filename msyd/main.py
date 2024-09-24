@@ -94,6 +94,7 @@ def main():
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
     call_parser.add_argument("--min-syn-id", dest="min_syn_id", help="Percent identity required for a region to be called as syntenic during the realignment step. Default 80.", type=int, default=80)
+    call_parser.add_argument("--split-indel-thresh", dest="split_indel_thresh", help="Alignments will be split along indels longer than this value. Set to 0 to disable splitting alignments. Default 100.", type=int, default=100)
     call_parser.add_argument("--max-realign", dest="max_realign", help="Maximum number of realignment steps to perform. Default 0 (unlimited).", type=int, default=-1)
     call_parser.add_argument("--minimap-preset", dest="mp_preset", help="minimap2 alignment preset to use. Default 'asm20'.", type=str, default="asm20")
 
@@ -200,7 +201,7 @@ def call(args):
     syndict = intersection.prepare_input(qrynames, syns, alns, cores=args.cores, SYNAL=args.SYNAL, base=args.incremental)
     logger.info("Read input files")
 
-    syndict = intersection.process_syndicts(syndict, cores=args.cores)
+    syndict = intersection.process_syndicts(syndict, split_indel_thresh=args.split_indel_thresh, cores=args.cores)
     logger.info("Intersected synteny")
 
     if args.realign:

@@ -351,40 +351,12 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL, disable_overlapcheck=disable_overlapcheck)
+    syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
 
     return process_syndicts(syndict, cores=cores)
 
 
-cpdef process_syndicts(syndict, cores=4):
-    """
-    Small fn to do parallel processing of a dictionary of syndfs per chromosome.
-    """
-    if cores > 1:
-        with multiprocessing.Pool(cores) as pool:
-            return dict(pool.map(_workaround, syndict.items()))
-    else:
-        return dict(map(_workaround, syndict.items()))
-
-    #cdef list chromlist = list(syndict)
-    #cdef int n = len(chromlist)
-    #cdef int i
-    #for i in prange(n, nogil=True):
-    #    with gil:
-    #        chrom = chromlist[i]
-    #        syndf = syndict[chrom]
-    #    intersected = process_syndfs(syndf)
-    #    with gil:
-    #        syndict[chrom] = intersected
-    # return syndict
-
-
-cpdef _workaround(tup): # tup: [chrom, syndfs]
-    # Annoying workaround, because multiprocessing doesn't like lambdas
-    return tup[0], process_syndfs(tup[1])
-
-
-cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
+cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True):
     """
     Fetches input from filenames given to it; mostly parallelized.
     :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
@@ -424,8 +396,38 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
             
     return syndict
 
+cpdef process_syndicts(syndict, split_indel_thresh=SPLIT_INDEL_THRESH, cores=4):
+    """
+    Small fn to do parallel processing of a dictionary of syndfs per chromosome.
+    """
+    global SPLIT_INDEL_THRESH
+    SPLIT_INDEL_THRESH = split_indel_thresh # passing as global variable is annoying, but avoids having to workaround partial in cython
+    if cores > 1:
+        with multiprocessing.Pool(cores) as pool:
+            return dict(pool.map(_workaround, syndict.items()))
+    else:
+        return dict(map(_workaround, syndict.items()))
 
-cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, disable_indelsplitting=False, cores=1, only_core=False):
+    #cdef list chromlist = list(syndict)
+    #cdef int n = len(chromlist)
+    #cdef int i
+    #for i in prange(n, nogil=True):
+    #    with gil:
+    #        chrom = chromlist[i]
+    #        syndf = syndict[chrom]
+    #    intersected = process_syndfs(syndf)
+    #    with gil:
+    #        syndict[chrom] = intersected
+    # return syndict
+
+cpdef _workaround(tup): # tup: [chrom, syndfs]
+    # Annoying workaround, because multiprocessing doesn't like lambdas
+    return tup[0], process_syndfs(tup[1])
+
+
+
+
+cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False):
     # remove overlap
     if not disable_overlapcheck:
         if cores == 1:
@@ -434,7 +436,7 @@ cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, disable_inde
             with multiprocessing.Pool(cores) as pool:
                 syndfs = pool.map(remove_overlap, syndfs)
 
-    if not disable_indelsplitting:
+    if SPLIT_INDEL_THRESH > 0:
         if cores == 1:
             syndfs = [split_indels(syndf) for syndf in syndfs]
         else:
