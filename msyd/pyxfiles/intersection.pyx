@@ -36,9 +36,9 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
     """
     if not multisyn: # filter empty objects to handle failures
         return False
-    if not multisyn.check():
-        return False
     if len(multisyn.ref) < MIN_SYN_THRESH: # filter small regions
+        return False
+    if not multisyn.check():
         return False
 
     # delete small syntenic regions from the multisyn object, mutates multisyn but that should be fine in this case
