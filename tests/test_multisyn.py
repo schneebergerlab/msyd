@@ -26,8 +26,8 @@ def simple_multisyn():
 
 def get_simple_multisyn():
     return Multisyn(
-            Range('test', 'chr1', 'NaN', 'chr1', 100),
-            {'test1': Range('test1', 'chr1', 'NaN', 'chr1', 100), 'test2': Range('test2', 'chr1', 'NaN', 'chr1', 100)},
+            Range('test', 'chr1', 'chr1', 100),
+            {'test1': Range('test1', 'chr1', 'chr1', 100), 'test2': Range('test2', 'chr1', 'chr1', 100)},
             {'test1': cigar.cigar_from_string('100='), 'test2': cigar.cigar_from_string('100=')})
 
 def intermediate_multisyn_nocg():
@@ -41,8 +41,8 @@ def intermediate_multisyn():
 
 def get_intermediate_multisyn():
     return Multisyn(
-            Range('test', 'chr1', 'NaN', 101, 200),
-            {'test1': Range('test1', 'chr1', 'NaN', 101, 200), 'test2': Range('test2', 'chr1', 'NaN', 101, 200)},
+            Range('test', 'chr1', 101, 200),
+            {'test1': Range('test1', 'chr1', 101, 200), 'test2': Range('test2', 'chr1', 101, 200)},
             {'test1': cigar.cigar_from_string('50=1X49='), 'test2': cigar.cigar_from_string('100=')})
 
 @pytest.fixture
@@ -57,13 +57,13 @@ def complex_multisyn():
 
 def get_complex_multisyn():
     return Multisyn(
-            Range('test', 'chr1', 'NaN', 1001, 1500),
+            Range('test', 'chr1', 1001, 1500),
             {
-                'test1': Range('test1', 'chr1', 'NaN', 1101, 1600),
-                'test2': Range('test2', 'chr2', 'NaN', 901, 1400),
-                'test3': Range('test3', 'chr1', 'NaN', 1001, 1550),
-                'test4': Range('test4', 'chr3', 'NaN', 951, 1430),
-                'test5': Range('test5', 'chr3', 'NaN', 951, 1430)
+                'test1': Range('test1', 'chr1', 1101, 1600),
+                'test2': Range('test2', 'chr2', 901, 1400),
+                'test3': Range('test3', 'chr1', 1001, 1550),
+                'test4': Range('test4', 'chr3', 951, 1430),
+                'test5': Range('test5', 'chr3', 951, 1430)
             },
             {
                 'test1': cigar.cigar_from_string('500='),
@@ -126,18 +126,18 @@ def test_droponorg(all_multisyns, start, end):
 
 @pytest.fixture
 def overlapping_multisyns():
-    return (Multisyn(Range('test', 'chr1', 'NaN', 101, 200),
+    return (Multisyn(Range('test', 'chr1', 101, 200),
         {
-            'test1': Range('test1', 'chr1', 'NaN', 151, 250),
-            'test2': Range('test2', 'chr1', 'NaN', 101, 200)
+            'test1': Range('test1', 'chr1', 151, 250),
+            'test2': Range('test2', 'chr1', 101, 200)
         },{
             'test1': cigar.cigar_from_string('10I30=1X29=1X9=10D10=1X9='),
             'test2': cigar.cigar_from_string('30=2X28=1X29=1X4=1X4=')
             }
-        ), Multisyn(Range('test', 'chr1', 'NaN', 151, 220),
+        ), Multisyn(Range('test', 'chr1', 151, 220),
             {
-                'test3': Range('test3', 'chr1', 'NaN', 151, 220),
-                'test4': Range('test4', 'chr1', 'NaN', 171, 220)
+                'test3': Range('test3', 'chr1', 151, 220),
+                'test4': Range('test4', 'chr1', 171, 220)
             }, {
                 'test3': cigar.cigar_from_string('30=1X29=1X9='),
                 'test4': cigar.cigar_from_string('20=2X28=20D')
@@ -180,20 +180,20 @@ def test_find_overlaps_basic(overlapping_multisyns, cg, only_core):
                 assert len(multi.ranges_dict[org]) == multi.cigars_dict[org].get_len(ref=False)
 
 
-ov_ov_nocg = Multisyn(Range('test', 'chr1', 'NaN', 151, 200),
+ov_ov_nocg = Multisyn(Range('test', 'chr1', 151, 200),
         {
-            'test1': Range('test1', 'chr1', 'NaN', 201, 250),
-            'test2': Range('test2', 'chr1', 'NaN', 151, 200),
-            'test3': Range('test3', 'chr1', 'NaN', 151, 200),
-            'test4': Range('test4', 'chr1', 'NaN', 171, 200)
+            'test1': Range('test1', 'chr1', 201, 250),
+            'test2': Range('test2', 'chr1', 151, 200),
+            'test3': Range('test3', 'chr1', 151, 200),
+            'test4': Range('test4', 'chr1', 171, 200)
             }, None)
 
-ov_ov = Multisyn(Range('test','chr1', 'NaN', 151, 200),
+ov_ov = Multisyn(Range('test','chr1', 151, 200),
         {
-            'test1': Range('test1', 'chr1', 'NaN', 211, 250), # need to drop 50 at start
-            'test2': Range('test2', 'chr1', 'NaN', 151, 200),
-            'test3': Range('test3', 'chr1', 'NaN', 151, 200), # need to drop 20 at end
-            'test4': Range('test4', 'chr1', 'NaN', 171, 220)
+            'test1': Range('test1', 'chr1', 211, 250), # need to drop 50 at start
+            'test2': Range('test2', 'chr1', 151, 200),
+            'test3': Range('test3', 'chr1', 151, 200), # need to drop 20 at end
+            'test4': Range('test4', 'chr1', 171, 220)
         },{
             'test1': cigar.cigar_from_string('10=1X9=10D10=1X9='),
             'test2': cigar.cigar_from_string('10=1X29=1X4=1X4='),
@@ -201,30 +201,30 @@ ov_ov = Multisyn(Range('test','chr1', 'NaN', 151, 200),
             'test4': cigar.cigar_from_string('20=2X28=')
         })
 
-ov_noov_left_nocg = Multisyn(Range('test', 'chr1', 'NaN', 101, 150),
+ov_noov_left_nocg = Multisyn(Range('test', 'chr1', 101, 150),
         {
-            'test1': Range('test1', 'chr1', 'NaN', 151, 200),
-            'test2': Range('test2', 'chr1', 'NaN', 101, 150)
+            'test1': Range('test1', 'chr1', 151, 200),
+            'test2': Range('test2', 'chr1', 101, 150)
             }, None)
 
-ov_noov_right_nocg = Multisyn(Range('test', 'chr1', 'NaN', 201, 220),
+ov_noov_right_nocg = Multisyn(Range('test', 'chr1', 201, 220),
         {
-            'test3': Range('test3', 'chr1', 'NaN', 201, 220)
+            'test3': Range('test3', 'chr1', 201, 220)
             # test4 should be filtered out b/c it would be too small
             }, None)
 
-ov_ov_left = Multisyn(Range('test', 'chr1', 'NaN', 101, 150),
+ov_ov_left = Multisyn(Range('test', 'chr1', 101, 150),
         {
-            'test1': Range('test1', 'chr1', 'NaN', 151, 210),
-            'test2': Range('test2', 'chr1', 'NaN', 101, 150)
+            'test1': Range('test1', 'chr1', 151, 210),
+            'test2': Range('test2', 'chr1', 101, 150)
         }, {
             'test1': cigar.cigar_from_string('10I30=1X19='),
             'test2': cigar.cigar_from_string('30=2X18=')
             })
 
-ov_ov_right = Multisyn(Range('test', 'chr1', 'NaN', 201, 220),
+ov_ov_right = Multisyn(Range('test', 'chr1', 201, 220),
         {
-            'test3': Range('test3', 'chr1', 'NaN', 201, 220)
+            'test3': Range('test3', 'chr1', 201, 220)
             # test4 should be dropped
         }, {
             'test3': cigar.cigar_from_string('10=1X9=')
