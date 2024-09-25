@@ -8,7 +8,7 @@ import platform
 
 import msyd.util as util
 
-from msyd.pansyn import *
+from msyd.multisyn import *
 from msyd.coords import Range, Pansyn
 from msyd.cigar import Cigar
 
@@ -40,9 +40,9 @@ def read_fasta(f):
     return ret
 
 
-def test_pansyn_int():
+def test_multisyn_int():
     """
-    Integration test testing the higher-order functionality of the pansyn module by validating the alignments.
+    Integration test testing the higher-order functionality of the multisyn module by validating the alignments.
     """
     ## init
     # on the cluster, go into full ampril, locally go into ampril_reduced
@@ -56,18 +56,18 @@ def test_pansyn_int():
     cnt = 0
     totlen = 0
     
-    # get pansyn df
+    # get multisyn df
     df = util.crosssyn_from_lists(syns, alns)
 
     ## do the validation
     for row in df.iterrows():
         rowcnt = 0
-        pan = row[1][0]
-        refseq = refgen[pan.ref.chr][pan.ref.start:pan.ref.end]
-        #print(pan)
-        for org in pan.get_organisms():
-            rng = pan.ranges_dict[org]
-            cg = pan.cigars_dict[org]
+        multi = row[1][0]
+        refseq = refgen[multi.ref.chr][multi.ref.start:multi.ref.end]
+        #print(multi)
+        for org in multi.get_organisms():
+            rng = multi.ranges_dict[org]
+            cg = multi.cigars_dict[org]
             #print(org, rng, cg)
             
             qryseq = gens[rng.org][rng.chr][rng.start:rng.end]
@@ -106,7 +106,7 @@ def test_pansyn_int():
             assert(progq -1 == len(qryseq))
 
         cnt += rowcnt
-        totlen += len(pan.ref)
-        #print(cnt/len(pan.ref), cnt, len(pan.ref), pan)
+        totlen += len(multi.ref)
+        #print(cnt/len(multi.ref), cnt, len(multi.ref), multi)
     print(cnt/totlen, cnt, totlen)
     raise ValueError()

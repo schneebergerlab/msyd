@@ -6,7 +6,7 @@ import copy
 
 import msyd.util as util
 
-from msyd.pansyn import *
+from msyd.multisyn import *
 from msyd.coords import Range, Pansyn
 from msyd.cigar import Cigar
 import msyd.cigar as cigar
@@ -15,47 +15,47 @@ import msyd.cigar as cigar
 ### Tests for the `Pansyn` module
 
 @pytest.fixture
-def simple_pansyn_nocg():
-    ret = simple_pansyn()
+def simple_multisyn_nocg():
+    ret = simple_multisyn()
     ret.cigars_dict = None
     return ret
 
 @pytest.fixture
-def simple_pansyn():
-    return get_simple_pansyn()
+def simple_multisyn():
+    return get_simple_multisyn()
 
-def get_simple_pansyn():
+def get_simple_multisyn():
     return Pansyn(
             Range('test', 'chr1', 'NaN', 'chr1', 100),
             {'test1': Range('test1', 'chr1', 'NaN', 'chr1', 100), 'test2': Range('test2', 'chr1', 'NaN', 'chr1', 100)},
             {'test1': cigar.cigar_from_string('100='), 'test2': cigar.cigar_from_string('100=')})
 
-def intermediate_pansyn_nocg():
-    ret = intermediate_pansyn()
+def intermediate_multisyn_nocg():
+    ret = intermediate_multisyn()
     ret.cigars_dict = None
     return ret
 
 @pytest.fixture
-def intermediate_pansyn():
-    return get_intermediate_pansyn()
+def intermediate_multisyn():
+    return get_intermediate_multisyn()
 
-def get_intermediate_pansyn():
+def get_intermediate_multisyn():
     return Pansyn(
             Range('test', 'chr1', 'NaN', 101, 200),
             {'test1': Range('test1', 'chr1', 'NaN', 101, 200), 'test2': Range('test2', 'chr1', 'NaN', 101, 200)},
             {'test1': cigar.cigar_from_string('50=1X49='), 'test2': cigar.cigar_from_string('100=')})
 
 @pytest.fixture
-def complex_pansyn_nocg():
-    ret = complex_pansyn()
+def complex_multisyn_nocg():
+    ret = complex_multisyn()
     ret.cigars_dict = None
     return ret
 
 @pytest.fixture
-def complex_pansyn():
-    return get_complex_pansyn()
+def complex_multisyn():
+    return get_complex_multisyn()
 
-def get_complex_pansyn():
+def get_complex_multisyn():
     return Pansyn(
             Range('test', 'chr1', 'NaN', 1001, 1500),
             {
@@ -73,59 +73,59 @@ def get_complex_pansyn():
                 'test5': cigar.cigar_from_string('100=10I19=1X9=20D50=1X19=1X9=1X30=10I20=20D100=1X49=1X49=')                
             })
 
-@pytest.fixture(params=[get_simple_pansyn, get_intermediate_pansyn, get_complex_pansyn])
-def all_pansyns(request):
+@pytest.fixture(params=[get_simple_multisyn, get_intermediate_multisyn, get_complex_multisyn])
+def all_multisyns(request):
     return request.param()
 
 
 # rudimentary test for the __add__ function
-def test_add(simple_pansyn, complex_pansyn):
-    ret = simple_pansyn + complex_pansyn
-    assert ret.ref == simple_pansyn.ref
-    assert set(ret.ranges_dict.keys()) == set(simple_pansyn.ranges_dict.keys()).union(complex_pansyn.ranges_dict.keys())
-    assert set(ret.cigars_dict.keys()) == set(simple_pansyn.cigars_dict.keys()).union(complex_pansyn.cigars_dict.keys())
+def test_add(simple_multisyn, complex_multisyn):
+    ret = simple_multisyn + complex_multisyn
+    assert ret.ref == simple_multisyn.ref
+    assert set(ret.ranges_dict.keys()) == set(simple_multisyn.ranges_dict.keys()).union(complex_multisyn.ranges_dict.keys())
+    assert set(ret.cigars_dict.keys()) == set(simple_multisyn.cigars_dict.keys()).union(complex_multisyn.cigars_dict.keys())
 
 @pytest.mark.parametrize("start", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
 @pytest.mark.parametrize("end", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
-def test_drop(all_pansyns, start, end):
-    drp = all_pansyns.drop(start, end)
+def test_drop(all_multisyns, start, end):
+    drp = all_multisyns.drop(start, end)
     l = len(drp.ref)
-    assert l == len(all_pansyns.ref) - start - end
+    assert l == len(all_multisyns.ref) - start - end
 
-    for org in all_pansyns.get_organisms():
+    for org in all_multisyns.get_organisms():
         assert drp.cigars_dict[org].get_len(ref=False) == len(drp.ranges_dict[org])
         assert drp.cigars_dict[org].get_len(ref=True) == l
 
 @pytest.mark.parametrize("start", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
 @pytest.mark.parametrize("end", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
-def test_dropinplace(all_pansyns, start, end):
+def test_dropinplace(all_multisyns, start, end):
 
-    pansyn = copy.copy(all_pansyns)
-    #drpctl = pansyn.drop(start, end)
-    pansyn.drop_inplace(start, end)
+    multisyn = copy.copy(all_multisyns)
+    #drpctl = multisyn.drop(start, end)
+    multisyn.drop_inplace(start, end)
 
 
-    l = len(pansyn.ref)
-    assert l == len(all_pansyns.ref) - start - end
+    l = len(multisyn.ref)
+    assert l == len(all_multisyns.ref) - start - end
 
-    for org in all_pansyns.get_organisms():
-        assert pansyn.cigars_dict[org].get_len(ref=False) == len(pansyns.ranges_dict[org])
-        assert pansyn.cigars_dict[org].get_len(ref=True) == l
+    for org in all_multisyns.get_organisms():
+        assert multisyn.cigars_dict[org].get_len(ref=False) == len(multisyns.ranges_dict[org])
+        assert multisyn.cigars_dict[org].get_len(ref=True) == l
 
 @pytest.mark.parametrize("start", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
 @pytest.mark.parametrize("end", [0, 10, 40,  pytest.param(-5, marks=pytest.mark.xfail(raises=ValueError, strict=True))])
-def test_droponorg(all_pansyns, start, end):
-    for org in all_pansyns.get_organisms():
-        drp = pansyn.drop_on_org(start, end, org)
+def test_droponorg(all_multisyns, start, end):
+    for org in all_multisyns.get_organisms():
+        drp = multisyn.drop_on_org(start, end, org)
         l = len(drp.ranges_dict[org])
-        assert l == len(all_pansyns.ranges_dict[org]) - start - end
+        assert l == len(all_multisyns.ranges_dict[org]) - start - end
 
         for org in drp.get_organisms():
             assert drp.cigars_dict[org].get_len(ref=False) == len(drp.ranges_dict[org])
             assert drp.cigars_dict[org].get_len(ref=True) == l
 
 @pytest.fixture
-def overlapping_pansyns():
+def overlapping_multisyns():
     return (Pansyn(Range('test', 'chr1', 'NaN', 101, 200),
         {
             'test1': Range('test1', 'chr1', 'NaN', 151, 250),
@@ -147,11 +147,11 @@ def overlapping_pansyns():
 
 @pytest.mark.parametrize("only_core", [False, True])
 @pytest.mark.parametrize("cg", [False, True])
-def test_find_overlaps_basic(overlapping_pansyns, cg, only_core):
+def test_find_overlaps_basic(overlapping_multisyns, cg, only_core):
     """
         Tests some basic properties of calc_overlap output for all possible configurations.
     """
-    l, r = overlapping_pansyns
+    l, r = overlapping_multisyns
     if not cg:
         l.cigars_dict = None
         r.cigars_dict = None
@@ -162,22 +162,22 @@ def test_find_overlaps_basic(overlapping_pansyns, cg, only_core):
     assert len(res) <= 3
     # check for proper lengths
     maxlen = max(len(l.ref), len(r.ref))
-    for pan in res:
-        assert maxlen >= len(pan.ref)# >= MIN_SYN_THRESH
+    for multi in res:
+        assert maxlen >= len(multi.ref)# >= MIN_SYN_THRESH
 
     # check that output is sorted
     assert res == sorted(res)
     
     # check that no organisms are accidentally added
     maxorganisms = set(l.get_organisms()).union(set(r.get_organisms()))
-    for pan in res:
-        assert set(pan.get_organisms()).issubset(maxorganisms)
+    for multi in res:
+        assert set(multi.get_organisms()).issubset(maxorganisms)
 
     if cg: # if has cgs, check that their length is correct
-        for pan in res:
-            for org in pan.get_organisms():
-                assert len(pan.ref) == pan.cigars_dict[org].get_len(ref=True)
-                assert len(pan.ranges_dict[org]) == pan.cigars_dict[org].get_len(ref=False)
+        for multi in res:
+            for org in multi.get_organisms():
+                assert len(multi.ref) == multi.cigars_dict[org].get_len(ref=True)
+                assert len(multi.ranges_dict[org]) == multi.cigars_dict[org].get_len(ref=False)
 
 
 ov_ov_nocg = Pansyn(Range('test', 'chr1', 'NaN', 151, 200),
@@ -230,11 +230,11 @@ ov_ov_right = Pansyn(Range('test', 'chr1', 'NaN', 201, 220),
             'test3': cigar.cigar_from_string('10=1X9=')
             })
 
-def test_find_overlaps_nocg(overlapping_pansyns):
+def test_find_overlaps_nocg(overlapping_multisyns):
     """
-        Tests the concrete case of the Pansyns generated by overlapping_pansyns without CIGAR strings.
+        Tests the concrete case of the Pansyns generated by overlapping_multisyns without CIGAR strings.
     """
-    l, r = overlapping_pansyns
+    l, r = overlapping_multisyns
     l.cigars_dict = None
     r.cigars_dict = None
     l = pd.DataFrame([l])
@@ -243,22 +243,22 @@ def test_find_overlaps_nocg(overlapping_pansyns):
     ov = res.loc[0][0]
     assert ov == ov_ov_nocg
 
-def test_find_overlaps(overlapping_pansyns):
+def test_find_overlaps(overlapping_multisyns):
     """
-        Tests the concrete case of the Pansyns generated by overlapping_pansyns with CIGAR strings.
+        Tests the concrete case of the Pansyns generated by overlapping_multisyns with CIGAR strings.
     """
-    l, r = overlapping_pansyns
+    l, r = overlapping_multisyns
     l = pd.DataFrame([l])
     r = pd.DataFrame([r])
     res = find_overlaps(l, r, only_core=True)
     ov = res.loc[0][0]
     assert ov == ov_ov
 
-def test_find_overlaps_cross_nocg(overlapping_pansyns):
+def test_find_overlaps_cross_nocg(overlapping_multisyns):
     """
-        Tests crosssynteny calling in the concrete case of the Pansyns generated by overlapping_pansyns without CIGAR strings.
+        Tests crosssynteny calling in the concrete case of the Pansyns generated by overlapping_multisyns without CIGAR strings.
     """
-    l, r = overlapping_pansyns
+    l, r = overlapping_multisyns
     l.cigars_dict = None
     r.cigars_dict = None
     l = pd.DataFrame([l])
@@ -272,11 +272,11 @@ def test_find_overlaps_cross_nocg(overlapping_pansyns):
     assert res[0] == ov_noov_left_nocg
     assert res[2] == ov_noov_right_nocg
 
-def test_find_overlaps_cross(overlapping_pansyns):
+def test_find_overlaps_cross(overlapping_multisyns):
     """
-    Tests crossynteny calling in the concrete case of the Pansyns generated by overlapping_pansyns.
+    Tests crossynteny calling in the concrete case of the Pansyns generated by overlapping_multisyns.
     """
-    l, r = overlapping_pansyns
+    l, r = overlapping_multisyns
     l = pd.DataFrame([l])
     r = pd.DataFrame([r])
     res = find_overlaps(l, r, only_core=False)
