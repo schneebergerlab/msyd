@@ -88,7 +88,6 @@ def test_getrem_length_invariant(example_cigar, ref, start):
         if i < l:
             assert(example_cigar.get_removed(i, ref=ref, start=start)[1].get_len(ref=ref) + i == l)
 
-
 @pytest.mark.parametrize("ref", [True, False])
 def test_getrem_inv(example_cigar, ref):
     # tests that reversing a cigar string and then skipping X is the same as getting X 
@@ -100,3 +99,25 @@ def test_getrem_inv(example_cigar, ref):
     assert invrem.reverse() == rem
     assert invrem == rem.reverse()
 
+
+def test_split_simple():
+    cg = cigar.cigar_from_string("100=500D100=")
+
+    assert cg.split_indels(1000) == [] # test empty case
+
+    assert cg.split_indels(100) == [(0, 99, 0, 99, cigar.cigar_from_string("100=")),
+                                    (600, 699, 100, 199, cigar.cigar_from_string("100="))]
+
+def test_split_invariant():
+    cg1 = cigar.cigar_from_string("100=500D100=")
+    cg2 = cigar.cigar_from_string("100=500D100=200I")
+    assert cg1.split_indels(100) == cg2.split_indels(100)
+
+    cg3 = cigar.cigar_from_string("200D100=500D100=")
+    cg4 = cigar.cigar_from_string("200D100=500D100=200D")
+    assert cg3.split_indels(100) == cg4.split_indels(100)
+
+def test_initial_gap():
+    cg = cigar.cigar_from_string("200D100=500D100=")
+    assert cg.split_indels(100) == [(200, 299, 0, 99, cigar.cigar_from_string("100=")),
+                                    (800, 899, 100, 199, cigar.cigar_from_string("100="))]
