@@ -231,22 +231,27 @@ cdef class Cigar:
             Cigt cur
             vector[Cigt] slc
 
+        #logger.info(f"Splitting {self.to_string()}")
+
         while ind < self.tups.size():
             cur = self.tups[ind]
 
             if indelset.count(cur.t) and cur.n >= thresh:
                 # split required
-                # slicing is apparently super slow, so do the subsetting manually
-                slc = vector[Cigt]()
-                slc.reserve(ind - lastind)
-                while lastind < ind:
-                    slc.push_back(self.tups[lastind])
-                    lastind += 1
+                
+                if ind - lastind > 0:
+                    # do not split into an empty CG
+                    slc = vector[Cigt]()
+                    slc.reserve(ind - lastind)
+                    # slicing is apparently super slow, so do the subsetting manually
+                    while lastind < ind:
+                        slc.push_back(self.tups[lastind])
+                        lastind += 1
 
-                # start/end on r, start/end on q, new cg
-                # -1 b/c offset is start of next Cigt
-                ret.append((rlastoffset, roffset -1, qlastoffset, qoffset -1, Cigar(tups=slc)))
-                #logger.info(f"{chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
+                    # start/end on r, start/end on q, new cg
+                    # -1 b/c offset is start of next Cigt
+                    ret.append((rlastoffset, roffset -1, qlastoffset, qoffset -1, Cigar(tups=slc)))
+                    #logger.info(f"At {ind} ({ret[-1][0]} bp on ref), {chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
                 
                 # reset the counter to slice after the split next time
                 lastind = ind + 1
@@ -267,6 +272,19 @@ cdef class Cigar:
             if c_qryfwd.count(cur.t):
                 qoffset += cur.n
             ind += 1
+
+        # add the last one if there was an open interval at the end of the Cigar
+        if lastind > 0 and lastind < ind:
+            slc = vector[Cigt]()
+            slc.reserve(ind - lastind)
+            # slicing is apparently super slow, so do the subsetting manually
+            while lastind < ind:
+                slc.push_back(self.tups[lastind])
+                lastind += 1
+
+            # start/end on r, start/end on q, new cg
+            # -1 b/c offset is start of next Cigt
+            ret.append((rlastoffset, roffset -1, qlastoffset, qoffset -1, Cigar(tups=slc)))
 
         return ret
 
