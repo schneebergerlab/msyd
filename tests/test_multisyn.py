@@ -6,7 +6,8 @@ import copy
 
 import msyd.util as util
 
-from msyd.multisyn import *
+from msyd.intersection import *
+from msyd.multisyn import Multisyn
 from msyd.coords import Range
 from msyd.cigar import Cigar
 import msyd.cigar as cigar
