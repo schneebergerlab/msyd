@@ -1,13 +1,14 @@
 #!/bin/python3
 
-from msyd.util import *
+#from msyd.util import *
 import msyd.util as util
-from msyd.coords import Range, Pansyn
+from msyd.coords import Range
+from msyd.multisyn import Multisyn
 import pytest
 
 
 def test_degree_filters(): 
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -21,7 +22,7 @@ def test_degree_filters():
     assert(compile_filter_py('deg>=7')(ps) == False)
 
 def test_range_filters():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -36,7 +37,7 @@ def test_range_filters():
     assert(compile_filter_py('on Chr4')(ps) == False)
 
 def test_orgs_filters():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -47,7 +48,7 @@ def test_orgs_filters():
     assert(compile_filter_py('cont ref')(ps) == False)
 
 def test_multi_orgs():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -61,7 +62,7 @@ def test_multi_orgs():
     assert(compile_filter_py('cont all org1,org99')(ps) == False)
 
 def test_not():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -71,7 +72,7 @@ def test_not():
     assert(compile_filter_py('not on Chr4')(ps) == True)
 
 def test_and():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -82,7 +83,7 @@ def test_and():
     assert(compile_filter_py('(not on Chr4) and (on Chr3)')(ps) == True)
 
 def test_or():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),
@@ -93,7 +94,7 @@ def test_or():
     assert(compile_filter_py('(not on Chr4) or (on Chr3)')(ps) == True)
 
 def test_xor():
-    ps = Pansyn(Range('ref', 'Chr3', 'x', 100, 200), {
+    ps = Multisyn(Range('ref', 'Chr3', 'x', 100, 200), {
         'org1': Range('org1', 'Chr3','x', 110, 210),
         'org2': Range('org2', 'Chr3','x', 150, 250),
         'org3': Range('org3', 'Chr3','x', 90, 190),

@@ -9,7 +9,8 @@ import platform
 import msyd.util as util
 
 from msyd.multisyn import *
-from msyd.coords import Range, Pansyn
+from msyd.coords import Range
+from msyd.multisyn import Multisyn
 from msyd.cigar import Cigar
 
 
