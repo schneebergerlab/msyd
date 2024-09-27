@@ -170,6 +170,8 @@ class Multisyn:
 
         org = list(self.ranges_dict)[0]
         altrng = self.ranges_dict[org]
+
+        #logger.info(f"Splitting multisyn at {self.ref}")
         splits = list(self.cigars_dict.values())[0].split_indels(thresh=thresh)
 
         # shortcut to avoid copying unnecessarily
@@ -251,7 +253,7 @@ class Multisyn:
         Returns a new `Multisyn` object with `start`/`end` positions from the start/end of this multisyntenic region removed, respecting cigar alignments if not `None`.
         """
         if start < 0 or end < 0 or start + end > len(self.ref):
-            logger.error(f"Tried to drop invalid start ({start}) or end ({end}) on this Multisyn with length on the reference {len(self.ref)}")
+            logger.error(f"Tried to drop invalid start ({start}) or end ({end}) on this Multisyn with length on the reference {len(self.ref)} at {self.ref}")
             raise ValueError("tried to drop invalid start/end!")
 
         ref = self.ref.drop(start, end)
