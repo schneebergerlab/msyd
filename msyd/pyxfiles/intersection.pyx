@@ -39,6 +39,7 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
     if len(multisyn.ref) < MIN_SYN_THRESH: # filter small regions
         return False
     if not multisyn.check():
+        logger.warning(f"{multisyn}")
         return False
 
     # delete small syntenic regions from the multisyn object, mutates multisyn but that should be fine in this case
@@ -437,6 +438,7 @@ cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, onl
                 syndfs = pool.map(remove_overlap, syndfs)
 
     if SPLIT_INDEL_THRESH > 0:
+        logger.info(f"Splitting alignments at indels > {SPLIT_INDEL_THRESH} bp")
         if cores == 1:
             syndfs = [split_indels(syndf) for syndf in syndfs]
         else:

@@ -247,11 +247,11 @@ cdef class Cigar:
                     while lastind < ind:
                         slc.push_back(self.tups[lastind])
                         lastind += 1
-
+                    
                     # start/end on r, start/end on q, new cg
                     # -1 b/c offset is start of next Cigt
                     ret.append((rlastoffset, roffset -1, qlastoffset, qoffset -1, Cigar(tups=slc)))
-                    #logger.info(f"At {ind} ({ret[-1][0]} bp on ref), {chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
+                    #logger.info(f"At {ind} ({ret[-1][1]} bp on ref), {chr(cur.t)}, {cur.n}, split off indices: {ret[-1][0:4]}, cglen ret {ret[-1][-1].get_len(ref=True)} (offsetlen {ret[-1][1] - ret[-1][0] +1}), qry {ret[-1][-1].get_len(ref=False)} (offsetlen {ret[-1][3] - ret[-1][2] +1})")
                 
                 # reset the counter to slice after the split next time
                 lastind = ind + 1

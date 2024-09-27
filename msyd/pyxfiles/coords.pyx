@@ -188,7 +188,7 @@ cdef class Range:
         return Range(self.org, self.chr, self.start + start, self.end - end)
 
     def is_inverted(self):
-        return self.end <= self.start
+        return self.end < self.start
 
     def check(self):
         """
