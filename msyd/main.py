@@ -90,6 +90,7 @@ def main():
     call_parser.add_argument("--realign", "-ali", dest='realign', action='store_true', default=False, help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
     call_parser.add_argument("--pairwise", dest='pairwise', required=False, type=argparse.FileType('r'), help="Path to a TSV containing paths to full pairwise alignments that msyd will read in from disk during realignment if this parameter is passed. Otherwise, individual regions will be realigned on the fly with minimap2/mappy. This is useful if you already have pairwise alignments, or want to use a different aligner.")
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
+    call_parser.add_argument("--no-trim", dest='trim', action='store_false', default=True, help="Don't trim mismatches at the start/end of alignments. Can be useful when there are many SNPS.")
     call_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
@@ -201,7 +202,7 @@ def call(args):
     syndict = intersection.prepare_input(qrynames, syns, alns, cores=args.cores, SYNAL=args.SYNAL, base=args.incremental)
     logger.info("Read input files")
 
-    syndict = intersection.process_syndicts(syndict, split_indel_thresh=args.split_indel_thresh, cores=args.cores)
+    syndict = intersection.process_syndicts(syndict, split_indel_thresh=args.split_indel_thresh, cores=args.cores, only_core=args.core, trim=args.trim)
     logger.info("Intersected synteny")
 
     if args.realign:

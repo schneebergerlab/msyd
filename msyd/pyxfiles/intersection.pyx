@@ -337,7 +337,7 @@ cpdef split_indels(syndf):
     return pd.DataFrame(list(ret))
 
 
-cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False):
+cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False, split_indel_thresh=SPLIT_INDEL_THRESH, trim=True):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -354,7 +354,7 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
 
     syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
 
-    return process_syndicts(syndict, cores=cores)
+    return process_syndicts(syndict, cores=cores, only_core=only_core, trim=trim, split_indel_thresh=split_indel_thresh)
 
 
 cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True):
@@ -397,17 +397,18 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
             
     return syndict
 
-cpdef process_syndicts(syndict, split_indel_thresh=SPLIT_INDEL_THRESH, cores=4):
+cpdef process_syndicts(syndict, split_indel_thresh=SPLIT_INDEL_THRESH, cores=4, only_core=False, trim=True):
     """
     Small fn to do parallel processing of a dictionary of syndfs per chromosome.
     """
     global SPLIT_INDEL_THRESH
     SPLIT_INDEL_THRESH = split_indel_thresh # passing as global variable is annoying, but avoids having to workaround partial in cython
+    argsdict = {'only_core': only_core, 'trim': trim}
     if cores > 1:
         with multiprocessing.Pool(cores) as pool:
-            return dict(pool.map(_workaround, syndict.items()))
+            return dict(pool.map(_workaround, [(it[0], it[1], argsdict) for it in  syndict.items()]))
     else:
-        return dict(map(_workaround, syndict.items()))
+        return dict(map(_workaround, [(it[0], it[1], argsdict) for it in  syndict.items()]))
 
     #cdef list chromlist = list(syndict)
     #cdef int n = len(chromlist)
@@ -421,14 +422,14 @@ cpdef process_syndicts(syndict, split_indel_thresh=SPLIT_INDEL_THRESH, cores=4):
     #        syndict[chrom] = intersected
     # return syndict
 
-cpdef _workaround(tup): # tup: [chrom, syndfs]
+cpdef _workaround(tup): # tup: [chrom, syndfs, dict kwargs]
     # Annoying workaround, because multiprocessing doesn't like lambdas
-    return tup[0], process_syndfs(tup[1])
+    return tup[0], process_syndfs(tup[1], **tup[2])
 
 
 
 
-cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False):
+cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False, trim=True):
     # remove overlap
     if not disable_overlapcheck:
         if cores == 1:
@@ -452,14 +453,14 @@ cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, onl
         logger.info("reading in PSF for incremental calling")
         syndfs.append(base)
 
-    return reduce_find_overlaps(syndfs, cores, only_core=only_core)
+    return reduce_find_overlaps(syndfs, cores, only_core=only_core, trim=trim)
 # END
 
-cpdef reduce_find_overlaps(syns, cores, only_core=False):
+cpdef reduce_find_overlaps(syns, cores, only_core=False, trim=True):
     if len(syns) == 0:
         return None
     multisyns = None
-    ovlap = functools.partial(find_overlaps, only_core=only_core)
+    ovlap = functools.partial(find_overlaps, only_core=only_core, trim=trim)
     if cores > 1:
         multisyns = util.parallel_reduce(ovlap, syns, cores)
     else:
