@@ -109,9 +109,10 @@ class Multisyn:
             logger.warning(f"Multisyn.check() found invalid Multisyn! Inverted reference {self.ref}!")
             return False
 
-        for rng in self.ranges_dict.values():
+        for org, rng in self.ranges_dict.items():
             if rng.is_inverted():
                 logger.warning(f"Multisyn.check() found invalid Multisyn! {rng} is inverted!")
+                logger.warning(f"Cigar: {self.cigars_dict[org]}")
                 return False
 
 
@@ -281,7 +282,7 @@ class Multisyn:
                         start_dropped, cg = cg.get_removed(start, start=True, ref=True)
                     else:
                         print(traceback.format_exc())
-                        logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
+                        logger.warning(f"Tried to drop more({start}/{end}) than length from empty Cigar: {rng}(len: {len(rng)}). Skipping!")
                         continue
                     if not cg.is_empty():
                         end_dropped, cg = cg.get_removed(end, start=False, ref=True)
@@ -333,17 +334,23 @@ class Multisyn:
                     if not cg.is_empty():
                         start_dropped, cg = cg.get_removed(start, start=True, ref=True)
                     else:
+                        del self.cigars_dict[org]
+                        del self.ranges_dict[org]
                         print(traceback.format_exc())
-                        logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
+                        logger.warning(f"Tried to drop more({start}/{end}) than length from empty Cigar: {rng}(len: {len(rng)}). Skipping!")
                         continue
                     if not cg.is_empty():
                         end_dropped, cg = cg.get_removed(end, start=False, ref=True)
                     else:
+                        del self.cigars_dict[org]
+                        del self.ranges_dict[org]
                         print(traceback.format_exc())
                         logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
                         continue
 
                 except ValueError:
+                    del self.cigars_dict[org]
+                    del self.ranges_dict[org]
                     print(traceback.format_exc())
                     logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
                     continue
