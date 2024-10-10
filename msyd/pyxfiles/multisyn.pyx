@@ -166,8 +166,16 @@ class Multisyn:
         start = max(tup[2] for tup in trims)
         end = max(tup[3] for tup in trims)
         
-        if start + end >= len(self.ref): # throw an error if there is no matching position anywhere
-            logger.error(f"No matching position found in {self}")
+        if start + end >= len(self.ref): # throw an error and set to empty if there is no matching position
+            logger.error(f"No matching position found in {self}. Setting this multisyn to empty.")
+            self.ref.end = self.ref.start -1
+            for org in self.ranges_dict:
+                self.ranges_dict[org].end = self.ranges_dict[org].start -1
+
+                if self.cigars_dict:
+                    self.cigars_dict[org] = Cigar()
+            return
+
 
         if start > 0 or end > 0:
             #if len(self.ref) > 2000:
