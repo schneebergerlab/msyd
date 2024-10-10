@@ -165,6 +165,10 @@ class Multisyn:
         trims = [cg.trim_matching(only_pos=True) for cg in self.cigars_dict.values()]
         start = max(tup[2] for tup in trims)
         end = max(tup[3] for tup in trims)
+        
+        if start + end >= len(self.ref): # throw an error if there is no matching position anywhere
+            logger.error(f"No matching position found in {self}")
+
         if start > 0 or end > 0:
             #if len(self.ref) > 2000:
             #    print(start, end)
