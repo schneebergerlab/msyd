@@ -36,6 +36,7 @@ cdef:
     unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
     unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
     unordered_set[char] c_indel = unordered_set[char]([ord('D'), ord('I')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+    unordered_set[char] c_matching = unordered_set[char]([ord('=')])
 
     bam_code_map = [ord('M'), ord('I'), ord('D'), ord('N'), ord('S'), ord('H'), ord('P'), ord('='), ord('X')]
 
@@ -115,6 +116,9 @@ cdef class Cigar:
         Returns the number of bases covered by this Cigar in the reference or query genome.
         """
         return self.get_len_of_type(c_reffwd_noclip if ref else c_qryfwd_noclip)
+
+    def get_matching(self):
+        return self.get_len_of_type(c_matching)
 
     cdef get_len_of_type(self, unordered_set[char] typeset):
         cdef unsigned int buf = 0

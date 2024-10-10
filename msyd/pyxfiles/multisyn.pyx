@@ -12,6 +12,7 @@ import logging
 from libcpp.vector cimport vector
 
 from msyd.cigar import Cigar
+import msyd.cigar as cigar
 import msyd.util as util
 from msyd.coords import Range
 
@@ -124,14 +125,24 @@ class Multisyn:
             logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict keys not matching cigars_dict keys!")
             return False
         
-        # length check
+        # aln check
         reflen = len(self.ref)
         for org in self.get_organisms():
+            # check len on ref
             if self.cigars_dict[org].get_len(ref=True) != reflen:
                 logger.warning(f"Multisyn.check() found invalid Multisyn! CIGAR len ({self.cigars_dict[org].get_len(ref=True)}) not matching reference len ({reflen}) on ref!")
                 return False
+
+            # check len on qry
             if self.cigars_dict[org].get_len(ref=False) != len(self.ranges_dict[org]):
                 logger.warning(f"Multisyn.check() found invalid Multisyn! CIGAR len ({self.cigars_dict[org].get_len(ref=False)}) not matching reference len ({self.ranges_dict[org]}) on {org}!")
+                return False
+
+            # check that its not only mismatches
+            # may be a bit draconic to fail it if this happens on a single sample
+            # change to all sample or drop them quietly?
+            if self.cigars_dict[org].get_matching() == 0:
+                logger.warning(f"Multisyn.check() found invalid Multisyn! CIGAR containing no matches {self.cigars_dict[org]} on ({self.ranges_dict[org]}) on {org}!")
                 return False
 
         ## all checks passed
