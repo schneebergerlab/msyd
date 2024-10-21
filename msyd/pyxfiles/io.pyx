@@ -622,11 +622,20 @@ cpdef save_to_psf(dfmap, buf, save_cigars=True, force_ref_pos=False):
     Preserves the sorting of the DFs, sorts chroms lexicallicaly.
     Calls to `save_df_to_psf`.
     """
+    if len(dfmap) == 0:
+        raise ValueError("Empty dfmap provided!")
+
+    # write header; assumes the first chrom contains all orgs at least once
+    buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
+    buf.write("\t".join(util.get_orgs_from_df(list(dfmap.values())[0])))
+    buf.write("\n")
+
+    # write contents
     #TODO parallelize?
     for chrom in sorted(dfmap):
-        save_df_to_psf(dfmap[chrom], buf, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
+        save_df_to_psf(dfmap[chrom], buf, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
 
-cpdef save_df_to_psf(df, buf, save_cigars=True, force_ref_pos=False):
+cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=False):
     """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
@@ -640,9 +649,10 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, force_ref_pos=False):
         int coreend = 0
         str corechr = ''
 
-    buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
-    buf.write("\t".join(orgs))
-    buf.write("\n")
+    if emit_header:
+        buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
+        buf.write("\t".join(orgs))
+        buf.write("\n")
 
     syniter = df.iterrows()
     # TODO: assert that the columns and columns are in same order as the input file (genomes.csv)
