@@ -1,12 +1,12 @@
-{% set version = "0.0.1" %}
+{% set version = "0.3" %}
 {% set sha256 = "b87705421a2249fd5bb359642494a7f7a9bcbf90a0b73531d1da2d7fedbad396" %} # TO BE ADDED 
 
 package:
-  name: pansyn
+  name: msyd
   version: {{ version }}
 
 source:
-  url: https://github.com/schneebergerlab/pansyn/archive/v{{ version }}.tar.gz
+  url: https://github.com/schneebergerlab/msyd/archive/v{{ version }}.tar.gz
   sha256: {{ sha256 }}
 
 build:
@@ -33,13 +33,13 @@ requirements:
 
 test:
   commands:
-    - pansyn --version
+    - msyd --version
 
 about:
-  home: https://github.com/schneebergerlab/pansyn
+  home: https://github.com/schneebergerlab/msyd
   license: MIT License
   license_file: LICENSE
-  summary: Pan-genomic syntenic region identification
+  summary: Multi-genomic synteny detection
 
 extra:
   maintainers:
