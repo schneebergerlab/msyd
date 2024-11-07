@@ -416,13 +416,23 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
+cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
     """
-    Function to find gaps between two coresyn regions and realign them to a new reference.
-    Discovers all merasynteny.
-    
-    :arguments: A DataFrame with core and merasyn regions called by find_multisyn and the sample genomes and names. `mp_preset` designates which minimap2 alignment preset to use.
-    :returns: A DataFrame with the added non-reference merasynteny
+    High-level interface to the realignment functionality.
+    Takes a dict of DataFrames containing per-chromosome Multisyn annotations.
+    Gaps between core syntenic regions are iteratively realigned to identify non-reference merasynteny.
+
+    :params:
+    :df: DataFrame containing existing Multisyn annotations
+    :qrynames: Names of the non-ref. sequences
+    :fastas: Dictionary mapping the name of a sample to its genome as a pysam FastaFile object
+    :mp_preset: minimap2 alignment preset to use. Default `asm20`.
+    :annotate_private: After a sequence has been used as a reference in realignment and no synteny has been found, we can say that it is structurally private. If this flag is set, it will be annotated as such. Default `True`.
+    :ncores: Number of cores to use during the realignment. Default `1`.
+    :pairwise: Optionally, a dictionary of dictionaries containing pysam AlignmentFile objects for all pairwise alignments. Useful if your sequences have already been all vs all aligned, or you want to use a different aligner than minimap2.
+    :output_only_realign: Flag on whether to also output annotations not obtained through realignment. Default `False`. Mostly intended for debugging.
+
+    :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
     """
     if MIN_REALIGN_LEN is not None and MIN_REALIGN_LEN >= 0:
         global _MIN_REALIGN_LEN
@@ -444,13 +454,33 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
             #print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
             return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
     else:
-        return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1) for chrom in syndict]))
+        return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1, annotate_private) for chrom in syndict]))
 
 
 cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
-    return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5]))
+    return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5], annotate_private=args[6]))
 
-cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=None, output_only_realign=False):
+cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
+    """
+    Workhorse function of the realignment functionality.
+    Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
+    In these gaps, existing merasynteny is masked, and a new reference is chosen.
+    All sequences that have not previously been used as reference are realigned to the new reference, and pairwise synteny is called.
+    On the pairwise synteny to the new reference, the synteny intersection algorithm is run, identifying new merasynteny.
+    This is iterated until either there are no regions without annotated merasynteny annotation left, but at most `MAX_REALIGN` times.
+
+    :params:
+    :df: DataFrame containing existing Multisyn annotations
+    :qrynames: Names of the non-ref. sequences
+    :fastas: Dictionary mapping the name of a sample to its genome as a pysam FastaFile object
+    :mp_preset: minimap2 alignment preset to use. Default `asm20`.
+    :annotate_private: After a sequence has been used as a reference in realignment and no synteny has been found, we can say that it is structurally private. If this flag is set, it will be annotated as such. Default `True`.
+    :ncores: Number of cores to use during the realignment. Default `1`.
+    :pairwise: Optionally, a dictionary of dictionaries containing pysam AlignmentFile objects for all pairwise alignments. Useful if your sequences have already been all vs all aligned, or you want to use a different aligner than minimap2.
+    :output_only_realign: Flag on whether to also output annotations not obtained through realignment. Default `False`. Mostly intended for debugging.
+
+    :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
+    """
     # init stuff
     cdef:
         ret = deque()#pd.DataFrame()
@@ -792,6 +822,8 @@ cdef syri_get_syntenic(reforg, alns):
     #print(syns)
     return syns
 
+##################################### DEPRECATED ##################################################
+
 # Idea for additional fn
 # finds private regions by scanning through the genome for regions not covered by any merasyn
 # tracks current position along the genome
@@ -803,8 +835,6 @@ cdef syri_get_syntenic(reforg, alns):
 #cpdef find_private(syns, only_private=False):
 #    # Finds 
 #    pass
-
-################################################# DEPRECATED ###########################################################
 
 cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
     """DEPRECATED
