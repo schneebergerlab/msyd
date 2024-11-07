@@ -570,10 +570,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
             mappingtrees = construct_mts(refmerasyns, old, syn)
             seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
 
-            #if any([len(mappingtrees[org]) > 3 for org in mappingtrees]):
-            #    logger.info(mappingtrees)
-            #    logger.info(seqdict)
-
             ## Realign iteratively until all synteny is found
             while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
                 #print({id:len(seq) for id, seq in seqdict.items()})
@@ -654,13 +650,9 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                         logger.warning(f"{org} in alns only contains inverted alignments: \n{alns[org]}")
                         alns[org] = None
 
-                #logger.info(f"None/empty in Alignments: {[org for org in alns if alns[org] is None]}")
                 ## run syri
                 logger.debug("Running syri")
                 syns = syri_get_syntenic(ref, alns)
-
-                #syns = list(filter(lambda x: x is not None, syris.values()))
-                #print(syns)
 
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
@@ -670,16 +662,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                     #    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
                     continue
 
-                # syns should be sorted
-                # TODO: MG Question: what is the use of this function?
-                # leon: I've found that sometimes, syri calls would overlap a bit,
-                # which the multisyn identification doesn't like
-                # this checks this isn't the case and corrects it in case it finds it
-                # should probably not be strictly necessary here as we call syri ourselves
-                # but doesn't hurt to check either
-
-                
-                # print(syns)
                 ## Find merasyn in the syri calls
                 multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores)
 
@@ -699,9 +681,18 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merasyns[ref]}.")
                 mappingtrees = subtract_mts(mappingtrees, merasyns[ref])
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
+
                 # remove all orgs that have already been used as a reference
                 for reforg in merasyns:
                     if reforg in mappingtrees:
+                        if annotate_private:
+                            #TODO annotate private regions if specified
+                            # should be able to do this directly from the ref mappingtree w/ a len filter?
+
+                            # notes:
+                            # challenge: early continue in case nothing is found
+                            # just disable if annotate_private is set?
+                            # also, need to adjust subtract_mappingtrees to handle ref
                         del mappingtrees[reforg]
 
                 ## extract the remaining sequences for future realignment
