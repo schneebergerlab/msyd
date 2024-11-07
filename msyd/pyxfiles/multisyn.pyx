@@ -49,7 +49,7 @@ class Multisyn:
         #    raise ValueError(f"ERROR: Trying to initialiase Multisyn with no non-reference Range (ref: {ref})")
         #if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
         #    raise ValueError(f"ERROR: Trying to initialise Multisyn with ranges_dict keys {ranges_dict.keys()} not matching cigars_dict keys {cigars_dict.keys()}!")
-        self.ref = ref # optional if using a reference-free algorithm. NONE CURRENTLY IMPLEMENTED!
+        self.ref = ref
         self.ranges_dict = ranges_dict
         self.cigars_dict = cigars_dict # optional if using approximate matching
 
@@ -72,7 +72,7 @@ class Multisyn:
         return l.ref < r.ref
 
     def __hash__(self):
-        return hash(self.ref)# + hash(self.ranges_dict) + hash(self.cigars_dict) # caused problems with deque
+        return hash(self.ref)# + hash(self.ranges_dict) + hash(self.cigars_dict) # caused problems with deque; self.ref is guaranteed to be unique in any case
 
     def add(self, rng:Range, cg: Cigar):
         self.ranges_dict[rng.org] = rng
@@ -96,15 +96,17 @@ class Multisyn:
     def get_lens(self):
         return {org: len(self.ranges_dict[org]) for org in self.get_organisms()}
 
-    def check(self):
+    def check(self, priv_allowed=False):
         """
         A function to check a Multisyn object for intactness, mainly for debugging purposes.
         Returns `False` if any invariants are violated.
         :returns: `True` if the object is a valid `Multisyn` object, else `False`
         """
         if not self.ranges_dict:
-            logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict None!")
-            return False
+            if not priv_allowed:
+                logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict None!")
+                return False
+            return not self.cigars_dict
 
         if self.ref.is_inverted():
             logger.warning(f"Multisyn.check() found invalid Multisyn! Inverted reference {self.ref}!")
