@@ -53,10 +53,6 @@ class Multisyn:
         self.ranges_dict = ranges_dict
         self.cigars_dict = cigars_dict # optional if using approximate matching
 
-    @classmethod
-    def Private(cls, rng: Range):
-        return cls(rng, None, None)
-
     def __repr__(self):
         return f"Multisyn({self.ref}, {self.ranges_dict})"#, {self.cigars_dict})"
 
@@ -101,7 +97,7 @@ class Multisyn:
         return {org: len(self.ranges_dict[org]) for org in self.get_organisms()}
 
     def is_private(self):
-        return self.ranges_dict is None
+        return False
 
     def check(self, allow_private=False):
         """
@@ -389,6 +385,15 @@ class Multisyn:
 
                 self.ranges_dict[org] = rng.drop(start_dropped, end_dropped)
                 self.cigars_dict[org] = cg
+
+class Private(Multisyn):
+    def __init__(self, rng:Range):
+        self.ref = rng
+
+    @override
+    def is_private(self):
+        return True
+
 
 
 
