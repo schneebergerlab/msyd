@@ -53,6 +53,10 @@ class Multisyn:
         self.ranges_dict = ranges_dict
         self.cigars_dict = cigars_dict # optional if using approximate matching
 
+    @classmethod
+    def Private(cls, rng: Range):
+        return cls(rng, None, None)
+
     def __repr__(self):
         return f"Multisyn({self.ref}, {self.ranges_dict})"#, {self.cigars_dict})"
 
@@ -96,7 +100,10 @@ class Multisyn:
     def get_lens(self):
         return {org: len(self.ranges_dict[org]) for org in self.get_organisms()}
 
-    def check(self, priv_allowed=False):
+    def is_private(self):
+        return self.ranges_dict is None
+
+    def check(self, allow_private=False):
         """
         A function to check a Multisyn object for intactness, mainly for debugging purposes.
         Returns `False` if any invariants are violated.
