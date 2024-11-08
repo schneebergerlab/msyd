@@ -28,7 +28,7 @@ logger = util.CustomFormatter.getlogger(__name__)
 cpdef int get_min_syn_thresh():
     return MIN_SYN_THRESH
 
-cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
+cdef filter_multisyn(multisyn, drop_small=True, allow_private=False):
     """
     Tests if a multisyn should be added to the output by checking degree and length.
     Unless `drop_private` is set to false, will drop private regions (i.e. merasynteny of degree one)
@@ -38,7 +38,7 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
         return False
     if len(multisyn.ref) < MIN_SYN_THRESH: # filter small regions
         return False
-    if not multisyn.check():
+    if not multisyn.check(allow_private=allow_private):
         logger.warning(f"{multisyn}")
         return False
 
@@ -50,18 +50,19 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
             if multisyn.cigars_dict:
                 del multisyn.cigars_dict[org]
 
-    if drop_private and multisyn.get_degree() < 2: # filter regions without non-reference synteny
-        return False
-
     return True
     
-cpdef find_overlaps(left, right, only_core=False, trim=True):
+cpdef find_overlaps(left, right, only_core=False, trim=True, allow_private=False):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
     """
     cdef ret = deque()
     #print("l:", left, "r:", right)
+
+    # for finding fully private regions, only_core has to be passed
+    #if allow_private:
+    #    only_core = True
 
     if right is None or right.empty:
         logger.error("find_overlap called with no multisyn regions (right)!")
@@ -101,6 +102,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=True):
             if ovend - ovstart >= MIN_SYN_THRESH: # there is valid overlap
                 # add the region up to the overlap if it is large enough
                 intstart = max(starting.ref.start, cov + 1) # start of the non-overlapping region of interest
+                
                 if not only_core and ovstart - intstart >= MIN_SYN_THRESH:
                     multisyn = starting.drop(intstart - starting.ref.start, 1 + starting.ref.end - ovstart)
                     if filter_multisyn(multisyn):
@@ -110,7 +112,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=True):
 
                 # add overlap region
                 multisyn = l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend)
-                if filter_multisyn(multisyn):
+                if filter_multisyn(multisyn, allow_private=allow_private):
                     if trim:
                         multisyn.trim_matching_inplace()
                     ret.append(multisyn)
@@ -171,7 +173,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=True):
                 #print(cov, ending.ref, ending.ref.end - ending.ref.start, {org:cg.get_len(ref=True) for org, cg in ending.cigars_dict.items()})
                 if ending.ref.end - cov >= MIN_SYN_THRESH: # check if there is still something to add; if so, add it
                     multisyn = ending.drop(max(0, 1 + cov - ending.ref.start), 0)
-                    if filter_multisyn(multisyn):
+                    if filter_multisyn(multisyn, allow_private=allow_private):
                         if trim:
                             multisyn.trim_matching_inplace()
                         ret.append(multisyn)
