@@ -812,18 +812,6 @@ cdef syri_get_syntenic(reforg, alns):
 
 ##################################### DEPRECATED ##################################################
 
-# Idea for additional fn
-# finds private regions by scanning through the genome for regions not covered by any merasyn
-# tracks current position along the genome
-# challenge: non-coresyn regions
-# => approach: sort merasyns by org, then subtract
-# alternatively, use intervaltrees, subtract each merasyn
-# maybe move to own file eventually?
-# implement after refactoring of data structures
-#cpdef find_private(syns, only_private=False):
-#    # Finds 
-#    pass
-
 cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
     """DEPRECATED
     Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
