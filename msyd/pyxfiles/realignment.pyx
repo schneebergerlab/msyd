@@ -110,10 +110,13 @@ cpdef construct_mts(merasyns, old, syn):
     return listdict_to_mts(listdict)
 # END
 
-cpdef subtract_mts(mappingtrees, merasyns):
+cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
     """
     Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by multisyn objects in `merasyns` subtracted.
+    By default, the reference organism of the merasyn is skipped, as it would be deleted anyway.
+    This can be changed by setting `skip_ref` to `False`.
     Used to remove merasynteny found during realignment from the mappingtrees, to do further realignment.
+    The initial implementation was just reconstructing the trees at every step, but subtracting is more efficient.
     """
     # core iteration is the same as in construct_mts, except we don't need to store the offsets
     curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
@@ -121,19 +124,22 @@ cpdef subtract_mts(mappingtrees, merasyns):
     # these need to be reconstructed to take care of handling the separator intervals
 
     for merasyn in merasyns:
-        for org, rng in merasyn.ranges_dict.items():
+        # only subtract on the ref if explicitly specified;
+        # would get deleted anyway unless annotating private regions
+        for org, rng in\
+                merasyn.ranges_dict.items() if skip_ref\
+                else [(merasyn.ref.org, merasyn.ref)] + list(merasyn.ranges_dict.items()):
             if not org in curdict or curdict[org] is None: # skip if there are no more intervals to process for this org
                 continue
             curint = curdict[org]
             orglist = listdict[org]
-            #TODO idea: set curdict[org] to None to indicate termination?
 
             # skip to first interval overlapping this merasyn
-            # there should be one of thesejfor any alignment
+            # there should be one of these for any alignment
             while curint.end - curint.begin + curint.data < rng.start:
                 orglist.append( (curint.data, curint.end - curint.begin) )
                 if curint.end + _NULL_CNT + 1 in mappingtrees[org]:
-                    curint = list(mappingtrees[org][curint.end + _NULL_CNT +1 ])[0]
+                    curint = list(mappingtrees[org][curint.end + _NULL_CNT + 1])[0]
                 else: # there is no offset after this
                     break
             else: # to skip to next org in big for loop
@@ -141,10 +147,9 @@ cpdef subtract_mts(mappingtrees, merasyns):
                 curdict[org] = None
                 continue
 
-            # there shouldn't ever be an alignment spanning beyond one offset, as genuinely adjacent offsets are compressed
-            # throw an error if this isn't the case
-            #TODO maybe handle improperly compressed offsets? perhaps by ratcheting over the end as welll as in the while loop above
-            #assert rng.end <= curint.end - curint.begin + curint.data, "Synteny in a spacer offset detected! An alignment went into the separator. Most likely, something went wrong during alignment."
+            # there shouldn't ever be a merasyn spanning beyond one offset
+            # directly adjacent offsets are compressed, and other alns should be split
+            # emit a warning if this is still the case
             if rng.end > curint.end - curint.begin + curint.data:
                 logger.debug(f"{rng.end}, {curint.end - curint.begin + curint.data}")
                 logger.warning("Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call ({rng.end} vs {curint.end - curint.begin + curint.data}).")
@@ -663,7 +668,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                     continue
 
                 ## Find merasyn in the syri calls
-                multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores)
+                multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores, annotate_private=annotate_private)
 
                 # no need to recalculate the tree if no multisynteny was found
                 if multisyns is None or multisyns.empty:
@@ -679,20 +684,12 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
                 # TODO maybe directly remove, should be more efficient
                 logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merasyns[ref]}.")
-                mappingtrees = subtract_mts(mappingtrees, merasyns[ref])
+                mappingtrees = subtract_mts(mappingtrees, merasyns[ref], skip_ref=True)
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
 
                 # remove all orgs that have already been used as a reference
                 for reforg in merasyns:
                     if reforg in mappingtrees:
-                        if annotate_private:
-                            #TODO annotate private regions if specified
-                            # should be able to do this directly from the ref mappingtree w/ a len filter?
-
-                            # notes:
-                            # challenge: early continue in case nothing is found
-                            # just disable if annotate_private is set?
-                            # also, need to adjust subtract_mappingtrees to handle ref
                         del mappingtrees[reforg]
 
                 ## extract the remaining sequences for future realignment
