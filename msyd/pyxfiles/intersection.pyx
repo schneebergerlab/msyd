@@ -112,7 +112,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=True, allow_private=False
 
                 # add overlap region
                 multisyn = l.drop(ovstart - l.ref.start, l.ref.end - ovend) + r.drop(ovstart - r.ref.start, r.ref.end - ovend)
-                if filter_multisyn(multisyn, allow_private=allow_private):
+                if filter_multisyn(multisyn, drop_small=True, allow_private=allow_private):
                     if trim:
                         multisyn.trim_matching_inplace()
                     ret.append(multisyn)
@@ -173,7 +173,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=True, allow_private=False
                 #print(cov, ending.ref, ending.ref.end - ending.ref.start, {org:cg.get_len(ref=True) for org, cg in ending.cigars_dict.items()})
                 if ending.ref.end - cov >= MIN_SYN_THRESH: # check if there is still something to add; if so, add it
                     multisyn = ending.drop(max(0, 1 + cov - ending.ref.start), 0)
-                    if filter_multisyn(multisyn, allow_private=allow_private):
+                    if filter_multisyn(multisyn, drop_small=True, allow_private=allow_private):
                         if trim:
                             multisyn.trim_matching_inplace()
                         ret.append(multisyn)

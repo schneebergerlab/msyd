@@ -727,10 +727,10 @@ cdef write_multisyn(multisyn, buf, orgs, save_cigars=False):
     """
     buf.write('\t'.join([(multisyn.ranges_dict[org].to_psf()\
                 if not (save_cigars and multisyn.cigars_dict) else\
-                ','.join([multisyn.ranges_dict[org].to_psf(), multisyn.cigars_dict[org].to_string()]) )
-         if org in multisyn.ranges_dict else
-         (multisyn.ref.to_psf() if multisyn.ref.org == org else '.') # if there is no synteny, put a .
-         for org in orgs])
+                    ','.join([multisyn.ranges_dict[org].to_psf(), multisyn.cigars_dict[org].to_string()]) )
+                         if (not multisyn.is_private()) and (org in multisyn.ranges_dict) else
+                         (multisyn.ref.to_psf() if multisyn.ref.org == org else '.') # if there is no synteny, put a .
+                 for org in orgs])
               )
     buf.write("\n")
 

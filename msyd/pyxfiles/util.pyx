@@ -201,7 +201,7 @@ def get_orgs_from_df(df):
     if df.empty:
         logger.error(f"get_orgs_from_df called with empty dataframe: {df}")
         raise ValueError("DF is empty!")
-    return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()), df.iterrows()))
+    return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()) if x[1][0].get_degree() > 1 else set(), df.iterrows()))
 
 
 def get_len(df):

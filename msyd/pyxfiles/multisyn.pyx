@@ -9,6 +9,8 @@ import traceback
 #import cython
 import logging
 
+from typing import override
+
 from libcpp.vector cimport vector
 
 from msyd.cigar import Cigar
@@ -106,7 +108,7 @@ class Multisyn:
         :returns: `True` if the object is a valid `Multisyn` object, else `False`
         """
         if not self.ranges_dict:
-            if not priv_allowed:
+            if not allow_private:
                 logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict None!")
                 return False
             return not self.cigars_dict
