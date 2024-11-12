@@ -1,7 +1,11 @@
 # The Population Syntenty File Format (PSF)
+
 Updated to v0.3 file format 2024-09-11 Leon Rauschning
+
 Updated to v0.2 file format 2024-05-22 Leon Rauschning
+
 Created 2022-05-11 Leon Rauschning
+
 
 ## Premise
 
@@ -31,7 +35,7 @@ To provide full compatibility with BED format, optionally even these annotations
 CIGAR strings are shortened using [...]
 
 \#CHR|START|END|ANN|REF|CHR|START|END|c24|eri|ler|sha
----
+-----------------------------------------------------
 Chr1|124|530|MERASYN1|ref|.|.|.|.|Chr1:513-919,53=1X11=1X29=1X33=1X16=1X5=1X34=1X190=1X5=1X22=|.|.
 Chr1|531|1084|MERASYN2|ref|.|.|.|.|Chr1:920-1458,44=1X27=1X94=1X12=1X43=1X136=1X133=15D26=1X4=1X2=1X3=1X5=|.|Chr1:1581-2126,44=1X21=1X5=1X22=1X71=1X12=1X43=1X136=1X173=8D1=1X8=1X
 Chr1|1090|17001|CORESYN1|ref|.|.|.|Chr1:13-15966,1464=1X[...]|Chr1:1464-17369,1=2X[...]|Chr1:6-15923,5235=1I2344=[...]|Chr1:2132-18108,3=5I50=1X1=4D[...]
