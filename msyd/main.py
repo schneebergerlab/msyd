@@ -92,6 +92,7 @@ def main():
     call_parser.add_argument("-p", "--print", dest='print', action='store_true', default=False, help="print a subset of the output to stdout, for debugging.")
     call_parser.add_argument("--no-trim", dest='trim', action='store_false', default=True, help="Don't trim mismatches at the start/end of alignments. Can be useful when there are many SNPS.")
     call_parser.add_argument("--impute", dest='impute', action='store_true', default=False, help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
+    call_parser.add_argument("--private", dest='private', action='store_true', default=False, help="Annotate structurally private regions.")
     call_parser.add_argument("--workdir", "-w", dest='tmp', required=False, type=str, help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
     call_parser.add_argument("--min-realign", dest="min_realign", help="Minimum region size to realign, in bp. Default 150 bp.", type=int, default=-1)
     call_parser.add_argument("--min-syn-id", dest="min_syn_id", help="Percent identity required for a region to be called as syntenic during the realignment step. Default 80.", type=int, default=80)
@@ -182,16 +183,16 @@ def main():
 # END
 
 def call(args):
-    # import msyd  # to import version
-    # from msyd.script.io import find_multisyn
     import msyd.io as io
     import msyd.imputation as imputation
     import msyd.realignment as realignment
     import msyd.intersection as intersection
-    from msyd.coords import Range
+    import msyd.private as private
     import msyd.ordering as ordering
-
     import msyd.util as util
+
+    from msyd.coords import Range
+
     logger = util.CustomFormatter.getlogger("call")
 
     logger.info("Starting msyd call")
@@ -204,6 +205,11 @@ def call(args):
 
     syndict = intersection.process_syndicts(syndict, split_indel_thresh=args.split_indel_thresh, cores=args.cores, only_core=args.core, trim=args.trim)
     logger.info("Intersected synteny")
+
+    if args.private:
+        syndict = private.complement_dict(syndict, add=True, cores=args.cores)
+        logger.info("Annotated private regions on ref.")
+
 
     if args.realign:
         # read in full pairwise alns if supplied
