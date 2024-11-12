@@ -108,10 +108,8 @@ class Multisyn:
         :returns: `True` if the object is a valid `Multisyn` object, else `False`
         """
         if not self.ranges_dict:
-            if not allow_private:
-                logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict None!")
-                return False
-            return not self.cigars_dict
+            logger.warning("Multisyn.check() found invalid Multisyn! ranges_dict None!")
+            return False
 
         if self.ref.is_inverted():
             logger.warning(f"Multisyn.check() found invalid Multisyn! Inverted reference {self.ref}!")
@@ -396,6 +394,29 @@ class Private(Multisyn):
     def is_private(self):
         return True
 
+    @override
+    def get_degree(self):
+        return 1
+
+    @override
+    def get_organisms(self):
+        return {self.ref.org}
+
+    @override
+    def __repr__(self):
+        return f"Private({self.ref})"
+
+    @override
+    def __eq__(l, r):
+        if not isinstance(r, Private):
+            return False
+        return l.ref == r.ref
+
+    @override
+    def check(self, allow_private=False):
+        if not allow_private:
+            return False
+        return not self.ref.is_inverted()
 
 
 
