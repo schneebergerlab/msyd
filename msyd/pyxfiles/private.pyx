@@ -21,14 +21,14 @@ cdef MIN_PRIV_THRESH = intersection.MIN_SYN_THRESH
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.INFO)
 
-cpdef get_private_dict(syndict):
+cpdef complement_dict(syndict):
     """
     Interface to call get_privates on a dict containing multiple multisyn dfs.
     """
     #TODO implement
     pass
 
-cdef get_privates(multisyns):
+cdef complement(multisyns):
     """
     Takes a DF of multisyn objects, finds regions on the reference not covered by any of them.
     Assumes the multisyns are sorted by position on the reference.
@@ -54,7 +54,7 @@ cdef get_privates(multisyns):
     return pd.DataFrame(ret)
 
 
-cdef intersect_privates(l, r):
+cdef intersect_private(l, r):
     """
     Takes two DataFrames of private regions on the same reference, returns a DF containing regions private in both.
     """
