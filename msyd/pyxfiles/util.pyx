@@ -281,6 +281,9 @@ def get_stats(df):
     return ret
 
 def siprefix(x):
+    """
+    Takes a number of basepairs, returns a string expressing this number in SI notation.
+    """
     if x >= 1E9:
         return f"{x/1E9:.2f} Gbp"
     elif x >= 1E6:
@@ -289,6 +292,37 @@ def siprefix(x):
         return f"{x/1E3:.2f} kbp"
     else:
         return f"{x:.2f} bp"
+
+cdef merge(left, right):
+    """
+    Takes two sorted DFs of Multisyn or Private objects, and merges them according to their position on the reference.
+    Runs in O(|left| + |right|).
+    :returns: a new sorted DF containing the records of both `left` and `right`.
+    """
+    cdef:
+        ret = deque()
+        lit = left.iterrows()
+        rit = right.iterrows()
+        r = next(rit)[1][0]
+
+    try:
+        for _, l in lit:
+            l = l[0]
+            while r < l:
+                ret.append(r)
+                r = next(rit)[1][0]
+            ret.append(l)
+
+    except StopIteration: # right ran out during iteration
+        # add the rest of l
+        for _, l in lit:
+            ret.append(l[0])
+    # l ran out; add the rest of r
+    for _, r in rit:
+        ret.append(r[0])
+
+    return pd.DataFrame(ret)
+
 
 def get_call_stats(syns, alns, **kwargs):
     """Utility function to call multisyn in a dataset and immediately compute the statistics using get_stats
