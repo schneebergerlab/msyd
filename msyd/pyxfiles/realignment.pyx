@@ -198,7 +198,7 @@ cdef get_aligner(seq, preset, ns=True):
     
     #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
 
-    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255) # requires a patched version of minimap2; TODO make PR to get that merged
+    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255) # requires a patched version of minimap2; TODO wait for PR to get merged (https://github.com/lh3/minimap2/pull/1240)
 
 
     return aligner
@@ -259,7 +259,6 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
                 rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
                 rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
 
-                #TODO maybe filter out small alignments here?
                 aln = [rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
                            qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
                            min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
@@ -272,29 +271,20 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
                     logger.error(f"Aln length {aln[5]} not matching cigar length on qry {qcg.get_len(ref=False)}! Occurred in {aln}")
                 alns.append(aln)
 
-        # print('c')
 
-    #logger.debug('Alignments traversed')
-    # print('d')
     alns = pd.DataFrame(alns)
-    #print(alns)
     if alns.empty:
         return None
-    #print(alns[6])
-    #alns[6] = alns[6].astype('float')
 
-    alns = alns.loc[alns[6] > _MIN_SYN_ID] # TODO: Alignment identity filter. This filter is not mandatory and the user might opt to remove this
+    alns = alns.loc[alns[6] > _MIN_SYN_ID] # filter for specified aln identity
     # count inverted alns as well
     #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
     #alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
     #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
     alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alns.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    #print(alns[['aStart', 'aLen', 'bStart', 'bLen', 'iden']])
-    # print('e')
     return None if alns.empty else alns
 
-# </editor-fold>
 
 cpdef generate_seqdict(fafin, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
@@ -370,8 +360,10 @@ cdef syrify(alnsdf):
     return alnsdf
 
 cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
-    """Helper Fn to filter an alignment DF for any region overlapping with [start:end] on a (default) or b (if `ref=False` is passed). If `dir` is passed and not 0 (default 1), also filter for the alignment direction (-1 = inverted, 1 non-inverted).
-    Filters for a chromosome on a or b if specified, otherwise ignores chromosomes"""
+    """
+    Helper Fn to filter an alignment DF for any region overlapping with [start:end] on a (default) or b (if `ref=False` is passed). If `dir` is passed and not 0 (default 1), also filter for the alignment direction (-1 = inverted, 1 non-inverted).
+    Filters for a chromosome on a or b if specified, otherwise ignores chromosomes.
+    """
     #return alnsdf.loc[!((alnsdf.bstart < start) ^ (alnsdf.bend > end))]
     if alnsdf is None or alnsdf.empty:
         return None
@@ -516,12 +508,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
         # this seems to work out in Ampril (the first coresyn starts at <2 kb in my local test dataset),
         # but might cause problems in datasets with very little coresyn
         merasyns = dict()
-        # CNT = 0
         while True:
-            # CNT += 1
-            # print(CNT)
-            # if CNT == 100:
-            #     break
             # find block between two coresyn regions
             merasyns = dict()
 
@@ -551,7 +538,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                     continue
 
             # between chromosomes, there isn't a single gap
-            #print(f"Chrs: {syn.ref.chr}, {old.ref.chr}")
             if syn.ref.chr != old.ref.chr:
                 logger.error("Chr case found: {syn.ref}, {old.ref}")
                 old = syn
@@ -560,24 +546,15 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 syn = next(syniter)[1][0]
                 continue
 
-            #########
             ## Block has been extracted and is long enough;
             ## extract appropriate sequences, respecting already found merasyn
-            #########
-
-            #print(old, syn, syn.ref.start - old.ref.end)
-            #print(merasyns)
-
-            #TODO parallelise everything after this, enable nogil
-
             
             ## construct the mapping, and prepare sequences for realignment
             mappingtrees = construct_mts(refmerasyns, old, syn)
             seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
 
             ## Realign iteratively until all synteny is found
-            while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2: # realign until there is only one sequence left
-                #print({id:len(seq) for id, seq in seqdict.items()})
+            while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2:
 
                 # TODO: Have some heuristic terminate realignment in highly repetitive regions
                 # stop realignment if we have already found _MAX_REALIGN haplotypes
@@ -591,11 +568,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                     ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
                 else:
                     ref = max([(len(v), k) for k,v in seqdict.items()])[1]
-
-                #print('ref:', ref)
-                #print('On ref:', syn.ref.chr, start, end, end - start)
-                #print({org:len(seq) for org, seq in seqdict.items()})
-                #        print(org, ':', seqdict[org])
 
                 refseq = seqdict[ref]
                 del seqdict[ref]
@@ -614,9 +586,8 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
 
 
                 ## get alignments to reference construct alignment index from the reference
-                # TODO: The alignment step is a major performance bottleneck, specially when aligning centromeric regions. If the expected memory load is not high, then we can easily parallelise align_concatseqs using multiprocessing.Pool. Here, I have implemented it hoping that it should not be a problem. If at some point, we observe that the memory footprint increases significantly, then we might need to revert it back.
+                # if we have pairwise alns, fetch & prepare them
                 if pairwise and ref in pairwise:
-                    # if we have pairwise alns, fetch them
                     logger.debug(f"Fetching from existing alignments. Left core: {old.ref} ({old.ranges_dict}). Right core: {syn.ref} ({syn.ranges_dict}). Ref {ref}")
                     
                     refalnsdict = pairwise[ref]
@@ -629,11 +600,11 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 else:
                     # otherwise realign ourselves
                     logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
+                    # Launching a pool in a pool causes python to crash, disabled parallelization here for now
                     if False: #ncores > 1 and len(refseq) > 50000:
                         logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
                         alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
                         with Pool(processes=ncores) as pool:
-                            # pool.starmap(partial(foo, d='x'), alignargs)
                             alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree, aligner=None), alignargs)
                         alns = dict(zip(list(seqdict.keys()), alns))
                     else:
@@ -682,7 +653,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merasyns))}) of merasynteny.")
 
                 ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
-                # TODO maybe directly remove, should be more efficient
                 logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merasyns[ref]}.")
                 mappingtrees = subtract_mts(mappingtrees, merasyns[ref], skip_ref=True)
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
@@ -696,8 +666,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
 
                 # cache the current lens, for debugging
                 lendict = {org: len(seqdict[org]) for org in seqdict}
-                #logger.info("emit ending lens in seqdict")
-                #logger.info(str(lendict))
 
                 seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
                 if not seqdict: # if all sequences have been discarded, finish realignment
@@ -793,7 +761,7 @@ cdef syri_get_syntenic(reforg, alns):
                 (synData['bend'] - synData['bstart']).sum() < MIN_SYN_THRESH:
             continue
 
-        #subset to only relevant columns for the realignment
+        # subset to only relevant columns for the realignment
         synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
 
 
@@ -803,11 +771,8 @@ cdef syri_get_syntenic(reforg, alns):
             buf.append(Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
 
         syns[org] = pd.DataFrame(list(buf))
-        # print(synData.columns)
     # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
-    #TODO return objects as Multisyn objects, matchin gcigars immediately?
-    #print(syns)
     return syns
 
 ##################################### DEPRECATED ##################################################
