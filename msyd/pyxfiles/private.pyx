@@ -60,7 +60,8 @@ cdef complement(multisyns, add=False):
         # compute gap between previous msyn and this, annotate if large enough
         rng = msyn.ref
         if rng.start - cov >= MIN_PRIV_THRESH:
-            ret.append(Private(Range(rng.org, rng.chr, cov, rng.start - 1)))
+            # ranges are inclusive on both end and start
+            ret.append(Private(Range(rng.org, rng.chr, cov + 1, rng.start - 1)))
         cov = rng.end
         
         # if specified, also add the msyn while maintaining sorting
