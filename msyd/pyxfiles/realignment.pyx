@@ -110,6 +110,14 @@ cpdef construct_mts(merasyns, old, syn):
     return listdict_to_mts(listdict)
 # END
 
+## THOUGHTS for private region reporting
+## run subtract_mts with skip_ref=False
+## write fn that turns mappingtree into list of private regions
+## run after subtract_mt, or when exiting early due to no synteny found
+## use sorted join from private to merge with realignment multisyns
+## private regions will be at least MIN_REALIGN long
+## => kind of enforced on ref anyway?
+
 cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
     """
     Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by multisyn objects in `merasyns` subtracted.
