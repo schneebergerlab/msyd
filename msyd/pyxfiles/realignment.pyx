@@ -204,7 +204,6 @@ cdef get_aligner(seq, preset, ns=True):
     return aligner
 
 cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
-# def align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
@@ -302,11 +301,6 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
     """
     ret = deque()
 
-    #logger.debug(f"printing ALNS matching this pos: {rchrom}, {rstart}-{rend}/{qstart}-{qend}")
-    #print(alns.loc[(alns['achr'] == rchrom) & (alns['astart'] <= rstart) & (alns['aend'] >= rend) & (alns['adir'] == 1) &
-    #                    (alns['bchr'] == qchrom) & (alns['bstart'] <= qstart) & (alns['bend'] >= qend) & (alns['bdir'] == 1)][['achr', 'bchr', 'astart', 'aend', 'bstart', 'bend', 'alen', 'blen']])
-
-
     # iterate over all alns overlapping on both qry and ref
     alns = get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False)
 
@@ -321,8 +315,6 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
         if cg.get_len(ref=False) != aln.bend - aln.bstart + 1:
             logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
 
-        #logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
-        #print(cg.to_string())
         # trim alns to only the gap we are realigning, to make subsequent drops more efficient
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
@@ -403,7 +395,6 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
 
         for qint in qrytree:
             qintlen = qint.end - qint.begin
-            #logger.debug(str(get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen)))
             ret.append(get_at_pos(rintalns, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen))
 
     #logger.debug(f"Found: {ret}")
@@ -448,7 +439,6 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
 
     if cores > 1:
         with Pool(cores) as pool:
-            #print([(chrom, syndict[chrom], qrynames, fastas, mp_preset, int(ncores/len(syndict))) for chrom in syndict])
             return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
     else:
         return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1, annotate_private) for chrom in syndict]))
@@ -610,7 +600,6 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                     else:
                         aligner = get_aligner(seq=refseq, preset=mp_preset)
                         alns = dict()
-                        # print('seq')
                         for org, seq in seqdict.items():
                             if seq == '': # skip empty sequences
                                 alns[org] = None
