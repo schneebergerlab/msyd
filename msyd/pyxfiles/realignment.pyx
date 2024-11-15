@@ -28,8 +28,9 @@ from syri.writeout import getsrtable
 import msyd.util as util
 import msyd.cigar as cigar
 import msyd.intersection as intersection
+import msyd.priv as priv
 import msyd.io as io
-from msyd.multisyn import Multisyn
+from msyd.multisyn import Multisyn, Private
 from msyd.coords import Range
 
 
@@ -117,6 +118,23 @@ cpdef construct_mts(merasyns, old, syn):
 ## use sorted join from private to merge with realignment multisyns
 ## private regions will be at least MIN_REALIGN long
 ## => kind of enforced on ref anyway?
+
+cpdef mt_to_privates(mt, org, chrom):
+    """
+    Takes a mappingtree, and returns a DataFrame of all intervals left in it as Private objects.
+    This fn is used to extract leftover non-realigning regions to annotate as private.
+    :args:
+    :mt: input mappingtree, typically obtained from subtract_mappingtrees
+    :org: organism mt corresponds to
+    :chrom: chromosome we are working on
+    """
+    cdef ret = deque()
+    for entry in mappingtree:
+        if entry.end - entry.start >= priv.MIN_PRIV_THRESH:
+            ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
+
+    return pd.DataFrame(list(ret))
+
 
 cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
     """
@@ -651,12 +669,15 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
 
                 ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
                 logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merasyns[ref]}.")
-                mappingtrees = subtract_mts(mappingtrees, merasyns[ref], skip_ref=True)
+                mappingtrees = subtract_mts(mappingtrees, merasyns[ref], skip_ref=not annotate_private)
                 logger.debug(f"New Mappingtrees: {mappingtrees}")
 
                 # remove all orgs that have already been used as a reference
                 for reforg in merasyns:
                     if reforg in mappingtrees:
+                        if annotate_private:
+                            merasyns[ref] = util.merge(merasyns[ref], mt_to_privates(mappingtrees[reforg], reforg, syn.ref.chr))
+                        #TODO handle early exit cases
                         del mappingtrees[reforg]
 
                 ## extract the remaining sequences for future realignment
