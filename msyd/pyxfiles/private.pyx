@@ -3,13 +3,19 @@
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
+
+
 import sys
+import logging
+
+logger = util.CustomFormatter.getlogger(__name__)
+logger.setLevel(logging.INFO)
+
+from collections import deque, defaultdict
+from multiprocessing import Pool
 
 import pandas as pd
 import numpy as np
-import logging
-from collections import deque, defaultdict
-from multiprocessing import Pool
 
 import msyd.intersection as intersection
 import msyd.util as util
@@ -18,9 +24,6 @@ from msyd.coords import Range
 
 cdef int MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
-
-logger = util.CustomFormatter.getlogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 #THOUGHT implement a higher-order function for handling these kinds of things in utils?
