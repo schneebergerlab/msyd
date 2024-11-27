@@ -691,7 +691,7 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
             else:
                 buf.write('\t'.join(['.', '.', '.', f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
 
-            write_multisyns([priv], buf, orgs, save_cigars=save_cigars)
+            write_multisyn(priv, buf, orgs, save_cigars=save_cigars)
             privcounter += 1
 
         # write mesyn regions that have a position on reference at their appropriate position

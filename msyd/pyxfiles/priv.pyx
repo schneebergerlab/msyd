@@ -8,9 +8,6 @@
 import sys
 import logging
 
-logger = util.CustomFormatter.getlogger(__name__)
-logger.setLevel(logging.INFO)
-
 from collections import deque, defaultdict
 from multiprocessing import Pool
 
@@ -21,6 +18,10 @@ import msyd.intersection as intersection
 import msyd.util as util
 from msyd.multisyn import Multisyn, Private
 from msyd.coords import Range
+
+logger = util.CustomFormatter.getlogger(__name__)
+logger.setLevel(logging.INFO)
+
 
 cdef int MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 

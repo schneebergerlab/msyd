@@ -74,6 +74,12 @@ cpdef construct_mts(merasyns, old, syn):
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
 
     for merasyn in merasyns:
+        # mark private regions as covered, if they are 
+        if merasyn.is_private():
+            if merasyn.ref.org != 'ref':
+                offsetdict[merasyn.ref.org] = merasyn.ref.end
+            continue
+
         # iterate through all multisyns found so far
         for org, rng in merasyn.ranges_dict.items():
             #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
@@ -129,7 +135,7 @@ cpdef mt_to_privates(mt, org, chrom):
     :chrom: chromosome we are working on
     """
     cdef ret = deque()
-    for entry in mappingtree:
+    for entry in mt:
         if entry.end - entry.start >= priv.MIN_PRIV_THRESH:
             ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
 
@@ -645,20 +651,27 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 logger.debug("Running syri")
                 syns = syri_get_syntenic(ref, alns)
 
+                # no synteny found; can be genuine, or an issue with alignment
                 if len(syns) == 0:
                     logger.info(f"No synteny to {ref} was found!")
                     # debug: emit non-aligning sequences
                     #if refend - refstart > 1000:
                     #    print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
                     #    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
+                    # draw out remaining sequences as private from the mappingtree
+                    # if there is none, there wouldn't have been any to call as large enough anyway
+                    if annotate_private and ref in mappingtrees:
+                        merasyns[ref] = mt_to_privates(mappingtrees[ref], ref, syn.ranges_dict[org].chr)
                     continue
 
                 ## Find merasyn in the syri calls
-                multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores, annotate_private=annotate_private)
+                multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores)
 
                 # no need to recalculate the tree if no multisynteny was found
                 if multisyns is None or multisyns.empty:
                     logger.info("No multisynteny was found in this round!")
+                    if annotate_private and ref in mappingtrees:
+                        merasyns[ref] = mt_to_privates(mappingtrees[ref], ref, syn.ranges_dict[org].chr)
                     continue
 
                 # Add all merasyns with alphabetical sorting by reference name
