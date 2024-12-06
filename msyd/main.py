@@ -187,7 +187,7 @@ def call(args):
     import msyd.imputation as imputation
     import msyd.realignment as realignment
     import msyd.intersection as intersection
-    import msyd.private as private
+    import msyd.priv as priv
     import msyd.ordering as ordering
     import msyd.util as util
 
@@ -207,7 +207,7 @@ def call(args):
     logger.info("Intersected synteny")
 
     if args.private:
-        syndict = private.complement_dict(syndict, add=True, cores=args.cores)
+        syndict = priv.complement_dict(syndict, add=True, cores=args.cores)
         logger.info("Annotated private regions on ref.")
 
 
