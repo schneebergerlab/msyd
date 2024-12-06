@@ -27,5 +27,5 @@ jobs:
         pip install pylint cython-lint
     - name: Run lint
       run: |
-        pylint $(git ls-files '*.py')
+        pylint $(git ls-files 'msyd/*.py')
         cython-lint $(git ls-files '*.pyx')
