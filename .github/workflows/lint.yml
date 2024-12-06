@@ -2,7 +2,7 @@
 # adapted from https://github.com/actions/starter-workflows/blob/main/ci/pylint.yml
 # Linting can be configured in pyproject.toml
 
-name: Lint using pylint and cython-lint
+name: "Lint using pylint and cython-lint"
 
 on: 
   push:
@@ -14,7 +14,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
   steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     - name: "Set up Python 3.12"
       uses: actions/setup-python@v5
       with:
