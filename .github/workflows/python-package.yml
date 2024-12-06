@@ -1,7 +1,8 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# This workflow will build msyd as a python package, and call the CLI interface to check the install worked
+# adapted from 
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Python package
+name: Build python package
 
 on:
   push:
@@ -16,29 +17,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: pip
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
+        python -m pip install --upgrade pip setuptools
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        # flake8 . --filename *.py,*.pyx --ignore E225,E226 --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --filename *.py,*.pyx --ignore E225,E226 --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        python setup.py install
-        pasy -h
-        pasy call -h
-        pasy view -h
-        #pytest
+        pip install .
+        msyd -h
+        msyd call -h
+        msyd view -h
