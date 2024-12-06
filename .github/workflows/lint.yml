@@ -22,9 +22,9 @@ jobs:
         cache: pip
     - name: Install linters
     - run: |
-      python -m pip install --upgrade pip
-      pip install pylint cython-lint
+        python -m pip install --upgrade pip
+        pip install pylint cython-lint
     - name: Run lint
     - run: |
-      pylint $(git ls-files '*.py')
-      cython-lint $(git ls-files '*.pyx')
+        pylint $(git ls-files '*.py')
+        cython-lint $(git ls-files '*.pyx')
