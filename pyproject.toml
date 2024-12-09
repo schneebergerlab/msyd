@@ -33,3 +33,6 @@ msyd = "msyd:main"
 [tool.setuptools.dynamic]
 version = {attr = "msyd.__version__"}
 
+[tool.cython-lint]
+max-line-length = 200
+ignore = ['E266', 'E265'] # don't lint comment style
