@@ -1,4 +1,6 @@
 # msyd
+![lint](https://github.com/schneebergerlab/msyd/actions/workflows/lint.yml/badge.svg)
+
 
 msyd is still under active development, so expect some bugs and changes!
 If in doubt about the behaviour of msyd or how it might change, feel free to reach out by opening an issue!
