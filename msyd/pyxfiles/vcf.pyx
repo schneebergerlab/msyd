@@ -3,19 +3,14 @@
 # cython: language_level = 3
 
 
-import sys
 import os
-import logging
 import re
 from copy import copy
 
-import pandas as pd
-
 import pysam
 
-from msyd.vars import SNV
+#from msyd.vars import SNV
 import msyd.util as util
-import msyd.cigar as cigar
 import msyd.io as io
 
 logger = util.CustomFormatter.getlogger(__name__)
@@ -316,17 +311,13 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     ovcf.write(rec)
 
 
-cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike], condense_errors=True):
+cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike]):
     logger.info(f"Merging {lf} and {rf} into {of}")
     # TODO reimplement this with common framework with merge psfs
     # do all this in memory to be faster
     lvcf = pysam.VariantFile(lf, 'r')
     rvcf = pysam.VariantFile(rf, 'r')
     ovcf = pysam.VariantFile(of, 'w')
-
-    condense_errors = condense_errors # this might be necessary to access parameters from within inner fns?
-    conflictinginfo = False
-    conflictingid = False
 
     # Prepare the header
     if str(lvcf.header) != str(ovcf.header):
@@ -370,7 +361,7 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
         lann = next(lvcf)
         rann = next(rvcf)
     except StopIteration:
-        logger.error(f"Empty VCF encountered. Outputting empty VCF!")
+        logger.error("Empty VCF encountered. Outputting empty VCF!")
         return of
 
     try:
@@ -453,12 +444,6 @@ cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:
     except StopIteration:
         pass
 
-    if condense_errors: # not working currently
-        if conflictinginfo:
-            logger.warning(f"There was conflicting information stored in INFO! {rf} values were overwritten!")
-        if conflictingid:
-            logger.warning(f"There were VCF records at the same position with different IDs! {lf} IDs were used")
-
     return of # to enable reduction operation
 
 cdef copy_record(rec: VariantRecord, ovcf:VariantFile, int pid=0):
@@ -481,7 +466,7 @@ cdef copy_record(rec: VariantRecord, ovcf:VariantFile, int pid=0):
         new_rec.info['PID'] = pid
     ovcf.write(new_rec)
 
-cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile, condense_errors=True):
+cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile):
     """
     Merge two vcf records from different files, append to ovcf.
     """
@@ -518,10 +503,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
     rec.alleles = alleles
 
     if lrec.id != rrec.id:
-        if condense_errors:
-            conflictingid = True
-        else:
-            logger.warning(f"id not matching in {lrec.id} and {rrec.id}! Choosing {lrec.id}")
+        logger.warning(f"id not matching in {lrec.id} and {rrec.id}! Choosing {lrec.id}")
     rec.id = lrec.id
 
 
@@ -563,10 +545,7 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
 
     for key in rrec.info:
         if key in lrec.info and lrec.info[key] != rrec.info[key]:
-            if condense_errors:
-                conflictinginfo = True
-            else:
-                logger.warning(f"Conflicting info stored for {key} in {rec.id}: {lrec.info[key]} != {rrec.info[key]}! Choosing {lrec.info[key]}")
+            logger.warning(f"Conflicting info stored for {key} in {rec.id}: {lrec.info[key]} != {rrec.info[key]}! Choosing {lrec.info[key]}")
             #continue
         else:
             rec.info[key] = rrec.info[key]

@@ -4,8 +4,6 @@
 # cython: language_level = 3
 
 import functools
-#import cython
-import logging
 
 import msyd.util as util
 
@@ -14,10 +12,11 @@ logger = util.CustomFormatter.getlogger(__name__)
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
 # A range takes a start and an end position. If the end < start, the range is defined as inverted
-#TODO use proper cython types, e.g. char for haplo
+
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
-@functools.total_ordering # not sure how performant, TO/DO replace later?
+# not sure how performant, TO/DO replace later?
+@functools.total_ordering
 class Position:
     def __init__(self, org:str, chr:int, haplo:str, pos: int):
         self.org = org

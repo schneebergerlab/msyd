@@ -5,18 +5,15 @@
 
 import pandas as pd
 #import numpy as np
-import copy
 import functools
 from collections import deque
 import multiprocessing
 
-from cython.parallel import prange
+#from cython.parallel import prange
 
 import msyd.io as io
 import msyd.util as util
 import msyd.cigar
-from msyd.cigar import Cigar
-from msyd.coords import Range, Position
 from msyd.multisyn import Multisyn
 
 cdef int MIN_SYN_THRESH = 30
@@ -166,9 +163,9 @@ def find_overlaps(left, right, only_core=False):
     
     ret = pd.DataFrame(data=list(ret))#sorted(list(ret))) # sorting shouldn't be necessary
 
-    total_len_left = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], left.iterrows())))
-    total_len_right = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], right.iterrows())))
-    total_len_ret = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], ret.iterrows())))
+    #total_len_left = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], left.iterrows())))
+    #total_len_right = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], right.iterrows())))
+    #total_len_ret = sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], ret.iterrows())))
     #logger.debug(f"left orgs: {util.get_orgs_from_df(left)}, right orgs: {util.get_orgs_from_df(right)}, ret orgs: {util.get_orgs_from_df(ret)}")
     #logger.debug(f"left len: {total_len_left}, right len: {total_len_right}, ret len: {total_len_ret}")
 

@@ -4,7 +4,7 @@
 # cython: language_level = 3
 
 ## The code in this file is currently not exposed on the CLI, and is largely untested.
-## I left it as part of the msyd package, and it may be used via the CLI
+## I left it here in case it may be useful in the future or to someone else.
 
 import msyd.cigar
 from msyd.cigar import Cigar#, cig_clips, cig_aln_types
@@ -18,15 +18,13 @@ cdef cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored a
 logger = util.CustomFormatter.getlogger(__name__)
 
 
-"""
-TODOs
-– write unit tests
-– write frontend:
-    • maybe have a convenience function imputing everything given two bam files?
-    • maybe have a convenience function automatically detecting core/cross synteny from such imputed bams?
-    • maybe have a fucntion that automatically imputes along all multisyntenic regions?
-    => convenience functions may be moved to util
-"""
+# TODOs
+# – write unit tests
+# – write frontend:
+#     • maybe have a convenience function imputing everything given two bam files?
+#     • maybe have a convenience function automatically detecting core/cross synteny from such imputed bams?
+#     • maybe have a fucntion that automatically imputes along all multisyntenic regions?
+#     => convenience functions may be moved to util
 
 def impute_strings(strl: str, strr: str):
     """Convenience function performing the imputation on just two CIGAR strings.

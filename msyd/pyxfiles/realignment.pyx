@@ -3,14 +3,11 @@
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
-import sys
 
 import pandas as pd
-import numpy as np
 import mappy as mp
 import pysam
 import logging
-import os
 from collections import deque, defaultdict
 from functools import partial
 from multiprocessing import Pool
@@ -21,14 +18,14 @@ from intervaltree import IntervalTree, Interval
 logging.getLogger('syri').setLevel(logging.WARNING)
 logging.getLogger('getCTX').setLevel(logging.WARNING)
 
-from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn, apply_TS, alignmentBlock, getSynPath
-from syri.tdfunc import getCTX
-from syri.writeout import getsrtable
+#from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn, apply_TS, alignmentBlock, getSynPath
+#from syri.tdfunc import getCTX
+#from syri.writeout import getsrtable
+from syri.synsearchFunctions import apply_TS, alignmentBlock, getSynPath
 
 import msyd.util as util
 import msyd.cigar as cigar
 import msyd.intersection as intersection
-import msyd.io as io
 from msyd.multisyn import Multisyn
 from msyd.coords import Range
 
@@ -342,8 +339,9 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
         #logger.debug(f"Removing {rstart - aln.astart}, {aln.aend - rend} from aln with len {cg.get_len()}")
         #print(cg.to_string())
-        srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
+        _, _, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
+        #srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         # check that the positions after removing match
         #if srem != qstart - aln.bstart:
         #    logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
@@ -421,7 +419,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
 
     #logger.debug(f"Found: {ret}")
     if len(ret) == 0 or all([r is None for r in ret]):
-        logger.warning(f"No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
+        logger.warning("No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
         return None
     return syrify(pd.concat(ret))
 
@@ -697,7 +695,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
                 for org in seqdict:
                     if org in lendict: # eliminating sequences is always okay
                         #logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
-                        assert(len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update")
+                        assert len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update"
 
 
             # incorporate into output DF, sorted alphabetically by ref name
@@ -719,11 +717,12 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, pairwise=No
 
 cdef syri_get_syntenic(reforg, alns):
     # Synteny call parameters
-    BRT = 20
-    TUC = 1000
-    TUP = 0.5
+    # all except T are unused
+    #BRT = 20
+    #TUC = 1000
+    #TUP = 0.5
+    #invgl = 1000000
     T = 50
-    invgl = 1000000
 
     syns = {}
 

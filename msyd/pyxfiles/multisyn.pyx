@@ -6,8 +6,6 @@
 import copy
 import functools
 import traceback
-#import cython
-import logging
 
 from msyd.cigar import Cigar
 import msyd.util as util
