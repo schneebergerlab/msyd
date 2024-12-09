@@ -31,7 +31,7 @@ jobs:
         python -m pip install --upgrade pip setuptools
         # apparently the runners all have conda installed
         # use that to install syri, as it isn't on pypi
-        $CONDA/bin/conda install syri >= 1.6.5
+        $CONDA/bin/conda install bioconda::syri>=1.6.5
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Test with pytest
       run: |
