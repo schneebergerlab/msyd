@@ -35,4 +35,11 @@ version = {attr = "msyd.__version__"}
 
 [tool.cython-lint]
 max-line-length = 200
-ignore = ['E266', 'E265'] # don't lint comment style
+#ignore = ['E266', 'E265'] # don't lint comment style
+
+[tool.pylint.'MESSAGES CONTROL']
+disable=['no-name-in-module']
+
+[tool.pylint]
+errors-only = 'True'
+ignore = 'annotate_sv.py,io.py'
