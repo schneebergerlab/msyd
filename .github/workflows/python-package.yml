@@ -12,7 +12,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -31,11 +30,12 @@ jobs:
         python -m pip install --upgrade pip setuptools
         # apparently the runners all have conda installed
         # use that to install syri, as it isn't on pypi
-        $CONDA/bin/conda install bioconda::syri>=1.6.5
+        $CONDA/bin/conda install bioconda::syri
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Test with pytest
+    - name: Build package
+      run: pip install .
+    - name: Test package is installed successfully
       run: |
-        pip install .
         msyd -h
         msyd call -h
         msyd view -h
