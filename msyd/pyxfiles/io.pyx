@@ -449,12 +449,16 @@ cpdef extract_syri_snvs(fin):
     #TODO maybe do chromosome mapping?
     return df
 
-cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+# cython-lint flags the default arg list as dangerous
+# but in this case it's fine since its static
+cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
     raw, _chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
     return extract_syri_regions(raw, ref=ref, anns=anns, reforg=reforg, qryorg=qryorg)
 
 
-cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+# cython-lint flags the default arg list as dangerous
+# but in this case it's fine since its static
+cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
     """
     Given a syri output file, extract all regions matching a given annotation.
     Returns the output as a dict containing one Dataframe per chromosome.
