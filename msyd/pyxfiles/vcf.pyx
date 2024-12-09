@@ -220,8 +220,6 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
         oldvcf = pysam.VariantFile(vcfin, 'r')
         newvcf = pysam.VariantFile(vcfout, 'w')
         int syncounter = 1
-        orgs = sorted(util.get_orgs_from_df(syns))
-        #int orgsc = len(orgs)
 
     # copy header, deduplicate along the way
     headerset = set()
