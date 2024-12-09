@@ -39,7 +39,7 @@ max-line-length = 200
 no-pycodestyle = 'True'
 
 [tool.pylint.'MESSAGES CONTROL']
-disable=['no-name-in-module']
+disable=['no-name-in-module', 'import-error']
 
 [tool.pylint]
 errors-only = 'True'
