@@ -306,7 +306,7 @@ def view(args):
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
-        vcf.extract_syntenic_from_vcf(df, args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None, impute_ref=args.impute)
+        vcf.extract_syntenic_from_vcf(pd.concat(syndict.values()), args.intersect.name, args.outfile.name, ref=args.ref.name if args.ref else None, impute_ref=args.impute)
         return # has been saved already
 
     # save
