@@ -17,13 +17,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Build msyd
-        uses: ./.github/workflows/build.yml
-        with:
-          python-version: 3.12
-      - name: Test example_run.sh
-        run: |
-          # alias to a call launching the syri entrypoint from python
-          # necessary, as the hacky git install does not install the CLI entrypoints
-          alias syri='python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")'
-          ./example/example_workflow.sh
+    - name: Build msyd
+      uses: ./.github/workflows/build.yml
+      with:
+        python-version: "3.12"
+    - name: Test example_run.sh
+      run: |
+        # alias to a call launching the syri entrypoint from python
+        # necessary, as the hacky git install does not install the CLI entrypoints
+        alias syri='python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")'
+        ./example/example_workflow.sh

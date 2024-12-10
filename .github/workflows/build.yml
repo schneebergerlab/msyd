@@ -12,7 +12,9 @@ on:
         default: '3.12'
 
 jobs:
-  steps:
+  build:
+    runs-on: ubuntu-latest
+    steps:
     - name: Checkout repo
       uses: actions/checkout@v4
     - name: Set up Python ${{ inputs.python-version }}
