@@ -1,6 +1,6 @@
 # msyd
 ![lint](https://github.com/schneebergerlab/msyd/actions/workflows/lint.yml/badge.svg)
-![build](https://github.com/schneebergerlab/msyd/actions/workflows/build.yml/badge.svg)
+![build](https://github.com/schneebergerlab/msyd/actions/workflows/test_build.yml/badge.svg)
 [![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
 
 
