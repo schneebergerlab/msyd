@@ -29,11 +29,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip setuptools
         # manually install syris dependencies
-        # seems to be no longer necessary with github install
-        #pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
+        # the python version spoofing requires the --no-deps flag, so this is necessary
+        pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
         # manually use pip to install syri from github, as it isn't on pypi
         # spoof python version to get around bounds check
-        pip install 'git+https://github.com/schneebergerlab/syri.git' --python-version '3.10' #--no-warn-conflicts
+        pip install 'git+https://github.com/schneebergerlab/syri.git' --python-version '3.10' --no-deps --no-warn-conflicts
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Build package
       run: pip install .
