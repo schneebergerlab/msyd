@@ -17,6 +17,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
     - name: Build msyd
       uses: ./.github/workflows/build.yml
       with:
