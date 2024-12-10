@@ -21,6 +21,9 @@ jobs:
       uses: schneebergerlab/msyd@main
       with:
         python-version: "3.12"
+    - name: Install other tools using conda
+      run: |
+        $CONDA/bin/conda install -c conda-forge -c bioconda "minimap2"
     - name: Test example_run.sh
       run: |
         # alias to a call launching the syri entrypoint from python
