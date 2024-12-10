@@ -1,38 +1,35 @@
 # adapted from https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Build msyd
-description: "Checks out, installs dependencies and builds the msyd package. Formulated as a reusable workflow to reduce code duplication in testing."
+description: "Checks out, installs dependencies and builds the msyd package. Formulated as a composite action to reduce code duplication in testing. Composite workflows cannot perserve state."
 
-on:
-  workflow_call:
-    inputs:
-      python-version:
-        description: 'Python version to use'
-        required: true
-        default: '3.12'
+inputs:
+  python-version:
+    description: 'Python version to use'
+    required: true
+    default: '3.12'
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-#    - name: Checkout repo
-#      uses: actions/checkout@v4
-    - name: Set up Python ${{ inputs.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ inputs.python-version }}
-        cache: pip
-    - name: Update pip
-      run: python -m pip install --upgrade pip setuptools
-    - name: Install SyRI manually
-      run: |
-        # manually install syris dependencies
-        # the python version spoofing requires the --no-deps flag, so this is necessary
-        pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
-        # manually use pip to install syri from github, as it isn't on pypi
-        # spoof python version to get around bounds check
-        pip install 'git+https://github.com/schneebergerlab/syri.git' --python-version '3.10' --no-deps --no-warn-conflicts --target $(python -m site --user-site)
-    - name: Install other dependencies
-      run: pip install -r requirements.txt
-    - name: Build msyd
-      run: pip install .
+run:
+  using: composite
+  steps:
+  - name: Checkout repo
+    uses: actions/checkout@v4
+  - name: Set up Python ${{ inputs.python-version }}
+    uses: actions/setup-python@v5
+    with:
+      python-version: ${{ inputs.python-version }}
+      cache: pip
+  - name: Update pip
+    run: python -m pip install --upgrade pip setuptools
+  - name: Install SyRI manually
+    run: |
+      # manually install syris dependencies
+      # the python version spoofing requires the --no-deps flag, so this is necessary
+      pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
+      # manually use pip to install syri from github, as it isn't on pypi
+      # spoof python version to get around bounds check
+      pip install 'git+https://github.com/schneebergerlab/syri.git' --python-version '3.10' --no-deps --no-warn-conflicts --target $(python -m site --user-site)
+  - name: Install other dependencies
+    run: pip install -r requirements.txt
+  - name: Build msyd
+    run: pip install .
