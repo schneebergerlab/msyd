@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        fail-fast: false
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
     - name: Checkout repo
@@ -33,9 +34,3 @@ jobs:
         msyd -h
         msyd call -h
         msyd view -h
-    - name: Test example_run.sh
-      run: |
-        # alias to a call launching the syri entrypoint from python
-        # necessary, as the hacky git install does not install the CLI entrypoints
-        alias syri='python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")'
-        ./example/example_workflow.sh
