@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -32,7 +32,8 @@ jobs:
         # seems to be no longer necessary with github install
         #pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
         # manually use pip to install syri from github, as it isn't on pypi
-        pip install git+https://github.com/schneebergerlab/syri.git#egg=syri
+        # spoof python version to get around bounds check
+        pip install git+https://github.com/schneebergerlab/syri.git#egg=syri --python-version '3.10' #--no-warn-conflicts
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Build package
       run: pip install .
