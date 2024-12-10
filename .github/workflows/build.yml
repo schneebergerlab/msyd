@@ -1,54 +1,37 @@
-# This workflow will build msyd as a python package, and call the CLI interface to check the install worked
-# adapted from 
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# adapted from https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
-name: Build and test msyd
+name: Build msyd
+description: "Checks out, installs dependencies and builds the msyd package. Formulated as a reusable workflow to reduce code duplication in testing."
 
 on:
-  push:
-    branches: [ "main", "dev" ]
-  pull_request:
-    branches: [ "main", "dev" ]
+  workflow_call:
+    inputs:
+      python-version:
+        description: 'Python version to use'
+        required: true
+        default: '3.12'
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
+run:
+  using: composite
+  steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+    - name: Set up Python ${{ inputs.python-version }}
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ inputs.python-version }}
         cache: pip
-    - name: Install dependencies
+    - name: Update pip
+      run: python -m pip install --upgrade pip setuptools
+    - name: Install SyRI manually
       run: |
-        python -m pip install --upgrade pip setuptools
         # manually install syris dependencies
         # the python version spoofing requires the --no-deps flag, so this is necessary
         pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
         # manually use pip to install syri from github, as it isn't on pypi
         # spoof python version to get around bounds check
         pip install 'git+https://github.com/schneebergerlab/syri.git' --python-version '3.10' --no-deps --no-warn-conflicts --target $(python -m site --user-site)
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: Build package
+    - name: Install other dependencies
+      run: pip install -r requirements.txt
+    - name: Build msyd
       run: pip install .
-  test:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-    - name: Test installation
-      run: |
-        msyd -h
-        msyd call -h
-        msyd view -h
-    - name: Test example_run.sh
-      run: |
-        # alias to a call launching the syri entrypoint from python
-        # necessary, as the hacky git install does not install the CLI entrypoints
-        alias syri='python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")'
-        ./example/example_workflow.sh
