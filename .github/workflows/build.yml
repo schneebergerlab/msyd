@@ -11,8 +11,7 @@ on:
         required: true
         default: '3.12'
 
-run:
-  using: composite
+jobs:
   steps:
     - name: Checkout repo
       uses: actions/checkout@v4
