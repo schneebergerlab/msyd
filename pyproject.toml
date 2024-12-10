@@ -15,13 +15,13 @@ requires-python = ">=3.8"
 keywords = ["Structural Variation", "SV", "Pangenomics", "Bioinformatics"]
 license = {text = "MIT"}
 dependencies = [
-	"numpy", 
-	"scipy",
 	"cython",
+	"intervaltree",
+	"mappy",
+	"numpy", 
 	"pandas",
 	"pysam >= 0.21",
-	"mappy",
-	"intervaltree",
+	"scipy",
 	"syri >= 1.6.5",
 ]
 dynamic = ["version"]
