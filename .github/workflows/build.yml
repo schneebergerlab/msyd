@@ -28,11 +28,11 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip setuptools
-        # apparently the runners all have conda installed
-        # use that to install syri, as it isn't on pypi
-        # manually install syris dependencies, conda does not install
-        pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
-        $CONDA/bin/conda install --freeze-installed --no-deps -c conda-forge -c bioconda "syri>=1.6.5"
+        # manually install syris dependencies
+        # seems to be no longer necessary with github install
+        #pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
+        # manually use pip to install syri from github, as it isn't on pypi
+        pip install git+https://github.com/schneebergerlab/syri.git#egg=syri
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Build package
       run: pip install .
