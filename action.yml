@@ -9,7 +9,7 @@ inputs:
     required: true
     default: '3.12'
 
-run:
+runs:
   using: composite
   steps:
   - name: Checkout repo
