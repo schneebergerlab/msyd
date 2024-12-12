@@ -25,8 +25,4 @@ jobs:
       run: |
         $CONDA/bin/conda install -c conda-forge -c bioconda "minimap2"
     - name: Test example_run.sh
-      run: |
-        # alias to a call launching the syri entrypoint from python
-        # necessary, as the hacky git install does not install the CLI entrypoints
-        alias syri='python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")'
-        ./example/example_workflow.sh
+      run: ./.github/workflows/run_test_example.sh
