@@ -1,12 +1,15 @@
 #!/bin/bash
 
-# alias to a call launching the syri entrypoint from python
+
+# hacky way to hopefully alias the calls
+# normal alias does not seem to work in GitHub CI
 # necessary, as the hacky git install does not install the CLI entrypoints
-alias syri="python <(echo 'import syri.scripts.syri;syri.scripts.syri.main()')"
-alias minimap2="python <(echo 'import syri.scripts.syri;syri.scripts.syri.main()')"
-python <(echo "import syri.scripts.syri;syri.scripts.syri.main()") --version
+echo "#!/bin/bash python <(echo 'import syri.scripts.syri;syri.scripts.syri.main()')" > syri
+chmod +x ./syri
+echo "minimap2.py" > ./minimap2
+chmod +x ./minimap2
+PATH=$PATH:./
 syri --version
-minimap2 --version
-minimap2.py
+minimap2
 # run using source to preserve alias
 source ./example/example_workflow.sh
