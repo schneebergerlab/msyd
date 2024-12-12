@@ -15,5 +15,4 @@
 ## run using source to preserve alias
 #source ./example/example_workflow.sh
 
-$(tail -n +2 ./example/example_workflow.sh |\
-	sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/' )
+$(tail -n +2 ./example/example_workflow.sh | sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/'  -e 's/^minimap2/.\/minimap2/' )

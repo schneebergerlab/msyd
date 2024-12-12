@@ -27,6 +27,5 @@ jobs:
         mv minimap2-2.28_x64-linux\/minimap2 ./
         ./minimap2 -h # test it worked & is callable
     - name: Test example_run.sh
-      run: |
-        $(tail -n +2 ./example/example_workflow.sh | sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/'  -e 's/^minimap2/.\/minimap2/' )
+      run: ./run_test_example.sh
       shell: bash
