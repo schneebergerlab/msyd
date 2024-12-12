@@ -23,7 +23,7 @@ jobs:
         python-version: "3.12"
     - name: Install other tools using conda
       run: |
-        $CONDA/bin/conda install -c conda-forge -c bioconda "minimap2"
+        $CONDA/bin/conda install -c conda-forge -c bioconda "bioconda::minimap2"
     - name: Test example_run.sh
       run: ./.github/workflows/run_test_example.sh
       shell: bash
