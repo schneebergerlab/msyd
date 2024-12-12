@@ -21,11 +21,12 @@ jobs:
       uses: schneebergerlab/msyd@main
       with:
         python-version: "3.12"
-    - name: Install other tools using conda
+    - name: Install minimap2 manually # conda doesn't seem to work
       run: |
-        $CONDA/bin/conda install -c conda-forge -c bioconda "bioconda::minimap2"
+        curl -L https://github.com/lh3/minimap2/releases/download/v2.28/minimap2-2.28_x64-linux.tar.bz2 | tar -jxvf -
+        mv minimap2-2.28_x64-linux\/minimap2 ./
+        ./minimap2 -h # test it worked & is callable
     - name: Test example_run.sh
       run: |
-        minimap2 -h
-        $(tail -n +2 ./example/example_workflow.sh | sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/' )
+        $(tail -n +2 ./example/example_workflow.sh | sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/'  -e 's/^minimap2/.\/minimap2/' )
       shell: bash
