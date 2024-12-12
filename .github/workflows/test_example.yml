@@ -27,5 +27,5 @@ jobs:
         mv minimap2-2.28_x64-linux\/minimap2 ./
         ./minimap2 -h # test it worked & is callable
     - name: Test example_run.sh
-      run: ./run_test_example.sh
+      run: ./.github/workflows/run_test_example.sh
       shell: bash
