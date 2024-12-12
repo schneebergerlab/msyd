@@ -24,10 +24,32 @@ jobs:
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
-    - name: Build msyd
-      uses: schneebergerlab/msyd@main
+      # use old install manually
+      # since switching to conda no longer supports different python version
+      #    - name: Build msyd
+      #      uses: schneebergerlab/msyd@main
+      #      #      with:
+      #      #        python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+    - name: Update pip
+      run: python -m pip install --upgrade pip setuptools
+      shell: bash
+    - name: Install SyRI manually
+      run: |
+        # manually install syris dependencies
+        # the python version spoofing requires the --no-deps flag, so this is necessary
+        pip install Cython numpy pandas scipy psutil igraph longestrunsubsequence pysam pulp
+        # manually use pip to install syri from github, as it isn't on pypi
+        # spoof python version to get around bounds check
+        pip install 'git+https://github.com/schneebergerlab/syri.git' --python-version '3.10' --no-deps --no-warn-conflicts --target $(python -m site --user-site)
+      shell: bash
+    - name: Install other dependencies
+      run: pip install -r requirements.txt
+      shell: bash
     - name: Test installation
       run: |
         msyd --version
