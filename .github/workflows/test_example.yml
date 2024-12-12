@@ -25,5 +25,7 @@ jobs:
       run: |
         $CONDA/bin/conda install -c conda-forge -c bioconda "bioconda::minimap2"
     - name: Test example_run.sh
-      run: ./.github/workflows/run_test_example.sh
+      run: |
+        minimap2 -h
+        $(tail -n +2 ./example/example_workflow.sh | sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/' )
       shell: bash
