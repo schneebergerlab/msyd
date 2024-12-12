@@ -26,3 +26,4 @@ jobs:
         $CONDA/bin/conda install -c conda-forge -c bioconda "minimap2"
     - name: Test example_run.sh
       run: ./.github/workflows/run_test_example.sh
+      shell: bash
