@@ -38,6 +38,7 @@ runs:
     run: |
       $CONDA/bin/conda env create -n msyd --file ./environment.yml
       $CONDA/bin/conda activate msyd
+    shell: bash
     # python -m pip install mappy
   - name: Build msyd
     run: pip install .
