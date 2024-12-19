@@ -1,7 +1,7 @@
 # adapted from https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 
 name: Build msyd
-description: "Checks out, installs dependencies and builds the msyd package. Formulated as a composite action to reduce code duplication in testing. Composite workflows cannot perserve state."
+description: "Checks out, installs dependencies and builds the msyd package. Formulated as a composite action to reduce code duplication in testing. Composite workflows cannot perserve state. Currently broken b/c of a version bound in the SyRI conda package."
 
 #inputs:
 #  python-version:
