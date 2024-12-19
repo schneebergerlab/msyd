@@ -36,10 +36,11 @@ runs:
     #    shell: bash
   - name: Setup conda env, install msyd
     run: |
-      $CONDA/bin/conda init
-      source ~/.bashrc
-      $CONDA/bin/conda env create -n msyd --file ./environment.yml
-      $CONDA/bin/conda activate msyd
+      #$CONDA/bin/conda init
+      #source ~/.bashrc
+      #$CONDA/bin/conda env create -n msyd --file ./environment.yml
+      #$CONDA/bin/conda activate msyd
+      conda env update -n base --file ./environment.yml
     shell: bash
     # python -m pip install mappy
   - name: Build msyd
