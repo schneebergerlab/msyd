@@ -1,10 +1,10 @@
-Cython
-pandas
+cython
+intervaltree
+mappy
 numpy
+pandas
 pysam >= 0.21
 # for the ordering functionality
 scipy
 # for the realignment functionality
-mappy
-intervaltree
 syri >= 1.6.5

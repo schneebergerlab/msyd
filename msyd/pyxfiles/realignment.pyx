@@ -3,14 +3,11 @@
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
-import sys
 
 import pandas as pd
-import numpy as np
 import mappy as mp
 import pysam
 import logging
-import os
 from collections import deque, defaultdict
 from functools import partial
 from multiprocessing import Pool
@@ -21,9 +18,10 @@ from intervaltree import IntervalTree, Interval
 logging.getLogger('syri').setLevel(logging.WARNING)
 logging.getLogger('getCTX').setLevel(logging.WARNING)
 
-from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn, apply_TS, alignmentBlock, getSynPath
-from syri.tdfunc import getCTX
-from syri.writeout import getsrtable
+#from syri.synsearchFunctions import syri, mergeOutputFiles, outSyn, apply_TS, alignmentBlock, getSynPath
+#from syri.tdfunc import getCTX
+#from syri.writeout import getsrtable
+from syri.synsearchFunctions import apply_TS, alignmentBlock, getSynPath
 
 import msyd.util as util
 import msyd.cigar as cigar
@@ -184,7 +182,7 @@ cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
             # emit a warning if this is still the case
             if rng.end > curint.end - curint.begin + curint.data:
                 logger.debug(f"{rng.end}, {curint.end - curint.begin + curint.data}")
-                logger.warning("Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call ({rng.end} vs {curint.end - curint.begin + curint.data}).")
+                logger.warning(f"Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call ({rng.end} vs {curint.end - curint.begin + curint.data}).")
             
 
             # there was no interval overlapping this merasyn anyway, we don't need to subtract anything
@@ -349,6 +347,7 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
 
         # trim alns to only the gap we are realigning, to make subsequent drops more efficient
         srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
+        #_, _, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
         # check that the positions after removing match
         if srem != qstart - aln.bstart:
@@ -431,7 +430,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
 
     #logger.debug(f"Found: {ret}")
     if len(ret) == 0 or all([r is None for r in ret]):
-        logger.warning(f"No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
+        logger.warning("No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
         return None
     return syrify(pd.concat(ret))
 
@@ -474,7 +473,6 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
             return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
     else:
         return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1, annotate_private) for chrom in syndict]))
-
 
 cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
     return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5], annotate_private=args[6]))
@@ -707,7 +705,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
                 for org in seqdict:
                     if org in lendict: # eliminating sequences is always okay
                         #logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
-                        assert(len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update")
+                        assert len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update"
 
 
             # incorporate into output DF, sorted alphabetically by ref name
@@ -729,11 +727,12 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
 
 cdef syri_get_syntenic(reforg, alns):
     # Synteny call parameters
-    BRT = 20
-    TUC = 1000
-    TUP = 0.5
+    # all except T are unused
+    #BRT = 20
+    #TUC = 1000
+    #TUP = 0.5
+    #invgl = 1000000
     T = 50
-    invgl = 1000000
 
     syns = {}
 

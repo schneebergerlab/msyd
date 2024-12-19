@@ -2,12 +2,7 @@
 # -*- coding: utf-8 -*-
 # distutils: language = c++
 # cython: language_level = 3
-import itertools
-import logging
 import re
-
-from cpython cimport array
-import array
 
 from libcpp.vector cimport vector
 from libcpp.unordered_set cimport unordered_set
@@ -25,8 +20,12 @@ cdef:
     qryfwd = set(['M', 'I', 'S', '=', 'X'])
     cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
     cig_aln_types = set(['M', 'X', '='])
+<<<<<<< HEAD
     cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
     indel = set(['D', 'I']) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+=======
+    cig_clips = set(['S', 'H', 'P', 'N'])  # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
+>>>>>>> main
 
     unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
     unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
@@ -34,7 +33,8 @@ cdef:
     unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
     unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
     unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
-    unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
+    # N is not clipping, but is ignored anyway. shouldn't here anyway
+    unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')])
     unordered_set[char] c_indel = unordered_set[char]([ord('D'), ord('I')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
     unordered_set[char] c_matching = unordered_set[char]([ord('=')])
 
@@ -63,14 +63,14 @@ cdef vector[Cigt] cigt_from_string(str cg):
             logger.error("Tried to construct a Cigar object with invalid type")
             raise ValueError("Not a CIGAR type!")
         tups.push_back(Cigt(int(match[0]), ord(match[1])))
-    
+
     # free up unnecessarily reserved memory in case we were too pessimistic
     tups.shrink_to_fit()
 
     return tups
 
 # maybe implement cigar_from_full_string?
-cpdef cigar_from_bam(bam):    
+cpdef cigar_from_bam(bam):
     """
     Takes a List of Cigar tuples with BAM codes as input, returns as a Cigar struct.
     """
@@ -82,24 +82,16 @@ cpdef cigar_from_bam(bam):
     for tup in bam:
         assert(0 < tup[1] and tup[1] < 9)
         tups.push_back(Cigt(tup[0], bam_code_map[tup[1]]))
- 
+
     return Cigar.__new__(Cigar, tups=tups)
 
 # small struct to contain the length and type of a cigar tuple
 cdef packed struct Cigt:
-#cdef struct Cigt: # slower
     unsigned int n
     char t
 
 
-
-# got it working to not work with two arrays
-# pretty sure this is faster, might try exact benchmark though
-
-
 cdef class Cigar:
-    #cdef array.array lens # array storing the lengths of each cigar tuple
-    #cdef array.array types # array storing the type of each cigar tuple
     cdef vector[Cigt] tups
 
     def __cinit__(self, tups=None):
@@ -123,11 +115,11 @@ cdef class Cigar:
     cdef get_len_of_type(self, unordered_set[char] typeset):
         cdef unsigned int buf = 0
         for tup in self.tups:
-            if typeset.count(tup.t): # contains method still not supported until C++20
+            if typeset.count(tup.t):  # contains method still not supported until C++20
                 buf += tup.n
         return buf
 
-    def get_identity(self):#, bint ref=True):
+    def get_identity(self):
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').
         """
@@ -319,6 +311,7 @@ cdef class Cigar:
         edrop, tmp = tmp.get_removed(e, ref=ref)
         return (sdrop, edrop, tmp)
 
+<<<<<<< HEAD
     cpdef trim_matching(self, only_pos=True):
         """
         Trims a CIGAR string until both ends start with a matching (=) position.
@@ -373,16 +366,24 @@ cdef class Cigar:
         return qstart, qend, rstart, rend, Cigar(newcg)
 
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
+=======
+    # TODO make nogil
+    cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
+>>>>>>> main
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
 
+<<<<<<< HEAD
         # shortcut for a common path, where nothing needs to be removed
         if n == 0 and (
                 (start and self.tups[0].t == ord('='))
                 or
                 (not start and self.tups[-1].t == ord('='))):
+=======
+        if n == 0:  # shortcut for a common path
+>>>>>>> main
             if only_pos:
                 return 0
             else:
@@ -392,14 +393,14 @@ cdef class Cigar:
         if self.tups.empty():
             logger.error("Trying to remove from an empty Cigar!")
             raise ValueError("empty Cigar!")
-        
+
         cdef:
-            unsigned int ind = 0 # position currently being evaluated for skipping
-            unsigned int skip = 0 # bases skipped in the other sequence
+            unsigned int ind = 0  # position currently being evaluated for skipping
+            unsigned int skip = 0  # bases skipped in the other sequence
             # two sets containing the CIGAR codes incrementing one or the other strand
-            unordered_set[char] fwd = c_reffwd if ref else c_qryfwd 
+            unordered_set[char] fwd = c_reffwd if ref else c_qryfwd
             unordered_set[char] altfwd = c_qryfwd if ref else c_reffwd
-            int rem = n # tally how much is still left to remove
+            int rem = n  # tally how much is still left to remove
             Cigt cur = self.tups[ind] if start else self.tups[self.tups.size()-1]
 
         # loop and remove regions as long as the skip is more than one region
@@ -417,12 +418,21 @@ cdef class Cigar:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar len on ref/alt: {self.get_len(ref=ref)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
+<<<<<<< HEAD
         if altfwd.count(cur.t): # remove overadded value (rem < 0)
+=======
+        # remove overadded value
+        if altfwd.count(cur.t):
+>>>>>>> main
             skip += rem
 
         if only_pos:
             return skip
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> main
         cdef vector[Cigt] newtups = vector[Cigt]()
         newtups.reserve(self.tups.size() - ind + 1)
         # Add remainder to front/back as new tuple
@@ -438,7 +448,6 @@ cdef class Cigar:
                 newtups.push_back(Cigt(-rem, cur.t))
 
         return (skip, Cigar(newtups))
-
 
 
 #TODO rewrite with copying for cython

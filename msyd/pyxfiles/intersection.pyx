@@ -5,18 +5,15 @@
 
 import pandas as pd
 #import numpy as np
-import copy
 import functools
 from collections import deque
 import multiprocessing
 
-from cython.parallel import prange
+#from cython.parallel import prange
 
 import msyd.io as io
 import msyd.util as util
 import msyd.cigar
-from msyd.cigar import Cigar
-from msyd.coords import Range, Position
 from msyd.multisyn import Multisyn
 
 cdef int MIN_SYN_THRESH = 50
