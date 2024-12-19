@@ -5,9 +5,9 @@
 import numpy as np
 import pandas as pd
 from scipy.stats import *
+import pysam
 
-from multiprocessing import Pool
-from functools import partial
+#from multiprocessing import Pool
 from collections import deque, defaultdict, OrderedDict
 from gzip import open as gzopen
 from gzip import BadGzipFile
@@ -16,13 +16,11 @@ from collections import deque
 import sys
 import os
 import logging
-import pysam
-import re
-from gc import collect
+#import re
 
 cimport numpy as np
 
-from msyd.coords import Range, read_psf_range
+from msyd.coords import Range
 from msyd.multisyn import Multisyn
 from msyd.vars import SNV
 import msyd.util as util
@@ -134,34 +132,34 @@ def samtocoords(f):
 
                 bf = '{:012b}'.format(int(l[1]))
 
-                rs = int(l[3])
-                re = rs - 1 + sum([i[0] for i in cgt if i[1] in ['X', '=', 'D']])
+                rstart = int(l[3])
+                rend = rstart - 1 + sum([i[0] for i in cgt if i[1] in ['X', '=', 'D']])
 
                 if bf[7] == '0':    # forward alignment
                     if cgt[0][1] == '=':
-                        qs = 1
+                        qstart = 1
                     elif cgt[0][1] in ['S', 'H']:
-                        qs = cgt[0][0] + 1
+                        qstart = cgt[0][0] + 1
                     else:
                         print('ERROR: CIGAR string starting with non-matching base')
-                    qe = qs - 1 + sum([i[0] for i in cgt if i[1] in ['X', '=', 'I']])
+                    qend = qstart - 1 + sum([i[0] for i in cgt if i[1] in ['X', '=', 'I']])
                 elif bf[7] == '1':  # inverted alignment
                     if cgt[-1][1] == '=':
-                        qs = 1
+                        qstart = 1
                     elif cgt[-1][1] in ['S', 'H']:
-                        qs = cgt[-1][0] + 1
+                        qstart = cgt[-1][0] + 1
                     else:
                         print('ERROR: CIGAR string starting with non-matching base')
-                    qe = qs - 1 + sum([i[0] for i in cgt if i[1] in ['X', '=', 'I']])
-                    qs, qe = qe, qs
+                    qend = qstart - 1 + sum([i[0] for i in cgt if i[1] in ['X', '=', 'I']])
+                    qstart, qend = qend, qstart
 
                 al.append([
-                    rs,
-                    re,
-                    qs,
-                    qe,
-                    abs(re-rs) + 1,
-                    abs(qs-qe) + 1,
+                    rstart,
+                    rend,
+                    qstart,
+                    qend,
+                    abs(rend-rstart) + 1,
+                    abs(qstart-qend) + 1,
                     format((sum([i[0] for i in cgt if i[1] == '=']) / sum(
                         [i[0] for i in cgt if i[1] in ['=', 'X', 'I', 'D']])) * 100, '.2f'),
                     1,
@@ -444,19 +442,23 @@ cpdef extract_syri_snvs(fin):
             l = line.strip().split()
             if l[10] == 'SNP':
                 #TODO maybe store annotation information from fields 8-10
-                snv = SNV(Position('a', l[0], int(l[1])), Position('b', l[5], int(l[6])), l[4], l[5])
-                syri_regs.append(SNV)
+                snv = SNV(Position('a', 'x', l[0], int(l[1])), Position('b', 'x', l[5], int(l[6])), l[4], l[5])
+                syri_regs.append(snv)
 
     df = pd.DataFrame(list(syri_regs))#[[0, 1, 3, 4, 5, 6, 8, 9, 10]]
     #TODO maybe do chromosome mapping?
     return df
 
-cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
-    raw, chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
+# cython-lint flags the default arg list as dangerous
+# but in this case it's fine since its static
+cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
+    raw, _chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
     return extract_syri_regions(raw, ref=ref, anns=anns, reforg=reforg, qryorg=qryorg)
 
 
-cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'):
+# cython-lint flags the default arg list as dangerous
+# but in this case it's fine since its static
+cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
     """
     Given a syri output file, extract all regions matching a given annotation.
     Returns the output as a dict containing one Dataframe per chromosome.

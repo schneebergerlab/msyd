@@ -1,4 +1,8 @@
 # msyd
+[![linting: pylint](https://img.shields.io/badge/linting-pylint-yellowgreen)](https://github.com/pylint-dev/pylint)
+![lint](https://github.com/schneebergerlab/msyd/actions/workflows/lint.yml/badge.svg)
+![build](https://github.com/schneebergerlab/msyd/actions/workflows/test_build.yml/badge.svg)
+
 
 msyd is still under active development, so expect some bugs and changes!
 If in doubt about the behaviour of msyd or how it might change, feel free to reach out by opening an issue!

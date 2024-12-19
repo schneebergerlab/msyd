@@ -4,8 +4,6 @@
 # cython: language_level = 3
 
 import functools
-#import cython
-import logging
 
 import msyd.util as util
 
