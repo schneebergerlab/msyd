@@ -15,5 +15,6 @@
 ## run using source to preserve alias
 #source ./example/example_workflow.sh
 
+$CONDA/bin/conda init
 $CONDA/bin/conda activate msyd
 $(tail -n +2 ./example/example_workflow.sh | sed -e 's/^syri/python <(echo "import syri.scripts.syri;syri.scripts.syri.main()")/'  -e 's/^minimap2/.\/minimap2/' )
