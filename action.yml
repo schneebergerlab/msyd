@@ -34,9 +34,10 @@ runs:
     #  - name: Install other dependencies
     #    run: pip install -r requirements.txt
     #    shell: bash
-  - name: Setup conda env
+  - name: Setup conda env, install msyd
     run: |
       $CONDA/bin/conda init
+      source ~/.bashrc
       $CONDA/bin/conda env create -n msyd --file ./environment.yml
       $CONDA/bin/conda activate msyd
     shell: bash
