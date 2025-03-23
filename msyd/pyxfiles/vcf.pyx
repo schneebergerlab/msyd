@@ -4,6 +4,7 @@
 
 
 import os
+import shutil
 import re
 from copy import copy
 
@@ -196,7 +197,8 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
         logger.error("reduce_vcfs called with empty vcfs!")
         return
     elif len(vcfs) == 1:
-        logger.warning(f"reduce_vcfs called with only one vcf: {vcfs}")
+        logger.warning(f"reduce_vcfs called with only one vcf: {vcfs}. Copying to output path!")
+        shutil.copyfile(vcfs[0], opath)
         return
     elif len(vcfs) == 2:
         merge_vcfs(vcfs[0], vcfs[1], opath)
