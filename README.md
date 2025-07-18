@@ -8,7 +8,10 @@ msyd is still under active development, so expect some bugs and changes!
 If in doubt about the behaviour of msyd or how it might change, feel free to reach out by opening an issue!
 
 ## Changelog
-2024-08-23: As of now, the realignment step requires a patched version of minimap2 that exposes some configuration options not exposed in the default version. Compare also lh3/minimap2#1240. The patched version is available [here](https://github.com/lrauschning/minimap2/tree/mappy) temporarily.
+
+2025-06-23: This has been merged into minimap 2.27. The requirements have been updated.
+
+~2024-08-23: As of now, the realignment step requires a patched version of minimap2 that exposes some configuration options not exposed in the default version. Compare also lh3/minimap2#1240. The patched version is available [here](https://github.com/lrauschning/minimap2/tree/mappy) temporarily.~
 
 ## Installation
 msyd can be installed by a call to `setup.py` as `python ./setup.py install [--user]` or with `pip install .` in the base directory of the repository.

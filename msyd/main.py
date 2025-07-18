@@ -122,6 +122,9 @@ def main():
     call_parser.add_argument("--impute", dest='impute',
                              action='store_true', default=False,
                              help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
+    call_parser.add_argument("--strictly-contained", dest='strictly_contained',
+                             action='store_true', default=False,
+                             help="When filtering VCF files for variants in multisyntenic regions, only report variants that are fully contained in a region instead of overlapping with it.")
     call_parser.add_argument("--workdir", "-w", dest='tmp',
                              required=False, type=str,
                              help="Path to a working directory to be used for storing temporary files. If the path does not exist, it will be created!")
@@ -173,6 +176,9 @@ def main():
     view_parser.add_argument("--impute", dest='impute',
                              action='store_true', default=False,
                              help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
+    view_parser.add_argument("--strictly-contained", dest='strictly_contained',
+                             action='store_true', default=False,
+                             help="When filtering VCF files for variants in multisyntenic regions, only report variants that are fully contained in a region instead of overlapping with it.")
 
     view_parser.add_argument("--opsf", dest='filetype',
                              action='store_const', const='psf',
@@ -370,7 +376,8 @@ def call(args):
             vcf.extract_syntenic_from_vcf(df, tmpfile, args.vcf.name,
                                           no_complex=args.no_complex,
                                           add_syn_anns=True,
-                                          impute_ref=args.impute)
+                                          impute_ref=args.impute,
+                                          strictly_contained=args.strictly_contained)
         else:
             logger.info(f"Adding multisynteny annotations, saving to {args.vcf.name}")
             vcf.add_syn_anns_to_vcf(df, tmpfile, args.vcf.name, ref=ref) 
@@ -426,7 +433,8 @@ def view(args):
                                       args.intersect.name,
                                       args.outfile.name,
                                       ref=args.ref.name if args.ref else None,
-                                      impute_ref=args.impute)
+                                      impute_ref=args.impute,
+                                      strictly_contained=args.strictly_contained)
         return # has been saved already
 
     # save

@@ -1,6 +1,6 @@
 cython
 intervaltree
-mappy
+mappy >= 2.27
 numpy
 pandas
 pysam >= 0.21
