@@ -38,7 +38,7 @@ cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False, strictly_contained=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -124,6 +124,14 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             # otherwise the sorting will be violated
             if rec.pos < rng.start:
                 continue
+
+            # only output records fully contained in this multisyn region if specified
+            if strictly_contained:
+                if not rng.start <= rec.pos <= rng.end:
+                    continue
+                elif "END" in rec.info: # maybe only do if coords_in_vcf is enabled?
+                    if not rng.start <= rec.info["END"] <= rng.end:
+                        continue
 
             # check if the region is complex by looking for symbolic alleles
             if no_complex:
