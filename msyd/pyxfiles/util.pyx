@@ -56,27 +56,19 @@ class CustomFormatter(logging.Formatter):
 
 logger = CustomFormatter.getlogger(__name__)
 
-# copied from https://stackoverflow.com/questions/50878960/parallelize-pythons-reduce-command
-# doesn't seem to be very fast?
-# TODO MG: I suspect that the time it takes to initiate parallelisation for multiple small tasks outstrips any potential
-# benefit of using parallelisation
-def parallel_reduce(reduceFunc, l, numCPUs):
-    if numCPUs == 1 or len(l) <= 3:
-            returnVal = functools.reduce(reduceFunc, l[1:], l[0])
-            return returnVal
 
-    parent1, child1 = multiprocessing.Pipe()
-    parent2, child2 = multiprocessing.Pipe()
-    p1 = multiprocessing.Process(target=parallel_reduce, args=(reduceFunc, l[:len(l) // 2], numCPUs // 2, child1, ) )
-    p2 = multiprocessing.Process(target=parallel_reduce, args=(reduceFunc, l[len(l) // 2:], numCPUs // 2 + numCPUs%2, child2, ) )
-    p1.start()
-    p2.start()
-    leftReturn, rightReturn = parent1.recv(), parent2.recv()
-    p1.join()
-    p2.join()
-    returnVal = reduceFunc(leftReturn, rightReturn)
-    return returnVal
-# END
+def parallel_reduce(reduceFunc, l, numCPUs=1):
+    if numCPUs == 1 or len(l) < 4:
+        return functools.reduce(reduceFunc, l)
+
+    reduced = l
+    with multiprocessing.Pool(processes=numCPUs) as pool:
+        while len(reduced) > 1:
+            remainder = [reduced[-1],] if len(reduced) % 2 else []
+            reduced = pool.starmap(reduceFunc, zip(reduced[::2], reduced[1::2]))
+            reduced += remainder
+    return reduced[0]
+
 
 def gettmpfile():
     if not TMPDIR:

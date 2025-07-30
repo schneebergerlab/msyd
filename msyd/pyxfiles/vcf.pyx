@@ -198,7 +198,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     #vcfout.close()
     #vcfin.close()
 
-cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike], add_syn_anns=True):
+cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os.PathLike], add_syn_anns=True, cores=1):
     # quick and dirty reduction function, TODO write proper one when integrating with PSF variation merging
 
     if len(vcfs) < 1:
@@ -212,12 +212,9 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
         merge_vcfs(vcfs[0], vcfs[1], opath)
         return
 
-    tmpfiles = [util.gettmpfile() for _ in range(2, len(vcfs))] # the first two and last vcfs don't need to be stored as tempfiles
-    merge_vcfs(vcfs[0], vcfs[1], tmpfiles[0])
-    for i in range(1, len(vcfs)-2):
-        merge_vcfs(tmpfiles[i-1], vcfs[i+1], tmpfiles[i])
-    # incorporate the last vcf, save directly to output
-    merge_vcfs(vcfs[-1], tmpfiles[-1], opath)
+    # NB this doesn't actually clean up any of the temp files, not very nice
+    result_fn = util.parallel_reduce(merge_vcfs, vcfs, cores)
+    shutil.copyfile(result_fn, opath)
 
 #cpdef void impute_syn_in_vcf(syns, inpath: Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
 
@@ -319,7 +316,9 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     ovcf.write(rec)
 
 
-cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of:Union[str, os.PathLike]):
+cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of=None):
+    if of is None:
+        of = util.gettmpfile()
     logger.info(f"Merging {lf} and {rf} into {of}")
     # TODO reimplement this with common framework with merge psfs
     # do all this in memory to be faster
@@ -510,8 +509,8 @@ cdef merge_vcf_records(lrec: VariantRecord, rrec:VariantRecord, ovcf:VariantFile
         alleles.append(' ') # try to trick pysam
     rec.alleles = alleles
 
-    if lrec.id != rrec.id:
-        logger.warning(f"id not matching in {lrec.id} and {rrec.id}! Choosing {lrec.id}")
+    #if lrec.id != rrec.id:
+    #    logger.warning(f"id not matching in {lrec.id} and {rrec.id}! Choosing {lrec.id}")
     rec.id = lrec.id
 
 
