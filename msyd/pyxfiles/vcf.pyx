@@ -316,7 +316,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     ovcf.write(rec)
 
 
-cdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of=None):
+cpdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of=None):
     if of is None:
         of = util.gettmpfile()
     logger.info(f"Merging {lf} and {rf} into {of}")
