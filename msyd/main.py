@@ -309,7 +309,7 @@ def call(args):
                                          base=args.incremental)
     logger.info("Read input files")
 
-    syndict = intersection.process_syndicts(syndict, cores=args.cores, only_core=args.core)
+    syndict = intersection.process_syndicts(syndict, cores=args.cores)
     logger.info("Intersected synteny")
 
     if args.realign:
