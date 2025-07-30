@@ -77,7 +77,8 @@ def find_overlaps(left, right, only_core=False):
     def add_filtered(multisyn):
         if filter_multisyn(multisyn):
             # filter non-core-syntenic regions in case that's relevant
-            if only_core and multisyn.get_degree() < l.get_degree() + r.get_degree():
+            # don't double count reference
+            if only_core and multisyn.get_degree() < (l.get_degree() + r.get_degree() - 1):
                 return
             ret.append(multisyn)
     
@@ -315,12 +316,20 @@ def find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a'
     return process_syndicts(syndict, cores=cores)
 
 
-def process_syndicts(syndict, cores=4):
+def process_syndicts(syndict, cores=4, only_core=False):
     """
     Small fn to do parallel processing of a dictionary of syndfs per chromosome.
     """
+    if not syndict:
+        return {}
+
+    _process_syndf = functools.partial(process_syndfs, only_core=only_core)
+    chroms, syndfs = zip(*syndict.items())
+
     with multiprocessing.Pool(cores) as pool:
-        return dict(pool.map(_workaround, syndict.items()))
+        results = pool.map(_process_syndf, syndfs)
+        # map guarantees the order of results is the same as the order of input
+        return dict(zip(chroms, results))
 
     #cdef list chromlist = list(syndict)
     #cdef int n = len(chromlist)
@@ -333,12 +342,6 @@ def process_syndicts(syndict, cores=4):
     #    with gil:
     #        syndict[chrom] = intersected
     # return syndict
-
-
-def _workaround(tup): # tup: [chrom, syndfs]
-    # Annoying workaround, because multiprocessing doesn't like lambdas
-    return tup[0], process_syndfs(tup[1])
-
 
 cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
