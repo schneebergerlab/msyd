@@ -197,6 +197,9 @@ def main():
     merge_parser.add_argument("-o", dest='outfile',
                               required=True, type=argparse.FileType('wt'),
                               help="Where to store the merged VCF.")
+    merge_parser.add_argument("-c", dest="cores",
+                              type=int, default=1,
+                              help="Number of cores to use for parallel computation.")
 
     realign_parser = subparsers.add_parser("realign",
                                            help="Iteratively realign a set of genomes based on a PSF file",
@@ -363,7 +366,7 @@ def call(args):
 
         tmpfile = util.gettmpfile()
         logger.info(f"Merging VCFs, saving to {tmpfile}")
-        vcf.reduce_vcfs(vcfs, tmpfile)
+        vcf.reduce_vcfs(vcfs, tmpfile, cores=args.cores)
 
         if args.impute:
             logger.info(f"Imputing reference genotypes in syntenic regions, saving to {args.vcf.name}")
@@ -386,7 +389,7 @@ def merge(args):
 
     # temporary function to better test the vcf merging functionality
     logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
-    vcf.reduce_vcfs(args.vcfs, args.outfile.name)
+    vcf.reduce_vcfs(args.vcfs, args.outfile.name, cores=args.cores)
     logger.info(f"Finished running msyd merge, output saved to {args.outfile.name}.")
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
