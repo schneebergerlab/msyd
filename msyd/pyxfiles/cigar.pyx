@@ -20,12 +20,8 @@ cdef:
     qryfwd = set(['M', 'I', 'S', '=', 'X'])
     cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
     cig_aln_types = set(['M', 'X', '='])
-<<<<<<< HEAD
     cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
-    indel = set(['D', 'I']) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
-=======
-    cig_clips = set(['S', 'H', 'P', 'N'])  # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
->>>>>>> main
+    indel = set(['D', 'I'])
 
     unordered_set[char] c_reffwd = unordered_set[char]([ord('M'), ord('D'), ord('N'), ord('='), ord('X')])
     unordered_set[char] c_reffwd_noclip = unordered_set[char]([ord('M'), ord('D'), ord('='), ord('X')])
@@ -311,7 +307,6 @@ cdef class Cigar:
         edrop, tmp = tmp.get_removed(e, ref=ref)
         return (sdrop, edrop, tmp)
 
-<<<<<<< HEAD
     cpdef trim_matching(self, only_pos=True):
         """
         Trims a CIGAR string until both ends start with a matching (=) position.
@@ -366,24 +361,16 @@ cdef class Cigar:
         return qstart, qend, rstart, rend, Cigar(newcg)
 
     cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
-=======
-    # TODO make nogil
-    cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False):
->>>>>>> main
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
 
-<<<<<<< HEAD
         # shortcut for a common path, where nothing needs to be removed
         if n == 0 and (
                 (start and self.tups[0].t == ord('='))
                 or
                 (not start and self.tups[-1].t == ord('='))):
-=======
-        if n == 0:  # shortcut for a common path
->>>>>>> main
             if only_pos:
                 return 0
             else:
@@ -418,21 +405,12 @@ cdef class Cigar:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar len on ref/alt: {self.get_len(ref=ref)}, terminated at index {ind}")
             raise ValueError("tried to remove more than CIGAR length")
 
-<<<<<<< HEAD
-        if altfwd.count(cur.t): # remove overadded value (rem < 0)
-=======
-        # remove overadded value
+        # remove overadded value (since rem must be <=0)
         if altfwd.count(cur.t):
->>>>>>> main
             skip += rem
 
         if only_pos:
             return skip
-<<<<<<< HEAD
-        
-=======
-
->>>>>>> main
         cdef vector[Cigt] newtups = vector[Cigt]()
         newtups.reserve(self.tups.size() - ind + 1)
         # Add remainder to front/back as new tuple
