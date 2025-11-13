@@ -63,7 +63,7 @@ cpdef construct_mts(merasyns, old, syn):
 # def construct_mappingtrees(merasyns, old, syn):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
-    Crosssyns need to be sorted by position on reference.
+    Merasyns need to be sorted by position on reference.
     For each tree, the sequence in genome `org` at position `tree[pos].data - tree[pos].begin + pos` corresponds to the position `pos` in the synthetic query sequence.
     """
     listdict = defaultdict(list)
