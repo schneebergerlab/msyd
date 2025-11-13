@@ -4,6 +4,7 @@
 
 
 import os
+import shutil
 import re
 from copy import copy
 
@@ -27,17 +28,17 @@ HEADER="""##INFO=<ID=END,Number=1,Type=Integer,Description="End position on refe
 ##FORMAT=<ID=SYN,Number=1,Type=Integer,Description="1 if this region is syntenic to reference, else 0">"""
 ##FORMAT=<ID=HAP,Number=1,Type=Character,Description="Unique haplotype identifier">"""
 
-cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike], add_syn_anns=False, no_complex=False, impute_ref=False):
+cpdef filter_vcfs(syns, vcfs: List[Union[str, os.PathLike]], ref: Union[str, os.PathLike], add_syn_anns=False, no_complex=False, impute_ref=False, strictly_contained=False):
     tmpfiles = [util.gettmpfile() for _ in vcfs]
 
     for i in range(len(vcfs)):
         logger.info(f"Filtering {vcfs[i]}")
         syri_vcf = not re.fullmatch(r".*syri\.vcf$", vcfs[i]) == None
-        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns, no_complex=no_complex, coords_in_info=syri_vcf, impute_ref=impute_ref)
+        extract_syntenic_from_vcf(syns, vcfs[i], tmpfiles[i], ref=ref, add_syn_anns=add_syn_anns, no_complex=no_complex, coords_in_info=syri_vcf, impute_ref=impute_ref, strictly_contained=strictly_contained)
 
     return tmpfiles
 
-cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False):
+cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpath: Union[str, os.PathLike], force_index=True, synorg='ref', ref=None, keep_anns=True, add_syn_anns=True, add_cigar=False, add_identity=True, no_complex=False, coords_in_info=False, impute_ref=False, strictly_contained=False):
     """
     Extract syntenic annotations from a given VCF.
     A tabix-indexed VCF is required for this; by default, the input VCF is reindexed (and gzipped) with the call.
@@ -124,6 +125,14 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
             if rec.pos < rng.start:
                 continue
 
+            # only output records fully contained in this multisyn region if specified
+            if strictly_contained:
+                if not rng.start <= rec.pos <= rng.end:
+                    continue
+                elif "END" in rec.info: # maybe only do if coords_in_vcf is enabled?
+                    if not rng.start <= rec.info["END"] <= rng.end:
+                        continue
+
             # check if the region is complex by looking for symbolic alleles
             if no_complex:
                 #if any(map(lambda x: re.fullmatch(r'N|[ACGT]*', x) == None, rec.alleles)):
@@ -196,7 +205,8 @@ cpdef void reduce_vcfs(vcfs: List[Union[str, os.PathLike]], opath: Union[str, os
         logger.error("reduce_vcfs called with empty vcfs!")
         return
     elif len(vcfs) == 1:
-        logger.warning(f"reduce_vcfs called with only one vcf: {vcfs}")
+        logger.warning(f"reduce_vcfs called with only one vcf: {vcfs}. Copying to output path!")
+        shutil.copyfile(vcfs[0], opath)
         return
     elif len(vcfs) == 2:
         merge_vcfs(vcfs[0], vcfs[1], opath)
