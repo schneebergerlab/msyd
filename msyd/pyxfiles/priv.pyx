@@ -54,6 +54,11 @@ cdef complement(multisyns, add=False):
     #THOUGHT: should private inherit from multisyn?
     # could also just use Ranges for it, code in intersection should be easy to copy/adopt
 
+    ## THOUGHTS 13/11
+    ## I don't think this works for non-ref private regions
+    ## => may be covered on msyns with different ref
+    ## find in intervaltree representation, do separate traversal
+
     cdef:
         int cov = 0
         ret = deque()
