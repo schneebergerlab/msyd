@@ -643,9 +643,8 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
     orgs = sorted(util.get_orgs_from_df(df))
     cdef:
         int n = len(orgs) + 1 # to account for ref
-        int corecounter = 1
-        int meracounter = 1
-        int privcounter = 1
+        int corecounter = 0
+        int counter = 0
         int coreend = 0
         str corechr = ''
 
@@ -656,7 +655,7 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
 
     syniter = df.iterrows()
     # TODO: assert that the columns and columns are in same order as the input file (genomes.csv)
-    while True:
+    while True: # iterate from coresyn to coresyn
         mesyns = []
         refmesyns = []
         privs = [] # ref private is handled during writing
@@ -680,40 +679,41 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
         # write to the first position it can be
         # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
         for mesyn in mesyns:
+            counter += 1
+            panco_id = f"MERASYN{corecounter}.{counter}"
             if force_ref_pos:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             else:
-                buf.write('\t'.join(['.', '.', '.', f"MERASYN{meracounter}", mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
+                buf.write('\t'.join(['.', '.', '.', panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             write_multisyn(mesyn, buf, orgs, save_cigars=save_cigars)
-            meracounter += 1
 
         for priv in privs:
+            counter += 1
+            panco_id = f"PRIVATE{corecounter}.{counter}"
             if force_ref_pos:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
+                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), panco_id, priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
             else:
-                buf.write('\t'.join(['.', '.', '.', f"PRIVATE{privcounter}", priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
+                buf.write('\t'.join(['.', '.', '.', panco_id, priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
 
             write_multisyn(priv, buf, orgs, save_cigars=save_cigars)
-            privcounter += 1
 
         # write mesyn regions that have a position on reference at their appropriate position
         for refmesyn in refmesyns:
+            counter += 1
+            panco_id = f"MERASYN{corecounter}.{counter}" if refmesyn.get_degree() > 1 else f"PRIVATE{corecounter}.{counter}"
             ref = refmesyn.ref
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"MERASYN{meracounter}" if refmesyn.get_degree() > 1 else f"PRIVATE{privcounter}", ref.org, '.', '.', '.', '']))
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), panco_id, ref.org, '.', '.', '.', '']))
             write_multisyn(refmesyn, buf, orgs, save_cigars=save_cigars)
-            if refmesyn.get_degree() > 1:
-                meracounter += 1
-            else:
-                privcounter += 1
 
         # write coresyn region
         if syn:
+            corecounter += 1
+            counter = 0 # reset counter; or make it globally unique?
             ref = syn.ref
             coreend = ref.end
             corechr = ref.chr
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}", ref.org, '.', '.', '.', '']))
+            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}.{counter}", ref.org, '.', '.', '.', '']))
             write_multisyn(syn, buf, orgs, save_cigars=save_cigars)
-            corecounter += 1
         else:
             break
 
