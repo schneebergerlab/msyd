@@ -238,3 +238,42 @@ cpdef read_psf_pos(org:str, cell: str):
         cellarr = cellarr[1:]
 
     return Position(org, cellarr[0], int(cellarr[1]))
+
+
+@functools.total_ordering
+cdef class Panco:
+    """
+    Class to represent pangenome coordinates abbreviated as (PanCo).
+    These uniquely identify a multisyntenic region using two indices:
+    The one of the coresyntentic region preceding it, and an index enumerating merasyntenic regions between the aforementioned preceding coresyntenic region and the next one after that.
+    By extension, the second index will always be 0 for coresyntenic regions, and a comparison of the first indices of two coresyntenic regions reflects their total ordering along the chromosome of a pangenome.
+    I.e. for all [x.0], [y.0] with x < y, [x.0] will always come before [y.0] in any genome, and not ([x.0] < [y.0] or [y.0] < [x.0]) implies x == y, that is they describe the same coresyntenic region.
+    Two merasyntenic regions can be uniquely asigned a total ordering if between them lies a coresyntenic region, naturally extending the total ordering of coresyntenic regions (in concrete terms, the first invariant above also holds if the second coordinate is not 0).
+    Merasyntenic regions within the same two blocks of coresynteny may not have a total ordering, but a topological ordering derived from their adjacency graph can still be provided.
+    This is reflected in the second coordinate, for which the following invariant always holds:
+    For all [a.x], [a.y], x < y implies that [a.y] cannot come before [a.x] on any genome.
+    In particular, this means that sorting multisyntenic regions by PanCo coordinates is not necessarily unique, but there can never be a genome on which we move backwards if we follow the sorting of regions.
+    """
+    cdef:
+        public str chrom
+        public unsigned int corei
+        public unsigned int merai
+
+    def __eq__(l, r):
+        if not isinstance(r, Panco):
+            return False
+        return l.chrom == r.chrom and l.corei == r.corei and l.merai == r.merai
+
+    def __lt__(l, r):
+        if not l.chrom == r.chrom:
+            raise ValueError("Comparing PanCos on different chrs!")
+        if l.corei == r.corei:
+            return l.merai > r.merai        
+        else:
+            return l.corei < r.corei
+
+    def __repr__(self):
+        return f"{self.chrom}:{self.corei}.{self.merai}"
+
+    
+
