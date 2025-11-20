@@ -16,11 +16,24 @@ import msyd.util as util
 import msyd.cigar
 from msyd.multisyn import Multisyn
 
-cdef int MIN_SYN_THRESH = 50
-cdef int SPLIT_INDEL_THRESH = MIN_SYN_THRESH
+cdef const int MIN_SYN_THRESH = 50
+cdef int SPLIT_INDEL_THRESH = MIN_SYN_THRESH # const as well, but compiler complains when annotating it
+cdef volatile int DROPPED_BASES = -1 # global counter, for logging; this isn't perfectly thread safe but that should be fine as we're just logging
+# setting to -1 disables logging
 
 logger = util.CustomFormatter.getlogger(__name__)
 
+cpdef int get_dropped_bases():
+    global DROPPED_BASES
+    return DROPPED_BASES
+
+cpdef start_log_dropped_bases():
+    global DROPPED_BASES
+    DROPPED_BASES = 0
+
+cpdef stop_log_dropped_bases():
+    global DROPPED_BASES
+    DROPPED_BASES = -1
 
 cpdef int get_min_syn_thresh():
     return MIN_SYN_THRESH
@@ -31,9 +44,12 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
     Unless `drop_private` is set to false, will drop private regions (i.e. merasynteny of degree one)
     If `drop_small` is not set to `False`, will mutate the input multisyn to remove any organisms where the region is smaller than `MIN_SYN_THRESH`.
     """
+    global DROPPED_BASES
     if not multisyn: # filter empty objects to handle failures
         return False
     if len(multisyn.ref) < MIN_SYN_THRESH: # filter small regions
+        if DROPPED_BASES >= 0: # log dropping if enabled
+            DROPPED_BASES += len(multisyn.ref) * multisyn.get_degree()
         return False
     if not multisyn.check():
         logger.warning(f"{multisyn}")
@@ -43,6 +59,8 @@ cdef filter_multisyn(multisyn, drop_small=True, drop_private=True):
     if drop_small:
         droplist = [org for org, rng in multisyn.ranges_dict.items() if len(rng) < MIN_SYN_THRESH]
         for org in droplist:
+            if DROPPED_BASES >= 0: # log dropping if enabled
+                DROPPED_BASES += len(multisyn.ranges_dict[org])
             del multisyn.ranges_dict[org]
             if multisyn.cigars_dict:
                 del multisyn.cigars_dict[org]
