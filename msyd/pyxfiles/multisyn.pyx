@@ -425,6 +425,7 @@ cdef class Multisyn_container:
     Internally, Multisyns are stored in a C++ vector sorted by position on the first chosen reference. Merasyns that do not have a position on the first reference are sorted immediately after the coresyn before them, sorted alphabetically by their reference name and by position on that reference.
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
+    CURRENTLY NOT IN USE.
     """
     cdef list[Multisyn] multisyns
 

@@ -314,9 +314,13 @@ def call(args):
                                          SYNAL=args.SYNAL,
                                          base=args.incremental)
     logger.info("Read input files")
+    
+    # start logging dropped bases
+    intersection.start_log_dropped_bases()
 
     syndict = intersection.process_syndicts(syndict, split_indel_thresh=args.split_indel_thresh, cores=args.cores, only_core=args.core, trim=args.trim)
     logger.info("Intersected synteny")
+    logger.info(f"Dropped {util.siprefix(intersection.get_dropped_bases())} across all organisms during initial intersection.")
 
     if args.private:
         syndict = priv.complement_dict(syndict, add=True, cores=args.cores)
@@ -324,6 +328,8 @@ def call(args):
 
 
     if args.realign:
+        # reset counter
+        intersection.start_log_dropped_bases()
         # use reference synteny as base to identify all haplotypes
         syndict = realignment.realign(syndict, qrynames, fastas,
                                       MIN_REALIGN_LEN=args.min_realign,
@@ -335,6 +341,7 @@ def call(args):
                                       pairwise=io.read_alnsfile(args.pairwise) \
                                               if args.pairwise else None)
 
+        logger.info(f"Dropped {util.siprefix(intersection.get_dropped_bases())} across all organisms during realignment.")
         # garb = realign(df, qrynames, fastas, MIN_REALIGN_LEN=args.min_realign, MAX_REALIGN=args.max_realign, mp_preset=args.mp_preset, ncores=args.cores, cwd=args.tmp)
         # realign(syns, qrynames, fastas, MIN_REALIGN_LEN=None, MAX_REALIGN=None, mp_preset='asm5'):
 
