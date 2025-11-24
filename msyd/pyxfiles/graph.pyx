@@ -7,11 +7,13 @@ from msyd.multisyn import Multisyn, Private
 from msyd.coords import Range, Panco
 from msyd.utils import *
 
-import logging
 import functools
 from collections import defaultdict, deque # or use cpp vector/custom?
 from multiprocessing import Pool
 
+import pandas as pd
+
+import logging
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -23,11 +25,11 @@ cdef class Node:
     """
     Internal graph representation for msyd's synteny graph.
     """
-    cdef:
-        public Multisyn msyn
-        public dict[str, Node] post
-        public dict[str, Node] prev
-        public Panco pos
+    #cdef:
+    #    public Multisyn msyn
+    #    public dict[str, Node] post
+    #    public dict[str, Node] prev
+    #    public Panco pos
 
     def __init__(self, msyn):
         self.msyn = msyn
@@ -40,7 +42,7 @@ cdef class Node:
         return ""
 
 
-cpdef make_graphs_chrdict(msyndict, add_private=True, cores=1):
+def make_graphs_chrdict(msyndict, add_private=True, cores=1):
     """
     Calls make_graph to compute a graph representation from a dictionary containing Multisyn lists indexed by chromosome.
     The graph will be indexed by chromosome and returned in a topological ordering.
@@ -50,9 +52,9 @@ cpdef make_graphs_chrdict(msyndict, add_private=True, cores=1):
 
     if cores > 1:
         with Pool(cores) as pool:
-            return dict(pool.map(graphs_call, msyndict[chrom] for chrom in syndict))
+            return dict(pool.map(graphs_call, [msyndict[chrom] for chrom in syndict]))
     else:
-        return dict(map(_workaround, msyndict[chrom] for chrom in syndict))
+        return dict(map(graphs_call, [msyndict[chrom] for chrom in syndict]))
 
 cpdef make_graph(msyns, add_private=True):
     """
@@ -66,7 +68,7 @@ cpdef make_graph(msyns, add_private=True):
     chrom = msyns.iloc[0].ref.chrom
     # TODO find nice way to figure out if incrementing core or mera counter; or do panco imputation after graph construction
     #panco = Panco(chrom, 0, 0)
-    curdict = defaultdict(lambda: None)
+    curdict = dict()#defaultdict(lambda: None)
     msyns.sort_values(inplace=True) # note: if too inefficient, fetch regions between coresyns and call subfunction to sort, or implement insertion sort
     logger.info(f"Finished top. sorting on {chrom}")
     util.validate_top_sort(msyns)
@@ -79,24 +81,26 @@ cpdef make_graph(msyns, add_private=True):
     for _, msyn in msyns.iterrows():
         msyn = msyn[0]
         node = Node(msyn)
-        # add pre
+        # add links to predecessors per organism
         for org, rng in [(msyn.ref.org, msyn.ref)] + msyn.ranges_dict.items(): # how to handle ref?
             if org in curdict: # default case
                 curprev = curdict[org]
                 curprevrng = curprev.ranges_dict[org] if org in curprev.ranges_dict else curprev.ref # has to be on ref if it isn't in ranges_dict
 
-                # check distance, add link or private region
+                # check distance, add direct link or private region
                 if rng.start - curprevrng.end < MIN_PRIV_THRESH:
                     # add link and backlink
                     node.prev[org] = curdict[org]
                     curprev.post = node
                 else: # add private region
                     privnode = Node(Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)))
+
                     # add two back/frontlinks
                     curprev.post[org] = privnode
                     privnode.prev[org] = curprev
                     privnode.post[org] = node
                     node.prev[org] = privnode
+
                     # add private node to node list
                     ret.append(privnode)
                 # change curdict to this node
@@ -106,5 +110,5 @@ cpdef make_graph(msyns, add_private=True):
         # done with looping over orgs
         ret.append(node)
 
-    return [starting] + ret
+    return pd.DataFrame(data=[starting] + ret)
 
