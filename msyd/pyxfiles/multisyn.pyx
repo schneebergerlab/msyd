@@ -19,7 +19,7 @@ from msyd.coords import Range
 logger = util.CustomFormatter.getlogger(__name__)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
-@functools.total_ordering
+#@functools.total_ordering
 #cdef
 class Multisyn:
     #    cdef:
@@ -46,7 +46,7 @@ class Multisyn:
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
     def __init__(self, ref:Range, ranges_dict, cigars_dict):
         #if not ranges_dict:
-        #    raise ValueError(f"ERROR: Trying to initialiase Multisyn with no non-reference Range (ref: {ref})")
+        #    raise ValueError(f"ERROR: Trying to initialize Multisyn with no non-reference Range (ref: {ref})")
         #if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
         #    raise ValueError(f"ERROR: Trying to initialise Multisyn with ranges_dict keys {ranges_dict.keys()} not matching cigars_dict keys {cigars_dict.keys()}!")
         self.ref = ref
@@ -61,15 +61,23 @@ class Multisyn:
             return False
         return l.ref == r.ref and l.ranges_dict == r.ranges_dict and l.cigars_dict == r.cigars_dict
         
-    # for now, only sorts on the reference (falling back to the Range comparison operator)
+    # compares two msyns; if they have the same reference accession, compares their position there
+    # otherwise checks if ordering l before r is compatible, i.e. if l is ahead of r in any organism
+    # if l and r do not share any organism, always returns True
     def __lt__(l, r):
-        if not l.ref or not r.ref:
-            logger.error(f"comparing {l} with {r}: both need to have a reference!")
-            raise ValueError(f"ERROR comparing {l} with {r}: both need to have a reference!")
-        if l.ref.org != r.ref.org:
-            logger.error(f"Comparison between different references trying to compare {l} and {r}")
-            raise ValueError("Comparison between different references!")
-        return l.ref < r.ref
+        if l.ref.org == r.ref.org:
+            return l.ref < r.ref
+        return not any(l.ranges_dict[org] > r.ranges_dict[org] for org in l.ranges_dict if org in r.ranges_dict)
+        #return True # in case there is no overlap in the ranges_dict
+
+    # compares two msyns; if they have the same reference accession, compares their position there
+    # otherwise checks if ordering l after r is compatible, i.e. if l is before r in any organism
+    # if l and r do not share any organism, always returns True
+    def __gt__(l, r):
+        if l.ref.org == r.ref.org:
+            return l.ref > r.ref
+        return not any(l.ranges_dict[org] < r.ranges_dict[org] for org in l.ranges_dict if org in r.ranges_dict)
+        #return True # in case there is no overlap in the ranges_dict
 
     def __hash__(self):
         return hash(self.ref)# + hash(self.ranges_dict) + hash(self.cigars_dict) # caused problems with deque; self.ref is guaranteed to be unique in any case
