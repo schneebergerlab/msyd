@@ -6,7 +6,7 @@
 import functools
 import multiprocessing
 import pandas as pd
-from collections import deque
+from collections import deque, defaultdict
 import os
 import io
 import logging
@@ -541,8 +541,8 @@ cpdef validate_top_sort(msyns):
     Validates that msyns is topologically sorted, i.e. is consistently increasing across all organisms.
     Throws an error if this is not the case or any position is annotated twice, otherwise returns `None`.
     """
-    orgs = sorted(get_orgs_from_df(msyns))
-    curinds = {org:-1 for org in orgs}
+    #orgs = sorted(get_orgs_from_df(msyns))
+    curinds = defaultdict(lambda: -1) #{org:-1 for org in orgs}
     for _, msyn in msyns.iterrows():
         msyn = msyn[0]
         # check ref
