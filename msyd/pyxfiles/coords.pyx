@@ -9,6 +9,9 @@ import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 
+cdef char DELIM = ":" # changeable to respect panSN spec; leave as : for now
+# note: reimplement hap to further support panSN?
+
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
 # A range takes a start and an end position. If the end < start, the range is defined as inverted
@@ -37,12 +40,12 @@ cdef class Position:
     def to_psf(self):
         """Transform this `Position` into population synteny file format
         """
-        return f"{self.chr}:{self.pos}"
+        return f"{self.chr}{DELIM}{self.pos}"
 
     def to_psf_org(self):
         """Transform this `Position` into population synteny file format, including the org
         """
-        return f"{self.org}:{self.chr}:{self.pos}"
+        return "{self.org}{DELIM}{self.chr}{DELIM}{self.pos}"
 
     # support pickling, for use with multiprocessing
     def __getstate__(self):
@@ -102,14 +105,14 @@ cdef class Range:
     def to_psf(self):
         """Transform this `Range` into the form specified by PSF
         """
-        #return f"{self.chr}:{self.start}-{self.end}"
-        return f"{self.chr}:{self.start}-{self.end}"
+        #return f"{self.hap}{DELIM}{self.chr}{DELIM}{self.start}-{self.end}"
+        return f"{self.chr}{DELIM}{self.start}-{self.end}"
 
     def to_psf_org(self):
         """Transform this `Range` into the form specified by PSF, with the sample name being prepended as specified for the realigned reference haplotype
         """
-        #return f"{self.org}:{self.chr}:{self.start}-{self.end}"
-        return f"{self.org}:{self.chr}:{self.start}-{self.end}"
+        #return f"{self.org}{DELIM}{self.hap}{DELIM}{self.chr}{DELIM}{self.start}-{self.end}"
+        return f"{self.org}{DELIM}{self.chr}{DELIM}{self.start}-{self.end}"
 
     # support pickling, for use with multiprocessing
     def __getstate__(self):
@@ -273,7 +276,8 @@ cdef class Panco:
             return l.corei < r.corei
 
     def __repr__(self):
-        return f"{self.chrom}:{self.corei}.{self.merai}"
+        #return f"{self.hap}{DELIM}{self.chrom}{DELIM}{self.corei}.{self.merai}"
+        return f"{self.chrom}{DELIM}{self.corei}.{self.merai}"
 
     def increment_m(self):
         return Panco(self.chrom, self.corei, self.merai +1)
