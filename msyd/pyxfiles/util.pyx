@@ -536,3 +536,24 @@ cpdef chrom_to_int(chrom):
     else:
         raise ValueError(f"{chrom} is neither int nor str!")
 
+cpdef validate_top_sort(msyns):
+    """
+    Validates that msyns is topologically sorted, i.e. is consistently increasing across all organisms.
+    Throws an error if this is not the case or any position is annotated twice, otherwise returns `None`.
+    """
+    orgs = sorted(get_orgs_from_df(msyns))
+    curinds = {org:-1 for org in orgs}
+    for _, msyn in msyns.iterrows():
+        msyn = msyn[0]
+        # check ref
+        if curinds[msyn.ref.org] >= msyn.ref.start:
+            raise ValueError(f"Overlap or sorting violation in {msyn.ref}")
+        curinds[msyn.ref.org] = msyn.ref.end # update index
+
+        for org, rng in msyn.ranges_dict.items():
+            if curinds[org] >= rng.start:
+                raise ValueError(f"Overlap or sorting violation in {rng}")
+            curinds[org] = rng.end # update index
+    return
+
+
