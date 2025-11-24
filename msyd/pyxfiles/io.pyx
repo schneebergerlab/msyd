@@ -779,6 +779,58 @@ cpdef read_psf(fin):
     fin.close()
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
 
+cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True)
+    """
+    Takes a map of chrom IDs to DFs containing Node objects and writes them to buf in GFA1 format.
+    Preserves the sorting of the DFs (should be in topological sorting) and sorts chroms lexicallicaly.
+    Calls to `save_df_to_gfa1`.
+    :params:
+    :tag_orgs_s, tag_orgs_l, walks_orgs: True (default), False or Set of organism names. Whether to write all, none, or only the specified organisms as tags on the segments, links, or as walks at the end of the GFA.
+    :rgfa_tags: True (default), False. Whether to emit the rGFA tags of `SN`, `SO` and `SR`. The latter will always be 1 by convention.
+    :vg_header: True (default), False. Whether to write vg's extended headers to the output GFA1.
+    """
+    if len(dfmap) == 0:
+        raise ValueError("Empty dfmap provided!")
+
+    # regularize input args to sets
+    if tag_orgs_s == True: # == required to not match truthy nonempty sets
+        tag_orgs_s = get_orgs_from_df(dfmap.items[0]) 
+    elif tag_orgs_s == False:
+        tag_orgs_s = set()
+
+    if tag_orgs_l == True: # == required to not match truthy nonempty sets
+        tag_orgs_l = get_orgs_from_df(dfmap.items[0]) 
+    elif tag_orgs_l == False:
+        tag_orgs_l = set()
+
+    ## write header
+    buf.write("H\tVN:Z:1.2")
+    if vg_header and (tag_orgs_s or tag_orgs_l):
+        buf.write("\tRS:Z:" + " ".join(tag_orgs_s.union(tag_orgs_l))
+    buf.write("\n")
+
+    ## write contents
+    #TODO parallelize?
+    for chrom in sorted(dfmap):
+        buf.write(f"# <{chrom}>\n")
+        save_df_to_gfa1(dfmap[chrom], buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
+        buf.write(f"# </{chrom}>\n")
+
+cpdef save_df_to_gfa1(df, buf, rgfa_tags=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True):
+    # get start and end node from the beginning of the DF
+    nodeiter = df.iterrows()
+    startnode = next(nodeiter)[1][0]
+    endnode = next(nodeiter)[1][0]
+
+    # write S and L lines corresponding to nodes
+    for _, node in nodeiter:
+        node = node[0]
+        buf.write(node.to_gfa1(rgfa_tags=rgfa_tags, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l))
+        buf.write("\n")
+        
+    # write W lines
+
+
 cpdef read_old_psf(fin):
     """
     DEPRECATED, for reading PSF files produced by v0.2

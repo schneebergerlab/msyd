@@ -29,17 +29,43 @@ cdef class Node:
     #    public Multisyn msyn
     #    public dict[str, Node] post
     #    public dict[str, Node] prev
-    #    public Panco pos
+    #    public Panco index
 
     def __init__(self, msyn):
         self.msyn = msyn
         self.post = dict()
         self.prev = dict()
 
-    cdef to_gfa(self):
+    cdef to_gfa1(self):
         #TODO implement serialization as one S line and L lines to successors
         #TODO think about adding path lines for every org at the end in another function
-        return ""
+        return self.gfa1_s() +"\n" + "\n".join(self.gfa1_pre_l())
+    
+    cdef gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
+        #TODO fetch sequence somehow
+        ret = f"S\t{self.index}\t*" 
+        if tag_orgs_s:
+            orgs = tag_orgs_s.union(self.msyn.get_organisms())
+            if orgs:
+                ret += f"\tSO:Z:{' '.join(orgs)}"
+        if rgfa_tags:
+            ret += f"SN:Z:{self.msyn.ref.org}\tSO:i:{self.msyn.ref.start}\tSR:i:1"
+        return ret
+
+    # copy to have post, if necessary later
+    cdef gfa1_pre_l(self, tag_orgs_s=set()):
+        # collate all orgs for every previous node
+        # allows collapsing all syntenic orgs into one L line
+        prevnodes = defaultdict(set)
+        for org, node in prev.items():
+            if node in prevnodes:
+                prevnodes[node].append(org)
+        # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
+        return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_s.union(orgs)
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs)}") for node, orgs in prev.items()]
+
+    cdef __hash__(self):
+        return self.index
 
 
 def make_graphs_chrdict(msyndict, add_private=True, cores=1):
