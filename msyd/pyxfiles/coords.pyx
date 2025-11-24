@@ -275,5 +275,10 @@ cdef class Panco:
     def __repr__(self):
         return f"{self.chrom}:{self.corei}.{self.merai}"
 
+    def increment_m(self):
+        return Panco(self.chrom, self.corei, self.merai +1)
+
+    def increment_c(self):
+        return Panco(self.chrom, self.corei +1, 0)
     
 
