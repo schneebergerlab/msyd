@@ -143,3 +143,13 @@ cpdef make_graph(msyns, add_private=True):
 
     return pd.DataFrame(data=[starting, ending] + ret)
 
+cpdef trace_org(begin, org, forward=True):
+    """
+    Traces an organisms path through the graph.
+    Starts at the node begin, which has to contain org.
+    Traces in either forward (default) or backward direction (taking the post/prev dict each time) depending on the parameter passed to forward.
+    Returns a List containing the ordered nodes org traverses through.
+    """
+    if not org in begin.msyn.get_organisms():
+        raise ValueError(f"{org} not found in starting Node {begin}!")
+    return []
