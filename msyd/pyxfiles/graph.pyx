@@ -101,7 +101,8 @@ cpdef make_graph(msyns, add_private=True):
 
     # store these for now, not sure how best to handle
     # maybe annotate as virtual node w/o msyn? => easier for path tracing
-    starting = dict()
+    starting = Node(None)
+    ending = Node(None)
 
     logger.info(f"Starting graph construction on {chrom}")
     for _, msyn in msyns.iterrows():
@@ -132,9 +133,13 @@ cpdef make_graph(msyns, add_private=True):
                 # change curdict to this node
                 curdict[org] = node
             else: # init case
-                starting[org] = node
+                starting.post[org] = node
+                curdict[org] = node
         # done with looping over orgs
         ret.append(node)
 
-    return pd.DataFrame(data=[starting] + ret)
+    # log current state as ending nodes
+    ending.pre = curdict
+
+    return pd.DataFrame(data=[starting, ending] + ret)
 
