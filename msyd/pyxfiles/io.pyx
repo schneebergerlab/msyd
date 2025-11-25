@@ -779,7 +779,7 @@ cpdef read_psf(fin):
     fin.close()
     return pd.DataFrame(data=list(syns)) # shouldn't require sorting
 
-cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True)
+cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True):
     """
     Takes a map of chrom IDs to DFs containing Node objects and writes them to buf in GFA1 format.
     Preserves the sorting of the DFs (should be in topological sorting) and sorts chroms lexicallicaly.
@@ -806,7 +806,7 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
     ## write header
     buf.write("H\tVN:Z:1.2")
     if vg_header and (tag_orgs_s or tag_orgs_l):
-        buf.write("\tRS:Z:" + " ".join(tag_orgs_s.union(tag_orgs_l))
+        buf.write("\tRS:Z:" + " ".join(tag_orgs_s.union(tag_orgs_l)))
     buf.write("\n")
 
     ## write contents

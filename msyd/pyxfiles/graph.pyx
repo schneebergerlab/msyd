@@ -62,9 +62,9 @@ cdef class Node:
                 prevnodes[node].append(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
         return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_s.union(orgs)
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs)}") for node, orgs in prev.items()]
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in prev.items()]
 
-    cdef __hash__(self):
+    def __hash__(self):
         return self.index
 
 
