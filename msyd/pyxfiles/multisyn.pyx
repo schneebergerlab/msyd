@@ -99,6 +99,16 @@ class Multisyn:
         #TODO fix: add reference
         return self.ranges_dict.keys()
 
+    def iter_ranges(self):
+        yield self.ref
+        for rng in self.ranges_dict.values():
+            yield rng
+
+    def iter_orgs_ranges(self):
+        yield (self.ref.org, self.ref)
+        for org, rng in self.ranges_dict.items():
+            yield (org, rng)
+
     def get_ranges(self):
         return self.ranges_dict.values()
 
