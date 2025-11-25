@@ -7,6 +7,7 @@ import msyd.vcf as vcf
 import msyd.imputation as imputation
 import msyd.multisyn as multisyn
 import msyd.realignment as realignment
+import msyd.graph as graph
 from msyd.coords import Range
 
 import msyd.ordering as ordering
@@ -85,6 +86,9 @@ def main():
     call_parser.add_argument("-m", "--merge-vcf",
                              dest='vcf', type=argparse.FileType('wt'),
                              help="Merge the VCFs specified in the input table, store the merged VCF at the path specified. Does not currently work with --realign, as non-ref haplotypes do not have coordinates on the reference that VCF records can be fetched from.")
+    call_parser.add_argument("-g", "--gfa1",
+                             dest='gfa1', type=argparse.FileType('wt'),
+                             help="Write a synteny graph representation of the multisynteny to the specified file in GFA1 format.")
     call_parser.add_argument("-a", "--all",
                              dest='all', action='store_true', default=False,
                              help="Merge all VCF records instead of only records annotated in multisyntenic regions.")
@@ -359,6 +363,12 @@ def call(args):
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
     io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
+
+    if args.gfa:
+        logger.info(f"Saving graph output at {args.gfa.name}")
+        graph = make_graphs_chrdict(syndict)
+        io.save_to_gfa1(graph, args.gfa)
+
 
     # if specified, merge the VCFs
     if args.vcf:
