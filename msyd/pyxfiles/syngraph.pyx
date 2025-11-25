@@ -5,7 +5,8 @@
 
 from msyd.multisyn import Multisyn, Private
 from msyd.coords import Range, Panco
-from msyd.utils import *
+import msyd.util as util
+import msyd.intersection as intersection
 
 import functools
 from collections import defaultdict, deque # or use cpp vector/custom?
@@ -21,27 +22,29 @@ logger.setLevel(logging.INFO)
 # add a private node in between (or do not annotate the link if add_private is not passed)
 cdef int MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
-cdef class Node:
+#cdef
+class Node:
     """
     Internal graph representation for msyd's synteny graph.
     """
     #cdef:
+    #    public Panco index
     #    public Multisyn msyn
     #    public dict[str, Node] post
     #    public dict[str, Node] prev
-    #    public Panco index
 
     def __init__(self, msyn):
         self.msyn = msyn
         self.post = dict()
         self.prev = dict()
+        self.panco = None
 
-    cdef to_gfa1(self):
+    def to_gfa1(self):
         #TODO implement serialization as one S line and L lines to successors
         #TODO think about adding path lines for every org at the end in another function
         return self.gfa1_s() +"\n" + "\n".join(self.gfa1_pre_l())
     
-    cdef gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
+    def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
         #TODO fetch sequence somehow
         ret = f"S\t{self.index}\t*" 
         if tag_orgs_s:
@@ -53,16 +56,16 @@ cdef class Node:
         return ret
 
     # copy to have post, if necessary later
-    cdef gfa1_pre_l(self, tag_orgs_s=set()):
+    def gfa1_pre_l(self, tag_orgs_l=set()):
         # collate all orgs for every previous node
         # allows collapsing all syntenic orgs into one L line
         prevnodes = defaultdict(set)
-        for org, node in prev.items():
+        for org, node in self.prev.items():
             if node in prevnodes:
                 prevnodes[node].append(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
-        return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_s.union(orgs)
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in prev.items()]
+        return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_l.union(orgs)
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in self.prev.items()]
 
     def __hash__(self):
         return self.index
@@ -78,9 +81,9 @@ def make_graphs_chrdict(msyndict, add_private=True, cores=1):
 
     if cores > 1:
         with Pool(cores) as pool:
-            return dict(pool.map(graphs_call, [msyndict[chrom] for chrom in syndict]))
+            return dict(pool.map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
     else:
-        return dict(map(graphs_call, [msyndict[chrom] for chrom in syndict]))
+        return dict(map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
 
 cpdef make_graph(msyns, add_private=True):
     """
@@ -89,13 +92,14 @@ cpdef make_graph(msyns, add_private=True):
     Between two coresyns, nodes are topologically ordered, and their neighbourhood is then reconstructed by tracing along the ordering.
     Returns a DataFrame of Nodes, by default maintaining their topological sorting.
     """
-    logger.info(f"Starting graph construction on {msyns.iloc[0].ref.chr}, containing {msyns.size} Msyns")
     ret = deque()
-    chrom = msyns.iloc[0].ref.chrom
+    chrom = msyns.iat[0, 0].ref.chr
     # TODO find nice way to figure out if incrementing core or mera counter; or do panco imputation after graph construction
     #panco = Panco(chrom, 0, 0)
     curdict = dict()#defaultdict(lambda: None)
-    msyns.sort_values(inplace=True) # note: if too inefficient, fetch regions between coresyns and call subfunction to sort, or implement insertion sort
+
+    logger.info(f"Starting graph construction on {chrom}, containing {msyns.size} Msyns")
+    msyns.sort_values(by=[0], inplace=True) # note: if too inefficient, fetch regions between coresyns and call subfunction to sort, or implement insertion sort
     logger.info(f"Finished top. sorting on {chrom}")
     util.validate_top_sort(msyns)
 
@@ -109,16 +113,18 @@ cpdef make_graph(msyns, add_private=True):
         msyn = msyn[0]
         node = Node(msyn)
         # add links to predecessors per organism
-        for org, rng in [(msyn.ref.org, msyn.ref)] + msyn.ranges_dict.items(): # how to handle ref?
+        for org, rng in msyn.iter_orgs_ranges(): #[(msyn.ref.org, msyn.ref)] + list(msyn.ranges_dict.items()): # how to handle ref?
             if org in curdict: # default case
                 curprev = curdict[org]
-                curprevrng = curprev.ranges_dict[org] if org in curprev.ranges_dict else curprev.ref # has to be on ref if it isn't in ranges_dict
+                curprevrng = curprev.msyn.ranges_dict[org] if org in curprev.msyn.ranges_dict else curprev.msyn.ref # has to be on ref if it isn't in ranges_dict
+                # make sure this assumption is valid
+                assert org == curprevrng.org
 
                 # check distance, add direct link or private region
                 if rng.start - curprevrng.end < MIN_PRIV_THRESH:
                     # add link and backlink
-                    node.prev[org] = curdict[org]
-                    curprev.post = node
+                    node.prev[org] = curprev
+                    curprev.post[org] = node
                 else: # add private region
                     privnode = Node(Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)))
 
@@ -140,8 +146,10 @@ cpdef make_graph(msyns, add_private=True):
 
     # log current state as ending nodes
     ending.pre = curdict
+    ret.appendleft(ending) # second pos
+    ret.appendleft(starting) # first pos
 
-    return pd.DataFrame(data=[starting, ending] + ret)
+    return (chrom, pd.DataFrame(data=list(ret)))
 
 cpdef trace_org(begin, org, forward=True):
     """

@@ -20,6 +20,7 @@ import logging
 
 cimport numpy as np
 
+from msyd.syngraph import Node
 from msyd.coords import Range
 from msyd.multisyn import Multisyn
 from msyd.vars import SNV
@@ -794,12 +795,13 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
 
     # regularize input args to sets
     if tag_orgs_s == True: # == required to not match truthy nonempty sets
-        tag_orgs_s = get_orgs_from_df(dfmap.items[0]) 
+        tag_orgs_s = util.get_orgs_from_df(list(dfmap.values())[0]) 
+        #TODO handle organism regularization, or just handle in main?
     elif tag_orgs_s == False:
         tag_orgs_s = set()
 
     if tag_orgs_l == True: # == required to not match truthy nonempty sets
-        tag_orgs_l = get_orgs_from_df(dfmap.items[0]) 
+        tag_orgs_l = util.get_orgs_from_df(list(dfmap.values())[0]) 
     elif tag_orgs_l == False:
         tag_orgs_l = set()
 

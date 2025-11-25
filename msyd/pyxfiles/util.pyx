@@ -542,7 +542,7 @@ cpdef validate_top_sort(msyns):
     Throws an error if this is not the case or any position is annotated twice, otherwise returns `None`.
     """
     orgs = sorted(get_orgs_from_df(msyns))
-    curinds = {org:-1 for org in orgs} #defaultdict(lambda: -1)
+    curinds = {org:-1 for org in ["ref"] + orgs} #defaultdict(lambda: -1)
     for _, msyn in msyns.iterrows():
         msyn = msyn[0]
         # check ref
