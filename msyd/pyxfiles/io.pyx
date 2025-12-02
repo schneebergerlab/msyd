@@ -20,7 +20,7 @@ import logging
 
 cimport numpy as np
 
-from msyd.coords import Range
+from msyd.coords import Range, read_psf_range
 from msyd.multisyn import Multisyn
 from msyd.vars import SNV
 import msyd.util as util
