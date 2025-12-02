@@ -20,7 +20,7 @@ import logging
 
 cimport numpy as np
 
-from msyd.syngraph import Node
+from msyd.syngraph import Node, trace_org
 from msyd.coords import Range, read_psf_range
 from msyd.multisyn import Multisyn
 from msyd.vars import SNV
@@ -847,7 +847,19 @@ cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=Tru
         
     # write W lines
     if walks_orgs:
-        pass
+        logger.info(f"Writing Walks for {walks_orgs}")
+        for org in walks_orgs:
+            # example walk line from the GFA1 spec
+            # W	NA12878	1	chr1	0	11	>s11<s12>s13
+            # offload path tracing to fn in msyd.syngraph
+            walk = trace_org(startnode, org)
+            if not walk:
+                logger.warning(f"Empty trace found for {org}!")
+                continue
+            startrng = walk[0].msyn.ranges_dict[org]
+            # write fixed part of line
+            buf.write(f"W\t{org}\t{startrng.start}\t{startrng.chrom}")
+            
 
 
 cpdef read_old_psf(fin):

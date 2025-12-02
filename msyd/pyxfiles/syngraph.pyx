@@ -172,8 +172,10 @@ cpdef trace_org(begin, org, forward=True, include_ends=False):
     while True: # graph is a DAG, no need to worry about cycles
         #assert org in cur.msyn.get_organisms()
         ret.append(cur)
+        print(cur.post)
         cur = cur.post[org] if forward else cur.prev[org]
-        if cur.msyn.is_terminal(): # reached start/end; check at end to allow starting at one of the nodes
+        if cur.is_terminal(): # reached start/end; check at end to allow starting at one of the nodes
+            print("terminal")
             if include_ends:
                 ret.append(cur)
             break
