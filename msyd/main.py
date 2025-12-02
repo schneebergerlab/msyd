@@ -40,8 +40,8 @@ def main():
     subparsers = parser.add_subparsers()#description="See also msyd [subparser] -h:") # title/description?
     # ordering parser
     order_parser = subparsers.add_parser("order",
-         help="Determine a suitable ordering for plotting from a multisynteny callset.",
-         description="""
+                                         help="Determine a suitable ordering for plotting from a multisynteny callset.",
+                                         description="""
         Determine the optimal ordering of the supplied genomes for plotting using a clustering-based algorithm.
         The ordering is determined such that adjacent organisms share as many basepairs of multisynteny  as possible.
         """)
@@ -70,8 +70,8 @@ def main():
 
     # Multisyn calling argparser
     call_parser = subparsers.add_parser("call",
-        help="Identify multisynteny from a set of alignments and syri calls to reference.",
-        description="""
+                                        help="Identify multisynteny from a set of alignments and syri calls to reference.",
+                                        description="""
         Call Multisynteny in a set of genomes that have been aligned to a reference and processed with syri.\n
         Requires a tab-separated file listing for each organism the name that should be used, the path to the alignment and syri output files.\n
         Output can be saved either in Population Synteny File Format (.psf) or VCF. VCF output does not preserve alignment information and cannot be used for some of the further processing!\n
@@ -88,7 +88,7 @@ def main():
                              help="Merge the VCFs specified in the input table, store the merged VCF at the path specified. Does not currently work with --realign, as non-ref haplotypes do not have coordinates on the reference that VCF records can be fetched from.")
     call_parser.add_argument("-g", "--gfa",
                              dest='gfa', type=argparse.FileType('wt'),
-                             help="Write a synteny graph representation of the multisynteny to the specified file in GFA1 format.")
+                             help="Export the multisynteny graph representation in GFA1 format to the  the specified file.")
     call_parser.add_argument("-a", "--all",
                              dest='all', action='store_true', default=False,
                              help="Merge all VCF records instead of only records annotated in multisyntenic regions.")
@@ -103,7 +103,7 @@ def main():
                              help="A PSF file containing a previous multisynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
     call_parser.add_argument("-c", dest="cores",
                              type=int, default=1,
-                             help="Number of cores to use for parallel computation. Multisyn cannot make effective use of more cores than the number of input organisms divided by two. Defaults to 1.")
+                             help="Number of cores to use for parallel computation. Recommended to set it to at most 4 times the number of chromoosomes of the organism, larger values may lead to low per-core peformance. Defaults to 1.")
     call_parser.add_argument("--core", dest='core',
                              action='store_true', default=False,
                              help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
@@ -284,6 +284,39 @@ def main():
     #    """)
     order_parser.set_defaults(func=order)
 
+    graph_parser = subparsers.add_parser("graph",
+                                         help="Work with msyd's multisynteny graph functionality.",
+                                         description="""
+        """)
+    graph_parser.set_defaults(func=graph)
+    graph_parser.add_argument("-i", dest='infile',
+                              required=True, type=argparse.FileType('r'),
+                              help="PSF file to read multisynteny information from.")
+    graph_parser.add_argument("-o", dest='outfile',
+                              type=argparse.FileType('wt'),
+                              help="Where to save the output PSF file (see format.md)")
+    graph_parser.add_argument("-g", "--gfa",
+                             dest='gfa', type=argparse.FileType('wt'),
+                             help="Export the synteny graph in GFA1 format to the specified file.")
+    graph_parser.add_argument("--no-rgfa", dest='rgfa',
+                              action='store_false', default=True,
+                              help="If passed, msyd will not emit rGFA1 tags in the exported GFA1 output.")
+    graph_parser.add_argument("--no-vg-header", dest='vg_header',
+                              action='store_false', default=True,
+                              help="If passed, msyd will not add the vg tags to the header of the exported GFA1 output.")
+    graph_parser.add_argument("--s-orgs", dest="tags_orgs_s",
+                                type=str, default="False",
+                                help="Whether/Which organisms to add as tags to the segments of the exported GFA1 file. False (Default) emits no tags, True tags all organisms, specific organisms can be supplied as a comma-separated list of their names.")
+    graph_parser.add_argument("--l-orgs", dest="tags_orgs_l",
+                                type=str, default="False",
+                                help="Whether/Which organisms to add as tags to the links of the exported GFA1 file. False (Default) emits no tags, True tags all organisms, specific organisms can be supplied as a comma-separated list of their names.")
+    graph_parser.add_argument("--w-orgs", dest="walks_orgs",
+                                type=str, default="False",
+                                help="Whether/Which organisms to add as paths to the exported GFA1 file (using W lines). False (Default) emits no paths at all, True emits a path for every organism, specific organisms can be supplied as a comma-separated list of their names.")
+    graph_parser.add_argument("-c", dest="cores",
+                             type=int, default=1,
+                             help="Number of cores to use for parallel computation. Recommended to set it to at most 4 times the number of chromoosomes of the organism, larger values may lead to low per-core peformance. Defaults to 1.")
+
     args = parser.parse_args()
     if args.func:
         logger.info("Starting msyd.")
@@ -318,7 +351,7 @@ def call(args):
                                          SYNAL=args.SYNAL,
                                          base=args.incremental)
     logger.info("Read input files")
-    
+
     # start logging dropped bases
     intersection.start_log_dropped_bases()
 
@@ -365,7 +398,7 @@ def call(args):
     io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
 
     if args.gfa:
-        logger.info(f"Saving graph output at {args.gfa.name}")
+        logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
         graph = syngraph.make_graphs_chrdict(syndict)
         io.save_to_gfa1(graph, args.gfa)
 
@@ -419,6 +452,27 @@ def merge(args):
     logger.info(f"Merging {args.vcfs} to {args.outfile.name}")
     vcf.reduce_vcfs(args.vcfs, args.outfile.name)
     logger.info(f"Finished running msyd merge, output saved to {args.outfile.name}.")
+
+def graph(args):
+    import msyd.io as io
+    import msyd.util as util
+    import msyd.syngraph as syngraph
+
+    if not (args.gfa or args.outfile):
+        logger.warning("No output specified! Output will not be saved.")
+
+    logger.info(f"Reading multisynteny from {args.infile.name}")
+    syndict = io.read_psf(args.infile)
+    logger.info(f"Computing graph representation")
+    graphdict = syngraph.make_graph_chrdict(syndict, ncores=args.cores)
+    logger.info(f"Finished computing graph representation")
+
+    if args.gfa:
+        logger.info(f"exporting to GFA1 output at {args.gfa.name}")
+        io.save_to_gfa1(graph, args.gfa)
+
+    if args.outfile:
+        io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
