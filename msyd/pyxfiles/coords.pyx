@@ -9,7 +9,7 @@ import msyd.util as util
 
 logger = util.CustomFormatter.getlogger(__name__)
 
-cdef char DELIM = ":" # changeable to respect panSN spec; leave as : for now
+cdef str DELIM = ":" # changeable to respect panSN spec; leave as : for now
 # note: reimplement hap to further support panSN?
 
 # these classes form a part of the general SV format
@@ -212,7 +212,7 @@ cpdef read_psf_range(org:str, cell: str):
     """
     #TODO error handling in here
     #print(cell)
-    cellarr = cell.split(':')
+    cellarr = cell.split(DELIM)
     if len(cellarr) < 2 or len(cellarr) > 3:
         raise ValueError(f"Invalid PSF Range string: {cell}")
     if len(cellarr) == 3: # if a ref name is specified in the cell, that overrides the argument
@@ -233,7 +233,7 @@ cpdef read_psf_pos(org:str, cell: str):
     Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.
     Examples: Chr1:1000, Chr3:10000
     """
-    cellarr = cell.split(':')
+    cellarr = cell.split(DELIM)
     if len(cellarr) < 2 or len(cellarr) > 3:
         raise ValueError(f"Invalid PSF Range string: {cell}")
     if len(cellarr) == 3: # if a ref name is specified in the cell, that overrides the argument
