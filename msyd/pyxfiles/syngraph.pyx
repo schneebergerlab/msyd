@@ -38,12 +38,11 @@ class Node:
         self.msyn = msyn
         self.post = dict()
         self.prev = dict()
-        self.panco = None
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
         #TODO implement serialization as one S line and L lines to successors
         #TODO think about adding path lines for every org at the end in another function
-        return self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags) +"\n" + "\n".join(self.gfa1_pre_l(tag_orgs_l=tag_orgs_l))
+        return self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags) + "\n".join(self.gfa1_pre_l(tag_orgs_l=tag_orgs_l))
     
     def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
         #TODO fetch sequence somehow
@@ -51,9 +50,9 @@ class Node:
         if tag_orgs_s:
             orgs = tag_orgs_s.union(self.msyn.get_organisms())
             if orgs:
-                ret += f"\tSO:Z:{' '.join(orgs)}"
+                ret += f"\tSO:Z:{','.join(orgs)}" # originally used ' '
         if rgfa_tags:
-            ret += f"SN:Z:{self.msyn.ref.org}\tSO:i:{self.msyn.ref.start}\tSR:i:1"
+            ret += f"\tSN:Z:{self.msyn.ref.org}\tSO:i:{self.msyn.ref.start}\tSR:i:1"
         return ret
 
     # copy to have post, if necessary later
@@ -62,29 +61,32 @@ class Node:
         # allows collapsing all syntenic orgs into one L line
         prevnodes = defaultdict(set)
         for org, node in self.prev.items():
-            if node in prevnodes:
-                prevnodes[node].append(org)
+            if not node.is_terminal():
+                prevnodes[node].add(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
         return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_l.union(orgs)
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in self.prev.items()]
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in prevnodes.items()]
 
-    def __hash__(self):
-        return self.index.__hash__()
+    #def __hash__(self):
+    #    return self.index.__hash__()
+    
+    def __repr__(self):
+        return f"Node({self.index}, {self.msyn}, prev:{list(self.prev.keys())}, post:{list(self.post.keys())})"
     
     def is_terminal(self):
         return self.msyn is None
 
 
-def make_graphs_chrdict(msyndict, add_private=True, cores=1):
+def make_graphs_chrdict(msyndict, add_private=True, ncores=1):
     """
     Calls make_graph to compute a graph representation from a dictionary containing Multisyn lists indexed by chromosome.
     The graph will be indexed by chromosome and returned in a topological ordering.
     """
     graphs_call = functools.partial(make_graph, add_private=add_private)
-    cores = min(len(msyndict), cores)
+    ncores = min(len(msyndict), ncores)
 
-    if cores > 1:
-        with Pool(cores) as pool:
+    if ncores > 1:
+        with Pool(ncores) as pool:
             return dict(pool.map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
     else:
         return dict(map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
