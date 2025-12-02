@@ -809,8 +809,14 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
     elif tag_orgs_l == False:
         tag_orgs_l = set()
 
+    if walks_orgs == True: # == required to not match truthy nonempty sets
+        walks_orgs = all_orgs
+    elif walks_orgs == False:
+        walks_orgs = set()
+
     logger.info(f"Tracing on S lines: {tag_orgs_s}")
     logger.info(f"Tracing on L lines: {tag_orgs_l}")
+    logger.info(f"Computing W lines for {walks_orgs}")
 
     ## write header
     buf.write("H\tVN:Z:1.2")
@@ -838,6 +844,8 @@ cpdef save_df_to_gfa1(df, buf, rgfa_tags=True, tag_orgs_s=True, tag_orgs_l=True,
         buf.write("\n")
         
     # write W lines
+    if walks_orgs:
+        pass
 
 
 cpdef read_old_psf(fin):

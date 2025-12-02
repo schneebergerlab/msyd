@@ -68,7 +68,10 @@ class Node:
                  else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in self.prev.items()]
 
     def __hash__(self):
-        return self.index
+        return self.index.__hash__()
+    
+    def is_terminal(self):
+        return self.msyn is None
 
 
 def make_graphs_chrdict(msyndict, add_private=True, cores=1):
@@ -151,13 +154,30 @@ cpdef make_graph(msyns, add_private=True):
 
     return (chrom, pd.DataFrame(data=list(ret)))
 
-cpdef trace_org(begin, org, forward=True):
+cpdef trace_org(begin, org, forward=True, include_ends=False):
     """
     Traces an organisms path through the graph.
     Starts at the node begin, which has to contain org.
     Traces in either forward (default) or backward direction (taking the post/prev dict each time) depending on the parameter passed to forward.
     Returns a List containing the ordered nodes org traverses through.
     """
-    if not org in begin.msyn.get_organisms():
-        raise ValueError(f"{org} not found in starting Node {begin}!")
-    return []
+    ret = deque()
+    cur = begin
+    # skip terminal begin node unless asked to keep it
+    if begin.is_terminal() and (not include_ends):
+        cur = cur.post[org] if forward else cur.prev[org]
+
+    while True: # graph is a DAG, no need to worry about cycles
+        #assert org in cur.msyn.get_organisms()
+        ret.append(cur)
+        cur = cur.post[org] if forward else cur.prev[org]
+        if cur.msyn.is_terminal(): # reached start/end; check at end to allow starting at one of the nodes
+            if include_ends:
+                ret.append(cur)
+            break
+
+    return list(ret)
+
+cpdef trace_bidirectional(begin, org, include_ends=False):
+    # should also work if called on start/end, indexing defaults to []
+    return trace_org(begin, org, forward=False, include_ends=include_ends) +trace_org(begin, org, forward=True, include_ends=include_ends)[1:]
