@@ -827,11 +827,11 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
     ## write contents
     #TODO parallelize?
     for chrom in sorted(dfmap):
-        buf.write(f"# <{chrom}>\n")
+        buf.write(f"# <chrom:{chrom}>\n")
         save_df_to_gfa1(dfmap[chrom], buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
-        buf.write(f"# </{chrom}>\n")
+        buf.write(f"# </chrom:{chrom}>\n")
 
-cpdef save_df_to_gfa1(df, buf, rgfa_tags=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True):
+cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True, walks_orgs=set()):
     # get start and end node from the beginning of the DF
     nodeiter = df.iterrows()
     startnode = next(nodeiter)[1][0]

@@ -34,15 +34,16 @@ class Node:
     #    public dict[str, Node] prev
 
     def __init__(self, msyn):
+        self.index = "0.0"
         self.msyn = msyn
         self.post = dict()
         self.prev = dict()
         self.panco = None
 
-    def to_gfa1(self):
+    def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
         #TODO implement serialization as one S line and L lines to successors
         #TODO think about adding path lines for every org at the end in another function
-        return self.gfa1_s() +"\n" + "\n".join(self.gfa1_pre_l())
+        return self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags) +"\n" + "\n".join(self.gfa1_pre_l(tag_orgs_l=tag_orgs_l))
     
     def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
         #TODO fetch sequence somehow
@@ -106,8 +107,7 @@ cpdef make_graph(msyns, add_private=True):
     logger.info(f"Finished top. sorting on {chrom}")
     util.validate_top_sort(msyns)
 
-    # store these for now, not sure how best to handle
-    # maybe annotate as virtual node w/o msyn? => easier for path tracing
+    # store start and end, add as virtual nodes later
     starting = Node(None)
     ending = Node(None)
 
