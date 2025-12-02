@@ -793,17 +793,24 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
     if len(dfmap) == 0:
         raise ValueError("Empty dfmap provided!")
 
+    # get list of all orgs to simplify regularization
+    # start node contains all orgs
+    all_orgs = set(dfmap[list(dfmap.keys())[0]].at[0, 0].post.keys())
+    logger.info(f"Orgs found: {all_orgs}")
     # regularize input args to sets
     if tag_orgs_s == True: # == required to not match truthy nonempty sets
-        tag_orgs_s = util.get_orgs_from_df(list(dfmap.values())[0]) 
+        tag_orgs_s = all_orgs
         #TODO handle organism regularization, or just handle in main?
     elif tag_orgs_s == False:
         tag_orgs_s = set()
 
     if tag_orgs_l == True: # == required to not match truthy nonempty sets
-        tag_orgs_l = util.get_orgs_from_df(list(dfmap.values())[0]) 
+        tag_orgs_l = all_orgs
     elif tag_orgs_l == False:
         tag_orgs_l = set()
+
+    logger.info(f"Tracing on S lines: {tag_orgs_s}")
+    logger.info(f"Tracing on L lines: {tag_orgs_l}")
 
     ## write header
     buf.write("H\tVN:Z:1.2")
