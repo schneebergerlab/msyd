@@ -399,7 +399,7 @@ def call(args):
 
     if args.gfa:
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
-        graph = syngraph.make_graphs_chrdict(syndict)
+        graph = syngraph.make_graph_chrdict(syndict)
         io.save_to_gfa1(graph, args.gfa)
 
 
@@ -463,8 +463,9 @@ def graph(args):
 
     logger.info(f"Reading multisynteny from {args.infile.name}")
     syndict = io.read_psf(args.infile)
+    print(syndict)
     logger.info(f"Computing graph representation")
-    graphdict = syngraph.make_graph_chrdict(syndict, ncores=args.cores)
+    graphdict = syngraph.make_graphs_chrdict(syndict, ncores=args.cores)
     logger.info(f"Finished computing graph representation")
 
     if args.gfa:
