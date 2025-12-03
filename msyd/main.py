@@ -505,7 +505,7 @@ def view(args):
 
     if args.print:
         print(syndict)#df.head(args.print))
-    print(util.get_stats(syndict))
+    print(util.get_stats(pd.concat(syndict.values())))
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
@@ -526,8 +526,8 @@ def view(args):
     elif args.filetype == 'psf-nocg' or args.filetype == 'psf-nocigar':
         io.save_to_psf(syndict, args.outfile, save_cigars=False)
     else:
-        logger.error(f"Couldn't determine filetype for {args.filetype}")
-        return
+        logger.warning(f"Couldn't determine filetype for {args.filetype}, defaulting to PSF")
+        io.save_to_psf(syndict, args.outfile)
     logger.info(f"Finished running msyd view, output saved to {args.outfile.name}.")
 
 
@@ -562,12 +562,15 @@ def stats(args):
     logger = util.CustomFormatter.getlogger("stats")
 
     logger.info(f"Reading from {args.infile.name}.")
-    syns = io.read_psf(args.infile)
+    syndict = io.read_psf(args.infile)
     #print(util.get_stats(resyns), file=args.outfile)
     if args.agg:
-        print(util.get_stats(syns), file=args.outfile)
+        for chrom, syns in syndict.items():
+            print(f"Stats for chrom {chrom}")
+            print(util.get_stats(syns), file=args.outfile)
     else:
-        print(util.lensdict_to_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix, header=args.header), file=args.outfile)
+        for syns in syndict.values():
+            print(util.lensdict_to_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix, header=args.header), file=args.outfile)
     logger.info(f"Finished running msyd stats, output printed to {args.outfile.name}.")
 
 def fact(args):
