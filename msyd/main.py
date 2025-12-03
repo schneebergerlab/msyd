@@ -399,7 +399,7 @@ def call(args):
 
     if args.gfa:
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
-        graph = syngraph.make_graph_chrdict(syndict)
+        graph = syngraph.make_graphs_chrdict(syndict)
         io.save_to_gfa1(graph, args.gfa)
 
 
