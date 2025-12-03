@@ -741,7 +741,7 @@ cpdef read_psf(fin):
     Takes a file object or path to a file in PSF format and reads it in as a DataFrame of Multisynteny objects.
     Supports the new version of PSF format; for legacy files, use the deprecated version of this function.
     """
-    syns = deque()
+    syndict = defaultdict(deque)
     if isinstance(fin, str):
         fin = open(fin, 'rt')
 
@@ -753,6 +753,7 @@ cpdef read_psf(fin):
         line = line.strip().split()
         if line == []: continue
 
+        chrom = line[0]
         reforg = line[4]
 
         refrng = Range('ref', line[0], int(line[1]), int(line[2])) if reforg == 'ref'\
@@ -774,10 +775,15 @@ cpdef read_psf(fin):
                 else: # initialise if it hasn't been already
                     syn.cigars_dict = {org: cigar.cigar_from_string(vals[1])}
         # add read in syn to output
-        syns.append(syn)
+        syndict[chrom].append(syn)
+
     # clean up, return
     fin.close()
-    return pd.DataFrame(data=list(syns)) # shouldn't require sorting
+    # convert to DataFrames
+    for chrom, dq in syndict.items():
+        syndict[chrom] = pd.DataFrame(data=list(dq)) # shouldn't require sorting
+
+    return syndict
 
 cpdef read_old_psf(fin):
     """
