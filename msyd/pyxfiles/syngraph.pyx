@@ -36,17 +36,17 @@ class Node:
     #    public dict[str, Node] post
     #    public dict[str, Node] prev
 
-    def __init__(self, msyn, seqs=None):
+    def __init__(self, msyn, seqh=None):
         self.index = "0.0"
         self.seq = None
         self.msyn = msyn
         self.post = dict()
         self.prev = dict()
-        if seqs: # TODO figure out how to provide option for consensus seq etc.
-            self.add_sequence(seqs)
+        if seqh: # TODO figure out how to provide option for consensus seq etc.
+            self.add_sequence(seqh)
 
-    def add_sequence(self, seqs: SeqHandler):
-        self.seq = seqs.get_rep_seq(self.msyn)
+    def add_sequence(self, seqh: SeqHandler):
+        self.seq = seqh.get_rep_seq(self.msyn)
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
         return self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags) + "\n".join(self.gfa1_pre_l(tag_orgs_l=tag_orgs_l))
@@ -83,12 +83,12 @@ class Node:
         return self.msyn is None
 
 
-def make_graphs_chrdict(msyndict, seqs=None, add_private=True, ncores=1):
+def make_graphs_chrdict(msyndict, seqh=None, add_private=True, ncores=1):
     """
     Calls make_graph to compute a graph representation from a dictionary containing Multisyn lists indexed by chromosome.
     The graph will be indexed by chromosome and returned in a topological ordering.
     """
-    graphs_call = functools.partial(make_graph, seqs=seqs, add_private=add_private)
+    graphs_call = functools.partial(make_graph, seqh=seqh, add_private=add_private)
     ncores = min(len(msyndict), ncores)
 
     if ncores > 1:
@@ -97,7 +97,7 @@ def make_graphs_chrdict(msyndict, seqs=None, add_private=True, ncores=1):
     else:
         return dict(map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
 
-cpdef make_graph(msyns, seqs=None, add_private=True):
+cpdef make_graph(msyns, seqh=None, add_private=True):
     """
     Computes a graph representation from a list of Multisyns.
     Coresyns are used to contrain the graph to a single shared node.
@@ -122,7 +122,7 @@ cpdef make_graph(msyns, seqs=None, add_private=True):
     logger.info(f"Starting graph construction on {chrom}")
     for _, msyn in msyns.iterrows():
         msyn = msyn[0]
-        node = Node(msyn, seqs=seqs)
+        node = Node(msyn, seqh=seqh)
         # add links to predecessors per organism
         for org, rng in msyn.iter_orgs_ranges(): #[(msyn.ref.org, msyn.ref)] + list(msyn.ranges_dict.items()): # how to handle ref?
             if org in curdict: # default case
