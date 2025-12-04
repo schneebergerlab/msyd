@@ -49,12 +49,9 @@ class Node:
         self.seq = seqs.get_rep_seq(self.msyn)
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
-        #TODO implement serialization as one S line and L lines to successors
-        #TODO think about adding path lines for every org at the end in another function
         return self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags) + "\n".join(self.gfa1_pre_l(tag_orgs_l=tag_orgs_l))
     
     def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
-        #TODO fetch sequence somehow
         ret = f"S\t{self.index}\t*" 
         if tag_orgs_s:
             orgs = tag_orgs_s.union(self.msyn.get_organisms())
