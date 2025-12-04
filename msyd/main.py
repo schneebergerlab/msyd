@@ -298,6 +298,9 @@ def main():
     graph_parser.add_argument("-g", "--gfa",
                              dest='gfa', type=argparse.FileType('wt'),
                              help="Export the synteny graph in GFA1 format to the specified file.")
+    graph_parser.add_argument("-t", dest='tsvfile',
+                                required=False, type=argparse.FileType('r'),
+                                help="TSV containing the sample names and path to genome fastas. If this is not provided, all segment lines will be annotated without a sequence (as *)")
     graph_parser.add_argument("--no-rgfa", dest='rgfa',
                               action='store_false', default=True,
                               help="If passed, msyd will not emit rGFA1 tags in the exported GFA1 output.")
@@ -336,6 +339,7 @@ def call(args):
     import msyd.priv as priv
     import msyd.ordering as ordering
     import msyd.util as util
+    from msyd.seq import SeqHandler
 
     from msyd.coords import Range
 
@@ -398,8 +402,10 @@ def call(args):
     io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
 
     if args.gfa:
+        logger.info("Parsing FASTA files")
+        seqh = SeqHandler.from_fasta_dict({qrynames[i]:fastas[i] for i, _ in enumerate(fastas)})
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
-        graph = syngraph.make_graphs_chrdict(syndict)
+        graph = syngraph.make_graphs_chrdict(syndict, seqh=seqh)
         io.save_to_gfa1(graph, args.gfa)
 
 
@@ -464,6 +470,11 @@ def graph(args):
     logger.info(f"Reading multisynteny from {args.infile.name}")
     syndict = io.read_psf(args.infile)
     print(syndict)
+
+    logger.info("Parsing FASTA files")
+    qrynames, _, _, _, fastas = util.parse_input_tsv(args.infile)
+    seqh = SeqHandler.from_fasta_dict({qrynames[i]:fastas[i] for i, _ in enumerate(fastas)})
+
     logger.info(f"Computing graph representation")
     graphdict = syngraph.make_graphs_chrdict(syndict, ncores=args.cores)
     logger.info(f"Finished computing graph representation")
