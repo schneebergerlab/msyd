@@ -864,7 +864,7 @@ cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=Tru
                 continue
             startrng = walk[0].msyn.ranges_dict[org]
             # write fixed part of line
-            buf.write(f"W\t{org}\t{startrng.start}\t{startrng.chrom}")
+            buf.write(f"W\t{org}\t{startrng.start}\t{startrng.chr}")
             
 
 
