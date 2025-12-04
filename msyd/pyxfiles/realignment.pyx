@@ -317,7 +317,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
 cpdef generate_seqdict(fafin, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
-        fafin[org].fetch(region = chrdict[org],
+        fafin[org].fetch(region = chrdict[org], #TODO is this correct?
                          start = interval.data,
                          end = interval.data + interval.end - interval.begin).upper()
         for interval in sorted(mappingtrees[org])])
@@ -507,6 +507,7 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
         raise ValueError("Wrong number of fastas!")
 
     # load fasta files
+    #TODO maybe refactor to use seq module
     fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
 
     # iterate through each gap between coresyn blocks
