@@ -5,6 +5,8 @@
 import pandas as pd
 import pysam
 
+import io
+import os
 from typing import Dict
 
 from msyd.coords import Range
@@ -33,6 +35,37 @@ class SeqHandler:
         """
         _backing = {org: pysam.FastaFile(fasta) for org, fasta in fasta_dict.items()}
         return cls(_backing)
+
+    @classmethod
+    def from_fasta_tsv(cls, fin):
+        """
+        Instantiates a `SeqHandler` from a TSV containing the organism name in the first column and their correpsonding FASTA file in the second column.
+        """
+        # check input is file-like/can be opened
+        if isinstance(fin, (str, os.PathLike)):
+            fin = open(fin, 'rt')
+        elif not isinstance(fin, io.TextIOBase):
+            raise ValueError(f"{fin} is not a path-like or file-like object!")
+
+        _backing = dict()
+
+        # parse file line by line
+        for line in fin:
+            if line[0] == '#' or line.strip() == '':
+                continue
+            cells = line.strip().split('#')[0].split('\t')
+            if len(cells) != 2:
+                logger.error(f"invalid entry in {fin.name}: '{line}' does not contain two columns. Skipping!")
+                continue
+
+            org = cells[0].strip()
+            fasta = cells[1].strip()
+            if not os.path.isfile(fasta):
+                raise FileNotFoundError(f"Cannot find file at {fasta}. Double-check the input TSV. Exiting.")
+            _backing[org] = fasta
+
+        return cls(_backing)
+
 
     def get_range(self, rng: Range, margin=0):
         """
