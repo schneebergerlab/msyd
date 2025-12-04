@@ -9,6 +9,11 @@ from typing import Dict
 
 from msyd.coords import Range
 from msyd.multisyn import Multisyn
+import msyd.util as util
+
+import logging
+logger = util.CustomFormatter.getlogger(__name__)
+logger.setLevel(logging.INFO)
 
 class SeqHandler:
     """
@@ -57,3 +62,4 @@ class SeqHandler:
         Currently not implemented.
         """
         raise NotImplemented("TODO")
+
