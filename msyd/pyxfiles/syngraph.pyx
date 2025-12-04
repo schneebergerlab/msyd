@@ -152,42 +152,46 @@ cpdef make_graph(msyns, seqh=None, add_private=True):
             else: # init case
                 starting.post[org] = node
                 curdict[org] = node
+                #node.prev['_start'] = starting # to make the graph traversable
         # done with looping over orgs
         ret.append(node)
 
     # log current state as ending nodes
     ending.pre = curdict
+    #for node in curdict.values():
+    #    node.post['_end'] = ending
+
     ret.appendleft(ending) # second pos
     ret.appendleft(starting) # first pos
 
     return (chrom, pd.DataFrame(data=list(ret)))
 
-cpdef trace_org(begin, org, forward=True, include_ends=False):
+cpdef trace_org(begin, org, forward=True):
     """
     Traces an organisms path through the graph.
     Starts at the node begin, which has to contain org.
     Traces in either forward (default) or backward direction (taking the post/prev dict each time) depending on the parameter passed to forward.
-    Returns a List containing the ordered nodes org traverses through.
+    Returns a List containing the nodes org traverses through in order.
     """
     ret = deque()
     cur = begin
-    # skip terminal begin node unless asked to keep it
-    if begin.is_terminal() and (not include_ends):
-        cur = cur.post[org] if forward else cur.prev[org]
 
     while True: # graph is a DAG, no need to worry about cycles
-        #assert org in cur.msyn.get_organisms()
-        ret.append(cur)
-        print(cur.post)
-        cur = cur.post[org] if forward else cur.prev[org]
-        if cur.is_terminal(): # reached start/end; check at end to allow starting at one of the nodes
-            print("terminal")
-            if include_ends:
-                ret.append(cur)
+        if cur.msyn: # to not append start/end node
+            # make sure we don't mistraverse
+            #assert org in cur.msyn.get_organisms()
+            ret.append(cur)
+
+        # continue traversal
+        iterdict = cur.post if forward else cur.prev
+        if iterdict:
+            cur = iterdict[org]
+        else:
+            logger.info(f"Finished traversing on {org} at {cur}")
             break
 
     return list(ret)
 
-cpdef trace_bidirectional(begin, org, include_ends=False):
+cpdef trace_bidirectional(begin, org):
     # should also work if called on start/end, indexing defaults to []
-    return trace_org(begin, org, forward=False, include_ends=include_ends) +trace_org(begin, org, forward=True, include_ends=include_ends)[1:]
+    return trace_org(begin, org, forward=False) + trace_org(begin, org, forward=True)[1:]
