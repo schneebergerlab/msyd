@@ -317,7 +317,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
 cpdef generate_seqdict(fafin, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
-        fafin[org].fetch(region = chrdict[org], #TODO is this correct?
+        fafin[org].fetch(reference = chrdict[org], #TODO is this correct?
                          start = interval.data,
                          end = interval.data + interval.end - interval.begin).upper()
         for interval in sorted(mappingtrees[org])])
