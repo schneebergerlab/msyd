@@ -62,7 +62,7 @@ class SeqHandler:
             fasta = cells[1].strip()
             if not os.path.isfile(fasta):
                 raise FileNotFoundError(f"Cannot find file at {fasta}. Double-check the input TSV. Exiting.")
-            _backing[org] = fasta
+            _backing[org] = pysam.FastaFile(fasta)
 
         return cls(_backing)
 
