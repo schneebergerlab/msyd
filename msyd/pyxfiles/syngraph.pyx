@@ -3,16 +3,18 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-from msyd.multisyn import Multisyn, Private
-from msyd.coords import Range, Panco
-import msyd.util as util
-import msyd.intersection as intersection
-
 import functools
 from collections import defaultdict, deque # or use cpp vector/custom?
 from multiprocessing import Pool
 
 import pandas as pd
+
+from msyd.multisyn import Multisyn, Private
+from msyd.coords import Range, Panco
+from msyd.seq import SeqHandler
+
+import msyd.util as util
+import msyd.intersection as intersection
 
 import logging
 logger = util.CustomFormatter.getlogger(__name__)
@@ -29,15 +31,22 @@ class Node:
     """
     #cdef:
     #    public Panco index
+    #    public str seq
     #    public Multisyn msyn
     #    public dict[str, Node] post
     #    public dict[str, Node] prev
 
-    def __init__(self, msyn):
+    def __init__(self, msyn, seqs=None):
         self.index = "0.0"
+        self.seq = None
         self.msyn = msyn
         self.post = dict()
         self.prev = dict()
+        if seqs: # TODO figure out how to provide option for consensus seq etc.
+            self.add_sequence(seqs)
+
+    def add_sequence(self, seqs: SeqHandler):
+        self.seq = seqs.get_rep_seq(self.msyn)
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
         #TODO implement serialization as one S line and L lines to successors
@@ -64,8 +73,8 @@ class Node:
             if not node.is_terminal():
                 prevnodes[node].add(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
-        return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_l.union(orgs)
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in prevnodes.items()]
+        return [(f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}" if not tag_orgs_l.union(orgs)
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in prevnodes.items()]
 
     #def __hash__(self):
     #    return self.index.__hash__()
@@ -77,12 +86,12 @@ class Node:
         return self.msyn is None
 
 
-def make_graphs_chrdict(msyndict, add_private=True, ncores=1):
+def make_graphs_chrdict(msyndict, seqs=None, add_private=True, ncores=1):
     """
     Calls make_graph to compute a graph representation from a dictionary containing Multisyn lists indexed by chromosome.
     The graph will be indexed by chromosome and returned in a topological ordering.
     """
-    graphs_call = functools.partial(make_graph, add_private=add_private)
+    graphs_call = functools.partial(make_graph, seqs=seqs, add_private=add_private)
     ncores = min(len(msyndict), ncores)
 
     if ncores > 1:
@@ -91,7 +100,7 @@ def make_graphs_chrdict(msyndict, add_private=True, ncores=1):
     else:
         return dict(map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
 
-cpdef make_graph(msyns, add_private=True):
+cpdef make_graph(msyns, seqs=None, add_private=True):
     """
     Computes a graph representation from a list of Multisyns.
     Coresyns are used to contrain the graph to a single shared node.
@@ -116,7 +125,7 @@ cpdef make_graph(msyns, add_private=True):
     logger.info(f"Starting graph construction on {chrom}")
     for _, msyn in msyns.iterrows():
         msyn = msyn[0]
-        node = Node(msyn)
+        node = Node(msyn, seqs=seqs)
         # add links to predecessors per organism
         for org, rng in msyn.iter_orgs_ranges(): #[(msyn.ref.org, msyn.ref)] + list(msyn.ranges_dict.items()): # how to handle ref?
             if org in curdict: # default case
