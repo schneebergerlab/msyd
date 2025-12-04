@@ -117,6 +117,9 @@ def main():
     call_parser.add_argument("--private", dest='private',
                              action='store_true', default=False,
                              help="Annotate structurally private regions.")
+    call_parser.add_argument("-f", "--fastas", dest='fastas',
+                                required=False, type=argparse.FileType('r'),
+                                help="TSV containing the sample names and path to genome fastas. If this is not provided, all segment lines will be annotated without a sequence (as *)")
     call_parser.add_argument("--realign", "-ali",
                              dest='realign', action='store_true', default=False,
                              help="After calling core and reference cross synteny, realign missing regions to identify non-reference synteny.")
@@ -298,7 +301,7 @@ def main():
     graph_parser.add_argument("-g", "--gfa",
                              dest='gfa', type=argparse.FileType('wt'),
                              help="Export the synteny graph in GFA1 format to the specified file.")
-    graph_parser.add_argument("-t", dest='tsvfile',
+    graph_parser.add_argument("-f", "--fastas", dest='fastas',
                                 required=False, type=argparse.FileType('r'),
                                 help="TSV containing the sample names and path to genome fastas. If this is not provided, all segment lines will be annotated without a sequence (as *)")
     graph_parser.add_argument("--no-rgfa", dest='rgfa',
@@ -403,7 +406,9 @@ def call(args):
 
     if args.gfa:
         logger.info("Parsing FASTA files")
-        seqh = SeqHandler.from_fasta_dict({qrynames[i]:fastas[i] for i, _ in enumerate(fastas)})
+        seqh = None
+        if args.fastas:
+            seqh = SeqHandler.from_fasta_tsv(args.fastas)
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
         graph = syngraph.make_graphs_chrdict(syndict, seqh=seqh)
         io.save_to_gfa1(graph, args.gfa)
@@ -472,8 +477,9 @@ def graph(args):
     print(syndict)
 
     logger.info("Parsing FASTA files")
-    qrynames, _, _, _, fastas = util.parse_input_tsv(args.infile)
-    seqh = SeqHandler.from_fasta_dict({qrynames[i]:fastas[i] for i, _ in enumerate(fastas)})
+    seqh = None
+    if args.fastas:
+        seqh = SeqHandler.from_fasta_tsv(args.fastas)
 
     logger.info(f"Computing graph representation")
     graphdict = syngraph.make_graphs_chrdict(syndict, ncores=args.cores)
