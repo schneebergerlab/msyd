@@ -865,6 +865,11 @@ cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=Tru
             startrng = walk[0].msyn.ranges_dict[org]
             # write fixed part of line
             buf.write(f"W\t{org}\t{startrng.start}\t{startrng.chr}")
+            #TODO finish writing non-fixed part of line
+            # notes
+            # think if it makes sense to combine this with msyn refactor
+            # => does including the ref in ranges_dict break stuff in intersection/realignment?
+
             
 
 
