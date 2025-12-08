@@ -108,11 +108,11 @@ def main():
                              action='store_true', default=False,
                              help="Call only core synteny. Improves runtime significantly, particularly on larger datasets.")
     call_parser.add_argument("--syn", "-s",
-                             dest='SYNAL', action='store_const',
-                             const=False, default=True,
+                             dest='SYNAL',
+                             action='store_const', const=False, default=True,
                              help="Use SYN instead of SYNAL SyRI annotations. Fast, but error-prone and inaccurate. Not recommended.")
     call_parser.add_argument("--no-cigars", dest='cigars',
-                             action='store_const', const=False, default=True,
+                             action='store_false', default=True,
                              help="Don't store CIGAR strings in the saved .psf file. Has no effect when --syn is specified.")
     call_parser.add_argument("--private", dest='private',
                              action='store_true', default=False,
@@ -128,7 +128,10 @@ def main():
                              help="Path to a TSV containing paths to full pairwise alignments that msyd will read in from disk during realignment if this parameter is passed. Otherwise, individual regions will be realigned on the fly with minimap2/mappy. This is useful if you already have pairwise alignments, or want to use a different aligner.")
     call_parser.add_argument("-p", "--print", dest='print',
                              action='store_true', default=False,
-                             help="print a subset of the output to stdout, for debugging.")
+                             help="Print a subset of the output to stdout, for debugging.")
+    call_parser.add_argument("--no-stats", dest='get_stats',
+                             action='store_false', default=True,
+                             help="Do not print some statistics about the synteny to stdout. Useful for saving runtime in large samples, or when piping stdout somewhere.")
     call_parser.add_argument("--impute", dest='impute',
                              action='store_true', default=False,
                              help="When processing small variants in a VCF, interpret the lack of a variant as identical to the reference genotype for that haplotype.")
@@ -177,6 +180,9 @@ def main():
     view_parser.add_argument("-p", dest='print',
                              action='store_const', const=10,
                              help="Print the first 10 regions after filtering, mainly for debugging")
+    view_parser.add_argument("--no-stats", dest='get_stats',
+                             action='store_false', default=True,
+                             help="Do not print some statistics about the synteny to stdout. Useful for saving runtime in large samples, or when piping stdout somewhere.")
     view_parser.add_argument("-r", "--reference",
                              dest='ref', type=argparse.FileType('r'),
                              help="If saving to VCF, the reference to use can be specified with this flag")
@@ -395,10 +401,15 @@ def call(args):
         TMPDIR = args.tmp
 
     if args.print:
-        logger.info("Printing sample head to STDOUT")
-        print(syndict)#df.head())
-
-    print(util.get_map_stats(syndict))
+        try:
+            print(syndict)#df.head(args.print))
+        except:
+            logger.error("Error printing sample to STDOUT!")
+    if args.get_stats:
+        try:
+            print(util.get_stats(pd.concat(syndict.values())))
+        except:
+            logger.error("Error printing sample to STDOUT!")
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
@@ -521,8 +532,15 @@ def view(args):
         syndict = {chrom:util.apply_filtering(df, args.expr) for chrom, df in syndict.items()}
 
     if args.print:
-        print(syndict)#df.head(args.print))
-    print(util.get_stats(pd.concat(syndict.values())))
+        try:
+            print(syndict)#df.head(args.print))
+        except:
+            logger.error("Error printing sample to STDOUT!")
+    if args.get_stats:
+        try:
+            print(util.get_stats(pd.concat(syndict.values())))
+        except:
+            logger.error("Error printing sample to STDOUT!")
 
     if args.intersect:
         logger.info(f"Writing intersection to {args.outfile.name} as VCF")
