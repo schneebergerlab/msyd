@@ -628,7 +628,7 @@ cpdef save_to_psf(dfmap, buf, save_cigars=True, force_ref_pos=False):
 
     # write header; assumes the first chrom contains all orgs at least once
     buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
-    buf.write("\t".join(util.get_orgs_from_df(list(dfmap.values())[0])))
+    buf.write("\t".join(sorted(util.get_orgs_from_df(list(dfmap.values())[0]))))
     buf.write("\n")
 
     # write contents
