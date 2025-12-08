@@ -20,6 +20,7 @@ cdef:
     qryfwd = set(['M', 'I', 'S', '=', 'X'])
     cig_types = set(['M', '=', 'X', 'S', 'H', 'D', 'I', 'N'])
     cig_aln_types = set(['M', 'X', '='])
+    cig_exact_match = set(['M', '='])
     cig_clips = set(['S', 'H', 'P', 'N']) # N is not clipping, but is ignored anyway. Really, it shouldn't even occur in alignments like these
     indel = set(['D', 'I'])
 
@@ -29,6 +30,7 @@ cdef:
     unordered_set[char] c_qryfwd_noclip = unordered_set[char]([ord('M'), ord('I'), ord('='), ord('X')])
     unordered_set[char] c_cig_types = unordered_set[char]([ord('M'), ord('='), ord('X'), ord('S'), ord('H'), ord('D'), ord('I'), ord('N')])
     unordered_set[char] c_cig_aln_types = unordered_set[char]([ord('M'), ord('X'), ord('=')])
+    unordered_set[char] c_cig_exact_match = unordered_set[char]([ord('M'), ord('=')])
     # N is not clipping, but is ignored anyway. shouldn't here anyway
     unordered_set[char] c_cig_clips = unordered_set[char]([ord('S'), ord('H'), ord('P'), ord('N')])
     unordered_set[char] c_indel = unordered_set[char]([ord('D'), ord('I')]) # N is not clipping, but is ignored anyway. Really, it shouldnord('t even occur in alignments like these
@@ -307,9 +309,9 @@ cdef class Cigar:
         edrop, tmp = tmp.get_removed(e, ref=ref)
         return (sdrop, edrop, tmp)
 
-    cpdef trim_matching(self, only_pos=True):
+    cpdef trim_matching(self, only_pos=True, allow_mismatch=True):
         """
-        Trims a CIGAR string until both ends start with a matching (=) position.
+        Trims a CIGAR string until both ends start with a matching (=, M and X unless `allow_mismatch` is set to false) position.
         :returns: The number of bases deleted in the query/ref and a new CIGAR guaranteed to start and end with =.
         """
         #TODO refactor to only ref, then call get_removed on max when trimming from multisyn
@@ -318,8 +320,9 @@ cdef class Cigar:
             int start = 0
             int qstart = 0
             int rstart = 0
+            unordered_set[char] matching = c_cig_aln_types if allow_mismatch else c_cig_exact_match
         cdef Cigt cur = self.tups[start]
-        while cur.t != ord('='):
+        while not matching.count(cur.t):
             #print(start, qstart, rstart, cur)
             if c_reffwd.count(cur.t): # skip on r
                 rstart += cur.n
@@ -336,7 +339,7 @@ cdef class Cigar:
             int qend = 0
             int rend = 0
         cur = self.tups[end]
-        while cur.t != ord('='):
+        while not matching.count(cur.t):
             #print(end, qend, rend, cur)
             if c_reffwd.count(cur.t): # skip on r
                 rend += cur.n
