@@ -7,7 +7,7 @@ import copy
 import functools
 import traceback
 
-from typing import override
+from typing import override, List
 
 from libcpp.vector cimport vector
 
@@ -445,16 +445,16 @@ class Private(Multisyn):
 
 
 
-cdef class Multisyn_container:
+cdef class MultisynContainer:
     """
     A datastructure for storing Multisyn objects on the same chromosome.
     Multisyns are segregated by chromosome to allow efficient lock-free parallelism between different chromosomes.
     Internally, Multisyns are stored in a C++ vector sorted by position on the first chosen reference. Merasyns that do not have a position on the first reference are sorted immediately after the coresyn before them, sorted alphabetically by their reference name and by position on that reference.
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
-    CURRENTLY NOT IN USE.
     """
-    cdef list[Multisyn] multisyns
+    #cdef List[Multisyn] multisyns
+    cdef vector[Multisyn] _backing
 
     def __cinit__(self, cap: int):
         """
@@ -465,7 +465,8 @@ cdef class Multisyn_container:
             self.reserve(cap)
 
     def __len__(self):
-        return self.multisyns.size()
+        #return len(self.multisyns)
+        return self._backing.size()
 
     def __repr__(self):
         return self.to_string(10)
@@ -483,7 +484,7 @@ cdef class Multisyn_container:
         return self.getat(key)
 
     cdef getat(self, pos:int):
-        return self.vector.at(pos)
+        return self._backing.at(pos)
 
     cdef copy_slice(self, start:int, end:int):
         pass
@@ -493,20 +494,20 @@ cdef class Multisyn_container:
         Append a new Multisyn.
         """
         #TODO check if sorted?
-        self.vector.push_back(ms)
+        self._backing.push_back(ms)
 
     cpdef reserve(self, cap:int):
         """
         Pre-allocate to contain `cap` elements.
         """
-        self.vector.reserve(cap)
+        self._backing.reserve(cap)
 
     cpdef shrink_to_fit(self):
         """
         Shrink the backing vector to the current contents.
         Frees up memory, especially if this Container has been overallocated previously.
         """
-        self.vector.shrink_to_fit()
+        self._backing.shrink_to_fit()
 
 
     def find(self, org: str, start: int, end: int):
