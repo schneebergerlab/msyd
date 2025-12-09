@@ -443,6 +443,31 @@ class Private(Multisyn):
             return False
         return not self.ref.is_inverted()
 
+cdef class ChromContainer:
+    cdef:
+        dict _backing
+        list[str] chromnames
+        OrgContainer orgs
+
+    def __cinit__(self, chrdict):
+        pass
+
+    def iter_all(self):
+        itertools.chain(msyncont.iter() for msyncont in self._backing.values())
+
+    def iter_chrs(self, fn, chromfn):
+        _new = dict()
+        for chrom, msyncont in self._backing.items():
+            chromfn(chrom)
+            _new[chrom] = msyncont.ordered_flatmap(fn)
+        return _new
+
+    def flatmap_chrs_par(self, ncores=1):
+        with multiprocessing.Pool(ncores) as pool:
+            pool.starmap(.......)
+
+
+        
 
 
 cdef class MultisynContainer:
@@ -453,7 +478,7 @@ cdef class MultisynContainer:
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     """
-    #cdef List[Multisyn] multisyns
+    #cdef List[Multisyn] _backing
     cdef vector[Multisyn] _backing
 
     def __cinit__(self, cap: int):
@@ -471,8 +496,45 @@ cdef class MultisynContainer:
     def __repr__(self):
         return self.to_string(10)
 
+    def iter(self):
+        cdef int i = 0
+        for msyn in self._backing:
+            yield msyn
+
+    def iter_cores(self, norgs):
+        acc = list() # buffer all merasyns preceding the coresyn
+        for msyn in self.iter():
+            if msyn.get_degree() == n:
+                yield msyn, acc
+                acc = list()
+            else:
+                acc.append(msyn)
+        yield None, acc # emit last merasyns
+
+    def iter_filter_acc(self, pred)
+        acc = list() # buffer all msyns preceding to the one fulfilling the predicate
+        for msyn in self.iter():
+            if pred(msyn)
+                yield msyn, acc
+                acc = list()
+            else:
+                acc.append(msyn)
+        yield None, acc # emit last one
+
+    def ordered_flatmap(self, fn) -> Multisyn:
+        """
+        `fn` takes an iterator guaranteeing ordering, contrary to normal flatmap concepts.
+        """
+        _new = vector[Multisyn]()
+        for rets in fn(self.iter()):
+            for ret in rets:
+                _new.push_back(ret)
+        return MultisynContainer(_new)
+
     def to_string(self, n: int):
         pass
+    #TODO uncomment when slicing works
+    # return "".join([msyn.to_string() for msyn in self[:n]])
 
     def __getitem__(self, key: int):
         """
