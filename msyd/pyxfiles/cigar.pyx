@@ -397,7 +397,7 @@ cdef class Cigar:
         # >= to greedily remove I/D at the edges
         while rem >= 0 and ind < self.tups.size():
             cur = self.tups[ind] if start else self.tups[self.tups.size()-ind -1]
-            # increment appropriate counters depending on which strand this cgi forwards
+            # increment appropriate counters depending on which strand this cig forwards
             if altfwd.count(cur.t):
                 skip += cur.n
             if fwd.count(cur.t):
@@ -414,6 +414,8 @@ cdef class Cigar:
 
         if only_pos:
             return skip
+
+        ## Make new Cigar
         cdef vector[Cigt] newtups = vector[Cigt]()
         newtups.reserve(self.tups.size() - ind + 1)
         # Add remainder to front/back as new tuple
