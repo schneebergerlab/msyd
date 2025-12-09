@@ -21,11 +21,11 @@ logger = util.CustomFormatter.getlogger(__name__)
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 #@functools.total_ordering
 #cdef
-class Multisyn:
-    #    cdef:
-    #        Range ref
-    #        dict ranges_dict
-    #        dict cigars_dict
+cdef class Multisyn:
+    cdef:
+        public object ref
+        public dict ranges_dict
+        public dict cigars_dict
     """
     A class representing a region syntenic among a set of genomes.
     The parameter `ranges_dict` is a dictionary of genomic `synctools.Range`es storing the location this syntenic region has on each organism.
@@ -44,7 +44,7 @@ class Multisyn:
 
 
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
-    def __init__(self, ref:Range, ranges_dict, cigars_dict):
+    def __cinit__(self, ref:Range, dict ranges_dict, dict cigars_dict):
         #if not ranges_dict:
         #    raise ValueError(f"ERROR: Trying to initialize Multisyn with no non-reference Range (ref: {ref})")
         #if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
@@ -212,7 +212,7 @@ class Multisyn:
             self.drop_inplace(start, end)
 
 
-    def split_indels(self, thresh):
+    cpdef split_indels(self, thresh):
         """
         Splits this Multisyn along indels longer than `thresh`.
         Because aligners sometimes allow very large gaps (kbp-scale and more) in alignments and SyRI keeps these in the SYNAL annotations, this provides a way to treat these as structural rearrangements instead of as indels.
@@ -231,12 +231,13 @@ class Multisyn:
         if len(splits) == 0:
             return [self]
 
-        return [Multisyn(
-                        Range(self.ref.org, self.ref.chr, self.ref.start + split[0], self.ref.start + split[1]),
-                        {org: Range(altrng.org, altrng.chr, altrng.start + split[2], altrng.start + split[3])},
-                        {org: split[4]}
-                        )
-                    for split in splits]
+        ret = []
+        for split in splits:
+            self_rng = Range(self.ref.org, self.ref.chr, self.ref.start + split[0], self.ref.start + split[1])
+            alt_rng = Range(altrng.org, altrng.chr, altrng.start + split[2], altrng.start + split[3])
+            ret.append(Multisyn(self_rng, {org: alt_rng}, {org: split[4]}))
+
+        return ret
 
     def __add__(self, other):
         """

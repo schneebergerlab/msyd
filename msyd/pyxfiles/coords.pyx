@@ -88,7 +88,7 @@ cdef class Range:
         public unsigned long start
         public unsigned long end
 
-    def __cinit__(self, org:str = None, chr:str = None, start:int = 0, end:int = 0):
+    def __cinit__(self, str org = None, str chr = None, int start = 0, int end = 0):
     #def __init__(self, org:str, chr:str, start:int, end:int):
         """
         All args are optional to support pickling; always set them otherwise!
