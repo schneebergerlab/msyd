@@ -82,6 +82,13 @@ class Multisyn:
     def __hash__(self):
         return hash(self.ref)# + hash(self.ranges_dict) + hash(self.cigars_dict) # caused problems with deque; self.ref is guaranteed to be unique in any case
 
+    def copy(self):
+        cdef:
+            object ref = self.ref.copy()
+            dict rngdict = {org:rng.copy() for org, rng in self.ranges_dict.items()}
+            dict cigdict = {org:cig.copy() for org, cig in self.cigars_dict.items()}
+        return Multisyn(ref, rngdict, cigdict)
+
     def add(self, rng:Range, cg: Cigar):
         self.ranges_dict[rng.org] = rng
         if cg:
@@ -240,7 +247,7 @@ class Multisyn:
         if not other.ranges_dict:
             return self
         elif not self.ranges_dict:
-            ret = copy.copy(other)
+            ret = other.copy()
             ret.ref = self.ref # not sure if necessary, but doesn't hurt I guess
             return ret
 

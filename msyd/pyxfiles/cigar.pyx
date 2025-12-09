@@ -117,6 +117,13 @@ cdef class Cigar:
                 buf += tup.n
         return buf
 
+    def copy(self):
+        cdef vector[Cigt] newtups = vector[Cigt]()
+        newtups.reserve(self.tups.size())
+        for tup in self.tups:
+            newtups.push_back(tup)
+        return Cigar(newtups)
+
     def get_identity(self):
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').

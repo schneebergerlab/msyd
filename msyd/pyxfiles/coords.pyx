@@ -102,6 +102,9 @@ cdef class Range:
         #return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
         return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
 
+    def copy(self):
+        return Range(org=self.org, chr=self.chr, start=self.start, end=self.end)
+
     def to_psf(self):
         """Transform this `Range` into the form specified by PSF
         """
