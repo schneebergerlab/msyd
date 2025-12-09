@@ -153,9 +153,9 @@ def main():
     call_parser.add_argument("--minimap-preset", dest="mp_preset",
                              type=str, default="asm20",
                              help="minimap2 alignment preset to use. Default 'asm20'.")
-    call_parser.add_argument("--no-trim", dest='trim',
-                             action='store_false', default=True,
-                             help="Don't trim mismatches at the start/end of alignments. Can be useful when there are many SNPS.")
+    call_parser.add_argument("--trim", dest='trim',
+                             action='store_true', default=False,
+                             help="Trim mismatches at the start/end of alignments. Can make output more interpretable when there are many indels, but will contribute to more fragmented multisynteny annotations.")
     call_parser.add_argument("--split-indel-thresh", dest="split_indel_thresh",
                              type=int, default=100,
                              help="Alignments will be split along indels longer than this value. Set to 0 to disable splitting alignments. Default 100.")

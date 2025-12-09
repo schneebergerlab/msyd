@@ -67,7 +67,7 @@ cdef filter_multisyn(multisyn, drop_small=True, allow_private=False):
 
     return True
     
-cpdef find_overlaps(left, right, only_core=False, trim=True, allow_private=False):
+cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=False):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
