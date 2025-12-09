@@ -170,7 +170,7 @@ class Multisyn:
         ## all checks passed
         return True
 
-    def trim_matching_inplace(self):
+    def trim_matching_inplace(self, drop_all=False):
         """
         Trims the alignment of this multisyn to remove mismatches at the start/end.
         Mutates self!
@@ -198,11 +198,11 @@ class Multisyn:
                     self.cigars_dict[org] = Cigar()
             return
 
-
-        if start > 0 or end > 0:
-            #if len(self.ref) > 2000:
-            #    print(start, end)
-            self.drop_inplace(start, end)
+        if drop_all:
+            if start > 0 or end > 0:
+                #if len(self.ref) > 2000:
+                #    print(start, end)
+                self.drop_inplace(start, end)
 
 
     def split_indels(self, thresh):
@@ -446,7 +446,7 @@ cdef class Multisyn_container:
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     CURRENTLY NOT IN USE.
     """
-    cdef list[Multisyn] multisyns
+    #cdef vector[Multisyn] multisyns
 
     def __cinit__(self, cap: int):
         """
