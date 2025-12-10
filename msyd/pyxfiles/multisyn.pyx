@@ -448,31 +448,44 @@ class Private(Multisyn):
 
 cdef class ChromContainer:
     cdef:
-        dict _backing
-        list[str] chromnames
-        OrgContainer orgs
+        dict _backing # holds MultisynContainers, 
+        set[str] chromnames
+        object orgs
 
-    def __cinit__(self, chrdict):
-        pass
+    def __cinit__(self, dict chrdict, orgs: OrgContainer):
+        self._backing = chrdict
+        self.chromnames = set(chrdict.values())
+        self.orgs = orgs
+
+    def get_chroms(self):
+        return self.chromnames
 
     def iter_all(self):
         itertools.chain(msyncont.iter() for msyncont in self._backing.values())
 
+    def __getitem__(self, key):
+        if not key in self._backing:
+            logger.error(f"Tried retrieving invalid Chromosome {key}")
+            raise ValueError(f"Tried retrieving invalid Chromosome {key}")
+        else:
+            return self._backing[key]
+
     def iter_chrs(self, fn, chromfn):
         _new = dict()
-        for chrom, msyncont in self._backing.items():
+        for chrom, cont in self._backing.items():
             chromfn(chrom)
-            _new[chrom] = msyncont.ordered_flatmap(fn)
+            _new[chrom] = cont.ordered_flatmap(fn)
         return _new
 
-    def flatmap_chrs_par(self, ncores=1):
+    def flatmap_chrs_par(self, fn, ncores=1):
+        # linearize, map, then reconstruct as apparently pool.map preserves the order
+        cdef list chroms = list(self._backing.keys())
+        cdef list conts = list(self._backing.values())
         with multiprocessing.Pool(ncores) as pool:
-            pool.starmap(.......)
+            conts = pool.map(fn, conts)
+        return ChromContainer({chrom:cont for chrom, cont in zip(chroms, conts)})
 
-
-        
-
-
+#THOUGHT: write NodeContainer/Graph class in syngraph that inherits from this?
 cdef class MultisynContainer:
     """
     A datastructure for storing Multisyn objects on the same chromosome.
