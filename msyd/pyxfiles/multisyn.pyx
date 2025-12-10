@@ -483,7 +483,7 @@ cdef class ChromContainer:
         cdef list conts = list(self._backing.values())
         with multiprocessing.Pool(ncores) as pool:
             conts = pool.map(fn, conts)
-        return ChromContainer({chrom:cont for chrom, cont in zip(chroms, conts)})
+        return ChromContainer(dict(zip(chroms, conts))
 
 #THOUGHT: write NodeContainer/Graph class in syngraph that inherits from this?
 cdef class MultisynContainer:
