@@ -513,25 +513,36 @@ cdef class MultisynContainer:
     def __repr__(self):
         return self.to_string(10)
 
+    @classmethod
+    def from_iterable(cls, iterable):
+        cdef MultisynContainer ret = Multisyn(iterable.__length_hint())
+        for msyn in iterable:
+            ret.append(msyn)
+
     def iter(self):
         cdef int i = 0
         for msyn in self._backing:
             yield msyn
 
-    def iter_cores(self, norgs):
+    def iter_cores_acc(self, norgs):
         acc = list() # buffer all merasyns preceding the coresyn
         for msyn in self.iter():
-            if msyn.get_degree() == n:
+            if msyn.get_degree() == norgs:
                 yield msyn, acc
                 acc = list()
             else:
                 acc.append(msyn)
         yield None, acc # emit last merasyns
 
-    def iter_filter_acc(self, pred)
+    def iter_cores(self):
+        for msyn, acc in self.iter_cores_acc():
+            if msyn is not None:
+                yield msyn
+
+    def iter_filter_acc(self, pred):
         acc = list() # buffer all msyns preceding to the one fulfilling the predicate
         for msyn in self.iter():
-            if pred(msyn)
+            if pred(msyn):
                 yield msyn, acc
                 acc = list()
             else:
