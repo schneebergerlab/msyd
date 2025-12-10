@@ -13,6 +13,7 @@ import multiprocessing
 
 import msyd.io as io
 import msyd.util as util
+import msyd.syri_handler as syri_handler
 import msyd.cigar
 from msyd.multisyn import Multisyn
 
@@ -225,131 +226,21 @@ cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=Fals
         return pd.DataFrame(data=list(ret)) # shouldn't need sorting
 #END
 
+cpdef reduce_find_overlaps(syns, cores, only_core=False, trim=True):
+    if len(syns) == 0:
+        return None
+    multisyns = None
+    ovlap = functools.partial(find_overlaps, only_core=only_core, trim=trim)
+    if cores > 1:
+        multisyns = util.parallel_reduce(ovlap, syns, cores)
+    else:
+        multisyns = functools.reduce(ovlap, syns)
 
-# given a bam file and corresponding SYNAL range df,
-# Transform them into one list of Multisyn objects
-cdef match_synal(syndf, alndf, ref='a'):
-    """
-    This function takes an aligment and SYNAL dataframe and matches corresponding regions.
-    It returns a dataframe containing the regions with the corresponding CIGAR string as a `Multisyn` object.
-    :params: syndf: SYNAL dataframe, alndf: alignment dataframe, ref: whether the reference is the 'a' or 'b' strand in the alignment dataframe.
-    :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Multisyn` objects.
-    """
-    cdef:
-        ret = deque()
-        syniter = syndf.iterrows()
-        alniter = alndf.iterrows()
-        str refchr = ref + "chr"
-        str refstart = ref + "start"
-        str refend = ref + "end"
-        synr = next(syniter)[1]
-        alnr = next(alniter)[1]
+    return multisyns
 
-    while True:
-        try:
-            org = synr[1].org
-            if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
-                cg = msyd.cigar.cigar_from_string(alnr['cg'])
-                rng = synr[1]
-                multisyn = Multisyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
-                #rng.end = rng.start + cg.get_len(ref=False) -1
-
-                ## Correct mismatches between CIGAR and coordinate len
-
-                # check on ref
-                if not len(multisyn.ref) == cg.get_len():
-                    logger.warning(f"CIGAR len ({cg.get_len()}) not matching coordinate len ({len(multisyn.ref)}) on ref! Adjusting end to match CIGAR len (this might be because of clipping).")
-                    multisyn.ref.end = multisyn.ref.start + cg.get_len() - 1
-
-                # check on org
-                if not len(rng) == cg.get_len(ref=False):
-                    # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
-                    logger.warning(f"CIGAR len ({cg.get_len(ref=False)}) not matching coordinate len ({len(rng)}) on {org}! Adjusting end to match CIGAR len (this might be because of clipping).")
-                    rng.end = rng.start + cg.get_len(ref=False) -1
-                
-                ret.append(multisyn)
-                synr = next(syniter)[1]
-            alnr = next(alniter)[1]
-        except StopIteration:
-            break
-
-    if len(ret) <= 0.1*len(syndf):
-        logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
-    return pd.DataFrame(list(ret))
-
-
-cdef remove_overlap(syn):
-    """
-    part of the preprocessing of SYNAL regions for find_multisyn
-    removes overlap from the first region if two overlapping regions are next to each other
-    assumes syn to be sorted
-    mutates syn
-    """
-    if len(syn) == 0:
-        logger.error("remove_overlap called on empty synteny list! Most likely there is an issue with reading the input files.")
-        return syn
-    syniter = syn.iterrows()
-    prev = next(syniter)[1][0]
-    for _, cur in syniter:
-        cur = cur[0]
-        logger.debug(f"Prev: {prev}")
-        logger.debug(f"Cur: {cur}")
-        if cur.ref.chr != prev.ref.chr: # there can be no overlap between chrs
-            prev = cur
-            continue
-
-        ## check for & remove overlap on the reference
-        ov = prev.ref.end - cur.ref.start +1
-        if ov > 0:
-            # there is overlap on ref
-            logger.warning(f"Found {ov} bp overlapping synteny on reference at {cur.ref.start}, trimming latter record!")
-            logger.debug(f"Cur before dropping: {cur}")
-            cur.drop_inplace(ov, 0) # call drop_inplace to mutate the dataframe from a reference
-            logger.debug(f"Cur after dropping: {cur}")
-
-
-
-        ## check for overlap on other orgs
-
-        # when this is called, cur and prev should normally have the same orgs
-        # will not catch overlap between non-adjacent regions!
-        #assert(set(cur.ranges_dict) == set(prev.ranges_dict))
-        for org in cur.ranges_dict: # should be on the same chr
-            if org not in prev.ranges_dict or cur.ranges_dict[org] is None or prev.ranges_dict[org] is None:
-                continue
-            assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr) # prev.ranges_dict[org] is None sometimes?? O.o
-
-            ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start + 1 # indices are inclusive
-            if ov > 0:
-                # check if the region is fully contained, in case this ever happens
-                # drop the region on this org in that case
-                if cur.ranges_dict[org].end <= prev.ranges_dict[org].end:
-                    logger.warning(f"On {org}, a syntenic region fully contains another! Dropping {org} from contained region.")
-                    logger.debug(f"{cur.ranges_dict[org]} contained in {prev.ranges_dict[org]}!")
-                    #del cur.ranges_dict[org] # this causes a crash during iteration
-                    cur.ranges_dict[org] = None # set to None instead
-                    if cur.cigars_dict:
-                        del cur.cigars_dict[org]
-                    # technically, on `org` the following syns should now be compared
-                    # however that would require storing the last region for every org separately
-                    # for a case that shouldn't ever occur
-                    # => just delete it and skip comparisons
-                    continue
-
-                # there is overlap on org
-                logger.warning(f"Found {ov} bp overlapping synteny on {org} at {cur.ranges_dict[org].start}, trimming latter record!")
-                logger.debug(f"Overlapping on {org}: {prev}, {cur}")
-                logger.debug(f"Cur before dropping: {cur}")
-                cur.drop_on_org_inplace(ov, 0, org)
-                logger.debug(f"Cur after dropping: {cur}")
-
-        prev = cur
-
-    return syn
-# END
 
 cpdef split_indels(syndf):
-        # split the multisyns if there are any large indels in the alignments
+    # split the multisyns if there are any large indels in the alignments
     cdef ret = deque()
 
     for _, multisyn in syndf.iterrows():
@@ -369,7 +260,7 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
     Uses either SYNAL or SYN regions as annotated by SyRI, controlled by the parameter `SYNAL`.
-    In the case of SYN regions, alignment-based length calculation is not (yet) supported and `alns` is ignored.
+    In the case of SYN regions, alignment-based length calculation is not supported and `alns` is ignored.
 
     :param: a list of filenames of SyRI output and alignment files in BAM, SAM or PAF format to read in, parameters
     optionally specifying which sequence is the reference (default 'a') and a boolean specifying if the input needs to be
@@ -411,13 +302,18 @@ def process_syndicts(syndict, cores=4, only_core=False):
     #        syndict[chrom] = intersected
     # return syndict
 
+cpdef _workaround(tup): # tup: [chrom, syndfs, dict kwargs]
+    # Annoying workaround, because multiprocessing doesn't like lambdas
+    return tup[0], process_syndfs(tup[1], **tup[2])
+
+
 cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
     Fetches input from filenames given to it; mostly parallelized.
     :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
     This allows seamless parallelization between chromosome IDs
     """
-    from msyd.io import extract_from_filelist
+    from msyd.syri_handler import extract_from_filelist, match_synal
 
     syndict = extract_from_filelist(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
@@ -451,46 +347,14 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
             
     return syndict
 
-cpdef process_syndicts(syndict, split_indel_thresh=SPLIT_INDEL_THRESH, cores=4, only_core=False, trim=True):
-    """
-    Small fn to do parallel processing of a dictionary of syndfs per chromosome.
-    """
-    global SPLIT_INDEL_THRESH
-    SPLIT_INDEL_THRESH = split_indel_thresh # passing as global variable is annoying, but avoids having to workaround partial in cython
-    argsdict = {'only_core': only_core, 'trim': trim}
-    if cores > 1:
-        with multiprocessing.Pool(cores) as pool:
-            return dict(pool.map(_workaround, [(it[0], it[1], argsdict) for it in  syndict.items()]))
-    else:
-        return dict(map(_workaround, [(it[0], it[1], argsdict) for it in  syndict.items()]))
-
-    #cdef list chromlist = list(syndict)
-    #cdef int n = len(chromlist)
-    #cdef int i
-    #for i in prange(n, nogil=True):
-    #    with gil:
-    #        chrom = chromlist[i]
-    #        syndf = syndict[chrom]
-    #    intersected = process_syndfs(syndf)
-    #    with gil:
-    #        syndict[chrom] = intersected
-    # return syndict
-
-cpdef _workaround(tup): # tup: [chrom, syndfs, dict kwargs]
-    # Annoying workaround, because multiprocessing doesn't like lambdas
-    return tup[0], process_syndfs(tup[1], **tup[2])
-
-
-
-
 cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False, trim=True):
     # remove overlap
     if not disable_overlapcheck:
         if cores == 1:
-            syndfs = [remove_overlap(syndf) for syndf in syndfs]
+            syndfs = [syri_handler.handle_conflicts(syndf) for syndf in syndfs]
         else:
             with multiprocessing.Pool(cores) as pool:
-                syndfs = pool.map(remove_overlap, syndfs)
+                syndfs = pool.map(syri_handler.handle_conflicts, syndfs)
 
     if SPLIT_INDEL_THRESH > 0:
         logger.info(f"Splitting alignments at indels > {SPLIT_INDEL_THRESH} bp")
@@ -509,15 +373,3 @@ cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, onl
 
     return reduce_find_overlaps(syndfs, cores, only_core=only_core, trim=trim)
 # END
-
-cpdef reduce_find_overlaps(syns, cores, only_core=False, trim=True):
-    if len(syns) == 0:
-        return None
-    multisyns = None
-    ovlap = functools.partial(find_overlaps, only_core=only_core, trim=trim)
-    if cores > 1:
-        multisyns = util.parallel_reduce(ovlap, syns, cores)
-    else:
-        multisyns = functools.reduce(ovlap, syns)
-
-    return multisyns

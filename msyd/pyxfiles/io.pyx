@@ -232,7 +232,7 @@ def readSAMBAM(fin, type='B'):
             ## Check CIGAR:
             if False in [False if i[0] not in [1,2,4,5,7,8] else True for i in aln.cigartuples]:
                 logger.error("Incorrect CIGAR string found. CIGAR string can only have I/D/H/S/X/=. CIGAR STRING: " + str(aln.cigarstring))
-                sys.exit()
+                raise ValueError("Incorrect CIGAR string found. CIGAR string can only have I/D/H/S/X/=. CIGAR STRING: " + str(aln.cigarstring))
             if len(aln.cigartuples) > 2:
                 if True in [True if i[0] in [4,5] else False for i in aln.cigartuples[1:-1]]:
                     logger.error("Incorrect CIGAR string found. Clipped bases inside alignment. H/S can only be in the terminal. CIGAR STRING: " + aln.cigarstring)
@@ -399,123 +399,6 @@ cpdef read_alnsfile(fin):
 
     return out
 
-
-# pasted from plotsr, parsing syri output
-VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
-cpdef readsyriout(f):
-    # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
-    logger = logging.getLogger("readsyriout")
-    syri_regs = deque()
-    skipvartype = ['CPG', 'CPL', 'DEL', 'DUPAL', 'HDR', 'INS', 'INVAL', 'INVDPAL', 'INVTRAL', 'NOTAL', 'SNP', 'TDM', 'TRANSAL']
-    with open(f, 'r') as fin:
-        for line in fin:
-            l = line.strip().split()
-            # TODO: DECIDE WHETHER TO HAVE STATIC VARS OR FLEXIBLE ANNOTATION
-            if l[10] in VARS:
-                syri_regs.append(l)
-            else:
-                if l[10] not in skipvartype:
-                    skipvartype.append(l[10])
-                    logger.warning("{} is not a valid annotation for alignments in file {}. Alignments should belong to the following classes {}. Skipping alignment.".format(l[10], f, VARS))
-
-    try:
-        df = pd.DataFrame(list(syri_regs))[[0, 1, 2, 5, 6, 7, 10]]
-    except KeyError:
-        raise ImportError("Incomplete input file {}, syri.out file should have 11 columns.".format(f))
-    df[[0, 5, 10]] = df[[0, 5, 10]].astype(str)
-    try:
-        df[[1, 2, 6, 7]] = df[[1, 2, 6, 7]].astype(int)
-    except ValueError:
-        raise ValueError("Non-numerical values used as genome coordinates in {}. Exiting".format(f))
-    # chr ID map
-    chrid = []
-    chrid_dict = OrderedDict()
-    for i in np.unique(df[0]):
-        chrid.append((i, np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]))
-        chrid_dict[i] = np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]
-    df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
-    return df, chrid_dict
-
-cpdef extract_syri_snvs(fin):
-    syri_regs = deque()
-    with open(f, 'r') as fin:
-        for line in fin:
-            l = line.strip().split()
-            if l[10] == 'SNP':
-                #TODO maybe store annotation information from fields 8-10
-                snv = SNV(Position('a', 'x', l[0], int(l[1])), Position('b', 'x', l[5], int(l[6])), l[4], l[5])
-                syri_regs.append(snv)
-
-    df = pd.DataFrame(list(syri_regs))#[[0, 1, 3, 4, 5, 6, 8, 9, 10]]
-    #TODO maybe do chromosome mapping?
-    return df
-
-# cython-lint flags the default arg list as dangerous
-# but in this case it's fine since its static
-cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
-    raw, _chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
-    return extract_syri_regions(raw, ref=ref, anns=anns, reforg=reforg, qryorg=qryorg)
-
-
-# cython-lint flags the default arg list as dangerous
-# but in this case it's fine since its static
-cpdef extract_syri_regions(rawsyriout, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
-    """
-    Given a syri output file, extract all regions matching a given annotation.
-    Returns the output as a dict containing one Dataframe per chromosome.
-    """
-    # columns to look for as start/end positions
-    refchr = ref + "chr"
-    refstart = ref + "start"
-    refend = ref + "end"
-
-    qry = 'b' if ref == 'a' else 'a' # these seem to be the only two values in syri output
-    qrychr = qry + "chr"
-    qrystart = qry + "start"
-    qryend = qry + "end"
-
-
-    merged = pd.concat([rawsyriout.loc[rawsyriout['type'] == ann if 'type' in rawsyriout.columns else rawsyriout['vartype'] == ann] for ann in anns]) # different syri versions seem to use different names for the type
-    if merged.empty:
-        logger.error(f"No annotation of type in {anns} found!")
-
-    out = dict()
-    buf = deque()
-    chrom = merged.iloc[0].at[refchr] #merged.at[1, refchr] # throws an error if the first index is not 1
-    for _, row in merged.iterrows():
-        # write buffer to out if necessary
-        if row[refchr] != chrom:
-            out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
-            chrom = row[refchr]
-            buf = deque()
-        # append current line to buffer
-        buf.append([Range(reforg, row[refchr], row[refstart], row[refend]),
-            Range(qryorg, row[qrychr],  row[qrystart], row[qryend])
-            ])
-
-    # add last chr
-    out[chrom] = pd.DataFrame(data=list(buf), columns=[reforg, qryorg])
-
-    return out
-
-def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
-    """
-    `extract_syri_regions`, but for processing a list of inputs.
-    Will return a 
-    """
-    if len(fins) != len(qrynames):
-        logger.error(f"Infiles and qrynames lists lengths not matching. Offending lists: {fins} and {qrynames}")
-
-    out = defaultdict(list)
-    # optionally parallelize i/o like this?
-#    with Pool(cores) as pool:
-#        annoying_workaround = partial(extract_syri_regions_from_file, **kwargs)
-#        for chrom, syndf in pool.map(annoying_workaround, zip(fins, qrynames)):
-    for fin, qryname in zip(fins, qrynames):
-        for chrom, syndf in extract_syri_regions_from_file(fin, qryorg=qryname, **kwargs).items():
-            out[chrom].append(syndf)
-
-    return out
 
 cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
     #TODO add functionality to incorporate reference information as optional argument
