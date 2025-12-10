@@ -28,13 +28,20 @@ class OrgContainer:
         self.n = 0 # keep track of how big orgs is, to save having to call len() often
         self.posdict = {} # track position of each ref; necessary?
 
-    def get_n(self) -> int:
+    def get_count(self) -> int:
         """
         Returns the no. of organisms in this population.
         """
         return self.n
 
-    def get_orgs(self) -> List[Org]:
+    def __len__(self):
+        return self.n
+
+    def iter(self):
+        # have as separate method in tcase the backing changes in the future
+        return self.get_names()
+
+    def get_names(self) -> List[Org]:
         """
         Returns the names of the organisms in this population, in order.
         Meant to allow iteration across all organisms, and may change to a generator at any point.
