@@ -497,14 +497,14 @@ cdef class MultisynContainer:
     cdef List[Multisyn] _backing
     #cdef vector[Multisyn] _backing
 
-    def __cinit__(self, int cap=0):
+    def __cinit__(self, list init=None, int cap=0):
         """
         `cap` specifies the initial capacity the vector backing should be initialised with.
         """
         #self._backing = vector[object]()
-        self._backing = list()
-        if cap:
-            self.reserve(cap)
+        self._backing = init if init else None
+        #if cap: # currently a no-op
+        #    self.reserve(cap)
 
     def __len__(self):
         #return len(self.multisyns)
@@ -523,6 +523,9 @@ cdef class MultisynContainer:
         cdef int i = 0
         for msyn in self._backing:
             yield msyn
+
+    def sorted(self):
+        return MultisynContainer(init=sorted(self._backing))
 
     def iter_cores_acc(self, norgs):
         acc = list() # buffer all merasyns preceding the coresyn
