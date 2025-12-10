@@ -95,6 +95,16 @@ cpdef find_overlaps(left, right, only_core=False, trim=True):
 
     cdef int cov = 0 # store the last position in the ref that has been covered in ret
 
+    ## helper Fn to only add filtered multisyns to the final output
+    ## calls filter_multisyn and if only_core is set additionally filters for core synteny
+    #def add_filtered(multisyn):
+    #    if filter_multisyn(multisyn):
+    #        # filter non-core-syntenic regions in case that's relevant
+    #        # don't double count reference
+    #        if only_core and multisyn.get_degree() < (l.get_degree() + r.get_degree() - 1):
+    #            return
+    #        ret.append(multisyn)
+    
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
             # ensure that the chr matches, reset the covered region
@@ -372,7 +382,34 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     return process_syndicts(syndict, cores=cores, only_core=only_core, trim=trim, split_indel_thresh=split_indel_thresh)
 
 
-cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True):
+def process_syndicts(syndict, cores=4, only_core=False):
+    """
+    Small fn to do parallel processing of a dictionary of syndfs per chromosome.
+    """
+    if not syndict:
+        return {}
+
+    _process_syndf = functools.partial(process_syndfs, only_core=only_core)
+    chroms, syndfs = zip(*syndict.items())
+
+    with multiprocessing.Pool(cores) as pool:
+        results = pool.map(_process_syndf, syndfs)
+        # map guarantees the order of results is the same as the order of input
+        return dict(zip(chroms, results))
+
+    #cdef list chromlist = list(syndict)
+    #cdef int n = len(chromlist)
+    #cdef int i
+    #for i in prange(n, nogil=True):
+    #    with gil:
+    #        chrom = chromlist[i]
+    #        syndf = syndict[chrom]
+    #    intersected = process_syndfs(syndf)
+    #    with gil:
+    #        syndict[chrom] = intersected
+    # return syndict
+
+cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
     Fetches input from filenames given to it; mostly parallelized.
     :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
