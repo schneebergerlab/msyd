@@ -10,7 +10,7 @@ from collections import deque, defaultdict, OrderedDict
 
 import msyd.util as util
 import msyd.cigar as cigar
-from msyd.multisyn import Multisyn
+from msyd.multisyn import Multisyn, MultisynContainer, ChromContainer
 from msyd.coords import Range
 
 import logging
@@ -135,7 +135,7 @@ def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Multisyn objects
-cdef match_synal(syndf, alndf, ref='a'):
+cpdef match_synal(syniter, alndf, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
     It returns a dataframe containing the regions with the corresponding CIGAR string as a `Multisyn` object.
@@ -143,16 +143,17 @@ cdef match_synal(syndf, alndf, ref='a'):
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Multisyn` objects.
     """
     cdef:
-        ret = deque()
-        syniter = syndf.iterrows()
+        ret = MultisynContainer()
         alniter = alndf.iterrows()
         str refchr = ref + "chr"
         str refstart = ref + "start"
         str refend = ref + "end"
         synr = next(syniter)[1]
         alnr = next(alniter)[1]
+        counter = 0
 
     while True:
+        counter += 1
         try:
             org = synr[1].org
             if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
@@ -180,26 +181,25 @@ cdef match_synal(syndf, alndf, ref='a'):
         except StopIteration:
             break
 
-    if len(ret) <= 0.1*len(syndf):
+    if len(ret) <= 0.1*counter:
         logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
-    return pd.DataFrame(list(ret))
+    return ret
 
-cdef handle_conflicts(syn):
+cdef handle_conflicts(syniter):
     """
-    part of the preprocessing of SYNAL regions for find_multisyn
-    removes overlap from the first region if two overlapping regions are next to each other
-    assumes syn to be sorted
-    mutates syn
+    Part of the preprocessing of SYNAL regions for find_multisyn.
+    Removes overlap from the first region if two overlapping regions are next to each other.
+    Assumes syn to be sorted.
+    Mutates syn, returns nothing.
     """
-    if len(syn) == 0:
+    try:
+        prev = next(syniter)
+    except StopIteration:
         logger.error("handle_conflicts called on empty synteny list! Most likely there is an issue with reading the input files.")
-        return syn
-    syniter = syn.iterrows()
-    prev = next(syniter)[1][0]
-    for _, cur in syniter:
-        cur = cur[0]
-        logger.debug(f"Prev: {prev}")
-        logger.debug(f"Cur: {cur}")
+
+    for cur in syniter:
+        #logger.debug(f"Prev: {prev}")
+        #logger.debug(f"Cur: {cur}")
         if cur.ref.chr != prev.ref.chr: # there can be no overlap between chrs
             prev = cur
             continue
@@ -248,6 +248,4 @@ cdef handle_conflicts(syn):
                 logger.debug(f"Cur after dropping: {cur}")
 
         prev = cur
-
-    return syn
 # END
