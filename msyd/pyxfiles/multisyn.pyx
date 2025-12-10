@@ -460,7 +460,10 @@ cdef class ChromContainer:
     def get_chroms(self):
         return self.chromnames
 
-    def iter_all(self):
+    def __contains__(self, key):
+        return key in self.chromnames
+
+    def iter(self):
         itertools.chain(msyncont.iter() for msyncont in self._backing.values())
 
     def __getitem__(self, key):
@@ -470,12 +473,12 @@ cdef class ChromContainer:
         else:
             return self._backing[key]
 
-    def iter_chrs(self, fn, chromfn):
+    def apply_chrs(self, fn, chromfn):
         _new = dict()
         for chrom, cont in self._backing.items():
             chromfn(chrom)
             _new[chrom] = cont.ordered_flatmap(fn)
-        return _new
+        return ChromContainer(_new, self.orgs)
 
     def flatmap_chrs_par(self, fn, ncores=1):
         # linearize, map, then reconstruct as apparently pool.map preserves the order
