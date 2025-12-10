@@ -4,6 +4,7 @@
 # cython: language_level = 3
 
 import sys
+import copy
 from collections import defaultdict, deque # or use cpp vector/custom?
 
 from typing import TypeAlias, List, Dict
@@ -58,6 +59,12 @@ class OrgContainer:
         self.posdict[org] = self.n
         self.orgs.append(org)
         self.n += 1
+
+    def __add__(self, other):
+        ret = copy.copy(self)
+        for org in other.get_orgs():
+            ret.add_org(org)
+        return ret
 
     def sort(self):
         """
