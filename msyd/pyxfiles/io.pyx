@@ -21,8 +21,9 @@ import logging
 cimport numpy as np
 
 from msyd.syngraph import Node, trace_org
-from msyd.coords import Range, read_psf_range
-from msyd.multisyn import Multisyn
+from msyd.coords import Range, read_psf_range, Panco
+from msyd.multisyn import Multisyn, MultisynContainer, ChromContainer
+from msyd.orgs import OrgContainer
 from msyd.vars import SNV
 import msyd.util as util
 import msyd.cigar as cigar
@@ -96,7 +97,6 @@ def readfasta(f):
     return out
 
 ### END func SECTION
-
 
 def samtocoords(f):
     logger = logging.getLogger('SAM reader')
@@ -400,14 +400,12 @@ cpdef read_alnsfile(fin):
     return out
 
 
-cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
+cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike], ref=None, cores=1, add_cigar=False, add_identity=True):
     #TODO add functionality to incorporate reference information as optional argument
     cdef:
         out = pysam.VariantFile(outf, 'w')
-        int corecounter = 1 # 1-based region indexing
-        int crosscounter = 1
+        ounter = Panco.start_counter()
         # ensure consistent, alphabetical sorting of organisms
-        orgs = sorted(util.get_orgs_from_df(syns))
         int orgsc = len(orgs)
         header_chrs = set() # do dynamically in python, hopefully more efficiently than looping twice
 
@@ -422,27 +420,21 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
-    for org in orgs:
+    for org in orgs.iter():
         out.header.add_sample(org)
 
     # add each multisyn object
-    for syn in syns.iterrows():
-        syn = syn[1][0]
+    for syn in chromcont.iter():
 
         rec = out.new_record()
         # instantiate empty, then fill later
         # instantiating with keyword arguments is unstable according to the documentation
         rec.start = syn.ref.start
         rec.pos = syn.ref.start
-        ## Chr needs to be a number, format it:
-        #match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
-        #if not match:
-        #    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
-        #else:
-        #    chrom = match[1]
 
         ## store Chr as string for now, maybe change later
         chrom = syn.ref.chr
+        counter.chrom = chrom # make sure to update it
         if chrom not in header_chrs:
             #logger.info(f"save_to_vcf Adding {chrom} to header")
             header_chrs.add(chrom)
@@ -460,20 +452,20 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
                 rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
             else:
                 rec.alleles = ["<SYN>", "<CORESYN>"]
-            rec.id = "CORESYN{}".format(corecounter)
-            corecounter += 1
+            rec.id = "CORESYN{}".format(counter)
+            counter.increment_c()
         else:
             if ref:
-                rec.alleles = [ref[rec.chrom][rec.start], "<CROSSSYN>"]
+                rec.alleles = [ref[rec.chrom][rec.start], "<MERASYN>"]
             else:
-                rec.alleles = ["<SYN>", "<CROSSSYN>"]
-            rec.id = "CROSSSYN{}".format(crosscounter)
-            crosscounter += 1
+                rec.alleles = ["<SYN>", "<MERASYN>"]
+            rec.id = "MERASYN{}".format(counter)
+            counter.increment_m()
 
         #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
 
         # input the values for every organism
-        for org in orgs:
+        for org in orgs.iter():
             if org in syn.get_orgs():
                 rng = syn.ranges_dict[org]
                 ## comment out chr to int conversion for now
@@ -500,11 +492,11 @@ cpdef void save_to_vcf(syns: Union[str, os.PathLike], outf: Union[str, os.PathLi
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(dfmap, buf, save_cigars=True, force_ref_pos=False):
+cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False):
     """
-    Takes a map of chrom IDs to DFs containing multisyns and writes them to buf.
+    Takes a `ChromContainer` object containing one `MultisynContainer` per chromosome and writes them to buf.
     Preserves the sorting of the DFs, sorts chroms lexicallicaly.
-    Calls to `save_df_to_psf`.
+    Calls to `save_cont_to_psf`.
     """
     if len(dfmap) == 0:
         raise ValueError("Empty dfmap provided!")
@@ -516,15 +508,13 @@ cpdef save_to_psf(dfmap, buf, save_cigars=True, force_ref_pos=False):
 
     # write contents
     #TODO parallelize?
-    for chrom in sorted(dfmap):
-        save_df_to_psf(dfmap[chrom], buf, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
+    #TODO print comment about which chrom is starting?
+    save_df_to_psf(chromcont.iter_all(), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
 
-cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=False):
-    """Takes a df containing `Multisyn` objects and writes them in population synteny file format to `buf`.
+cpdef save_df_to_psf(syniter, buf, orgs, save_cigars=True, emit_header=True, force_ref_pos=False):
+    """Takes a  a `MultisynContainer` per chromosome and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
-    # output organisms in lexicalic ordering
-    orgs = sorted(util.get_orgs_from_df(df))
     cdef:
         int n = len(orgs) + 1 # to account for ref
         int corecounter = 0
@@ -534,10 +524,9 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
 
     if emit_header:
         buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
-        buf.write("\t".join(orgs))
+        buf.write("\t".join(orgs.iter()))
         buf.write("\n")
 
-    syniter = df.iterrows()
     # TODO: assert that the columns and columns are in same order as the input file (genomes.csv)
     while True: # iterate from coresyn to coresyn
         mesyns = []
@@ -545,7 +534,7 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
         privs = [] # ref private is handled during writing
         syn = None
         try:
-            syn = next(syniter)[1][0]
+            syn = next(syniter)
             # get all mesyns, separate by those having a position on reference and those that don't
             while syn.get_degree() < n:
                 if syn.ref.org == "ref":
@@ -555,7 +544,7 @@ cpdef save_df_to_psf(df, buf, save_cigars=True, emit_header=True, force_ref_pos=
                         mesyns.append(syn)
                     else:
                         privs.append(syn)
-                syn = next(syniter)[1][0]
+                syn = next(syniter)
         except StopIteration: # try/catch block internal, so things still get written after we run out of multisyn regions
             pass
 
@@ -616,7 +605,7 @@ cdef write_multisyn(multisyn, buf, orgs, save_cigars=False):
                     ','.join([multisyn.ranges_dict[org].to_psf(), multisyn.cigars_dict[org].to_string()]) )
                          if (not multisyn.is_private()) and (org in multisyn.ranges_dict) else
                          (multisyn.ref.to_psf() if multisyn.ref.org == org else '.') # if there is no synteny, put a .
-                 for org in orgs])
+                 for org in orgs.iter()])
               )
     buf.write("\n")
 
@@ -625,14 +614,14 @@ cpdef read_psf(fin):
     Takes a file object or path to a file in PSF format and reads it in as a DataFrame of Multisynteny objects.
     Supports the new version of PSF format; for legacy files, use the deprecated version of this function.
     """
-    syndict = defaultdict(deque)
+    chromdict = defaultdict(MultisynContainer)
     if isinstance(fin, str):
         fin = open(fin, 'rt')
 
     #CHR  START  END  ANN  REF  CHR  START  END  G1  G2  G3...
     line = fin.readline().strip().split()
-    samples = line[8:] # store sample name order as in file
-    # should be lexicalic, but who knows
+    orgs = OrgContainer.from_list(line[8:]) # preserve file order
+
     for line in fin:
         line = line.strip().split()
         if line == []: continue
@@ -645,7 +634,7 @@ cpdef read_psf(fin):
 
         syn = Multisyn(refrng, {}, None)
 
-        for org, entry in zip(samples, line[8:]):
+        for org, entry in zip(orgs.iter(), line[8:]):
             if entry == '.' or org == reforg: # skip empty records and ref
                 continue
 
@@ -659,15 +648,13 @@ cpdef read_psf(fin):
                 else: # initialise if it hasn't been already
                     syn.cigars_dict = {org: cigar.cigar_from_string(vals[1])}
         # add read in syn to output
-        syndict[chrom].append(syn)
+        chromdict[chrom].append(syn)
 
     # clean up, return
     fin.close()
-    # convert to DataFrames
-    for chrom, dq in syndict.items():
-        syndict[chrom] = pd.DataFrame(data=list(dq)) # shouldn't require sorting
 
-    return syndict
+    # return as ChromContainer
+    return ChromContainer(chromdict, orgs)
 
 cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True):
     """
@@ -752,9 +739,6 @@ cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=Tru
             # notes
             # think if it makes sense to combine this with msyn refactor
             # => does including the ref in ranges_dict break stuff in intersection/realignment?
-
-            
-
 
 cpdef read_old_psf(fin):
     """
