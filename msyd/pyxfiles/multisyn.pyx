@@ -481,14 +481,15 @@ cdef class MultisynContainer:
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     """
-    #cdef List[Multisyn] _backing
-    cdef vector[Multisyn] _backing
+    cdef List[Multisyn] _backing
+    #cdef vector[Multisyn] _backing
 
-    def __cinit__(self, cap: int):
+    def __cinit__(self, int cap=0):
         """
         `cap` specifies the initial capacity the vector backing should be initialised with.
         """
-        self.multisyns = list()
+        #self._backing = vector[object]()
+        self._backing = list()
         if cap:
             self.reserve(cap)
 
@@ -524,15 +525,15 @@ cdef class MultisynContainer:
                 acc.append(msyn)
         yield None, acc # emit last one
 
-    def ordered_flatmap(self, fn) -> Multisyn:
+    cdef MultisynContainer apply(self, fn):
         """
         `fn` takes an iterator guaranteeing ordering, contrary to normal flatmap concepts.
         """
-        _new = vector[Multisyn]()
+        ret = MultisynContainer(len(self))#vector[Multisyn]()
         for rets in fn(self.iter()):
             for ret in rets:
-                _new.push_back(ret)
-        return MultisynContainer(_new)
+                ret.append(ret)
+        return ret
 
     def to_string(self, n: int):
         pass
@@ -554,7 +555,7 @@ cdef class MultisynContainer:
     cdef copy_slice(self, start:int, end:int):
         pass
 
-    cpdef push_back(self, ms: Multisyn):
+    cpdef append(self, ms: Multisyn):
         """
         Append a new Multisyn.
         """
@@ -565,14 +566,16 @@ cdef class MultisynContainer:
         """
         Pre-allocate to contain `cap` elements.
         """
-        self._backing.reserve(cap)
+        pass
+        #self._backing.reserve(cap)
 
     cpdef shrink_to_fit(self):
         """
         Shrink the backing vector to the current contents.
         Frees up memory, especially if this Container has been overallocated previously.
         """
-        self._backing.shrink_to_fit()
+        pass
+        #self._backing.shrink_to_fit()
 
 
     def find(self, org: str, start: int, end: int):
