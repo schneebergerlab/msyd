@@ -265,6 +265,15 @@ cdef class Panco:
         public unsigned int corei
         public unsigned int merai
 
+    def __cinit__(self, str chrom, unsigned int corei, unsigned int merai):
+        self.chrom= chrom
+        self.corei = corei
+        self.merai = merai
+
+    @classmethod
+    def start_counter(cls):
+        return cls("", 0, 0)
+
     def __eq__(l, r):
         if not isinstance(r, Panco):
             return False
