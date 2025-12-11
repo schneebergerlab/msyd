@@ -135,7 +135,7 @@ def extract_from_filelist(fins, qrynames, cores=1, **kwargs):
 
 # given a bam file and corresponding SYNAL range df,
 # Transform them into one list of Multisyn objects
-cpdef match_synal(syniter, alndf, ref='a'):
+cpdef match_synal(syndf, alndf, ref='a'):
     """
     This function takes an aligment and SYNAL dataframe and matches corresponding regions.
     It returns a dataframe containing the regions with the corresponding CIGAR string as a `Multisyn` object.
@@ -144,6 +144,7 @@ cpdef match_synal(syniter, alndf, ref='a'):
     """
     cdef:
         ret = MultisynContainer()
+        syniter = syndf.iterrows()
         alniter = alndf.iterrows()
         str refchr = ref + "chr"
         str refstart = ref + "start"
