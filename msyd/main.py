@@ -371,7 +371,10 @@ def call(args):
     # start logging dropped bases
     intersection.start_log_dropped_bases()
 
-    syndict = intersection.process_syndicts(syndict, split_indel_thresh=args.split_indel_thresh, cores=args.cores, only_core=args.core, trim=args.trim)
+    if args.split_indel_thresh:
+        intersection.set_SPLIT_INDEL_THRESH(args.split_indel_thresh)
+
+    syndict = intersection.process_syndicts(syndict, cores=args.cores, only_core=args.core, trim=args.trim)
     logger.info("Intersected synteny")
     logger.info(f"Dropped {util.siprefix(intersection.get_dropped_bases())} across all organisms during initial intersection.")
 

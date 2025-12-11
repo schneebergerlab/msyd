@@ -24,6 +24,14 @@ cdef volatile int DROPPED_BASES = -1 # global counter, for logging; this isn't p
 
 logger = util.CustomFormatter.getlogger(__name__)
 
+cpdef int get_SPLIT_INDEL_THRESH():
+    global SPLIT_INDEL_THRESH
+    return SPLIT_INDEL_THRESH
+
+cpdef set_SPLIT_INDEL_THRESH(int val):
+    global SPLIT_INDEL_THRESH
+    SPLIT_INDEL_THRESH = val
+
 cpdef int get_dropped_bases():
     global DROPPED_BASES
     return DROPPED_BASES
@@ -255,7 +263,7 @@ cpdef split_indels(syndf):
     return pd.DataFrame(list(ret))
 
 
-cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False, split_indel_thresh=SPLIT_INDEL_THRESH, trim=True):
+cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False, trim=True):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -272,10 +280,10 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
 
     syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
 
-    return process_syndicts(syndict, cores=cores, only_core=only_core, trim=trim, split_indel_thresh=split_indel_thresh)
+    return process_syndicts(syndict, cores=cores, only_core=only_core, trim=trim)
 
 
-def process_syndicts(syndict, cores=4, only_core=False):
+def process_syndicts(syndict, cores=4, only_core=False, trim=True):
     """
     Small fn to do parallel processing of a dictionary of syndfs per chromosome.
     """
