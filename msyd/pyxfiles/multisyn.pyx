@@ -505,13 +505,13 @@ cdef class MultisynContainer:
         `cap` specifies the initial capacity the vector backing should be initialised with.
         """
         #self._backing = vector[object]()
-        self._backing = init if init else None
+        self._backing = init if init else list()
         #if cap: # currently a no-op
         #    self.reserve(cap)
 
     def __len__(self):
-        #return len(self.multisyns)
-        return self._backing.size()
+        return len(self._backing)
+        #return self._backing.size()
 
     def __repr__(self):
         return self.to_string(10)
@@ -566,23 +566,31 @@ cdef class MultisynContainer:
         return ret
 
     def to_string(self, n: int):
-        pass
-    #TODO uncomment when slicing works
-    # return "".join([msyn.to_string() for msyn in self[:n]])
+        #return repr(self._backing[:n])
+        return "".join([msyn.to_string() for msyn in self[:n]])
 
     def __getitem__(self, key: int):
         """
         `key` may be an index, or a tuple for a slice.
         """
         #TODO handle slicing – copy to smaller Multisyn_container maybe?
-        if len(key) > 1:
-            raise NotImplemented("Slicing not yet supported!")
-        return self.getat(key)
+        if len(key) == 1:
+            return self.getat(key)
+        elif len(key) == 2:
+            #raise NotImplemented("Slicing not yet supported!")
+            return self._backing[key[0]:key[1]]
+        elif len(key) == 3:
+            return self._backing[key[0]:key[1]:key[2]]
+        else:
+            raise ValueError("Too many indices for slice!")
+
 
     cdef getat(self, pos:int):
-        return self._backing.at(pos)
+        #return self._backing.at(pos)
+        return self._backing[pos]
 
     cdef copy_slice(self, start:int, end:int):
+        return MultisynContainer(init=self[start:end])
         pass
 
     cpdef append(self, ms: Multisyn):
@@ -590,7 +598,8 @@ cdef class MultisynContainer:
         Append a new Multisyn.
         """
         #TODO check if sorted?
-        self._backing.push_back(ms)
+        #self._backing.push_back(ms)
+        self._backing.append(ms)
 
     cpdef reserve(self, cap:int):
         """
@@ -608,7 +617,7 @@ cdef class MultisynContainer:
         #self._backing.shrink_to_fit()
 
 
-    def find(self, org: str, start: int, end: int):
+    def find(self, org: Org, start: int, end: int):
         """
         Return a slice of all multisyns overlapping with `start:end` (inclusive) on `org`.
         """
@@ -621,7 +630,7 @@ cdef class MultisynContainer:
         #TODO does this work if start is not covered?
         return self[self.find_ind(org, start):endind]
 
-    def find(self, org:str, pos: int):
+    def find(self, org:Org, pos: int):
         """
         Find the Multisyn covering `pos` on `org`.
         Return None if that position is not covered.
@@ -630,7 +639,7 @@ cdef class MultisynContainer:
         ms = self[self.find_ind(org, pos)]
         return ms if pos in ms else None
 
-    cdef find_ind(self, org:str, pos: int):
+    cdef find_ind(self, org:Org, pos: int):
         """
         Find the index at or immediately before `pos` using binary search.
         """
