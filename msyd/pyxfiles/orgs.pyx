@@ -18,10 +18,11 @@ logger.setLevel(logging.INFO)
 
 Org: TypeAlias = str
 
-class OrgContainer:
-    #public List[Org] orgs
-    #public int n
-    #public Dict[Org, Int] posdict
+cdef class OrgContainer:
+    cdef:
+        public list orgs #List[Org] 
+        public unsigned int n
+        public dict posdict #Dict[Org, Int]
 
     def __init__(self):
         self.orgs = []
