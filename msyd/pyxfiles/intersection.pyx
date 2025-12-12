@@ -279,6 +279,7 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     """
 
     syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
+    logger.info("Finished reading input files, starting intersection.")
 
     return process_syndicts(syndict, cores=cores, only_core=only_core, trim=trim)
 
@@ -287,16 +288,23 @@ def process_syndicts(syndict, cores=4, only_core=False, trim=True):
     """
     Small fn to do parallel processing of a dictionary of syndfs per chromosome.
     """
+    ## NOTE THOUGHTS:
+    ## make syndict into ChromContainer
+    ## use mapreduce call to iter_chrom_par to get rid of this fn
+    ## should simplify some code
     if not syndict:
         return {}
 
     _process_syndf = functools.partial(process_syndfs, only_core=only_core)
     chroms, syndfs = zip(*syndict.items())
 
-    with multiprocessing.Pool(cores) as pool:
-        results = pool.map(_process_syndf, syndfs)
-        # map guarantees the order of results is the same as the order of input
-        return dict(zip(chroms, results))
+    if cores > 1:
+        with multiprocessing.Pool(cores) as pool:
+            results = pool.map(_process_syndf, syndfs)
+    else:
+        results = map(_process_syndf, syndfs)
+    # map guarantees the order of results is the same as the order of input
+    return dict(zip(chroms, results))
 
     #cdef list chromlist = list(syndict)
     #cdef int n = len(chromlist)
