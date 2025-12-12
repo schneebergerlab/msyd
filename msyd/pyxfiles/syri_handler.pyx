@@ -186,7 +186,7 @@ cpdef match_synal(syndf, alndf, ref='a'):
         logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
     return ret
 
-cdef handle_conflicts(syniter):
+cpdef handle_conflicts(syniter):
     """
     Part of the preprocessing of SYNAL regions for find_multisyn.
     Removes overlap from the first region if two overlapping regions are next to each other.
