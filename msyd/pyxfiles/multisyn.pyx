@@ -318,8 +318,9 @@ cdef class Multisyn:
         #pstart = start/reflen
         #pend = end/reflen
 
-        ranges_dict = dict()
-        cigars_dict = None
+        cdef:
+            dict ranges_dict = dict()
+            dict cigars_dict = None
         if not self.cigars_dict:
             for org, rng in self.ranges_dict.items():
                 #if prop:
@@ -330,30 +331,27 @@ cdef class Multisyn:
                 if start + end < len(rng):
                     ranges_dict[org] = rng.drop(start, end)
         else:
-            cigars_dict = dict()
+            cdef dict cigars_dict = dict()
             for org, rng in self.ranges_dict.items():
-                cg = self.cigars_dict[org]
-                try:
-                    if not cg.is_empty():
-                        start_dropped, cg = cg.get_removed(start, start=True, ref=True)
-                    else:
-                        print(traceback.format_exc())
-                        logger.warning(f"Tried to drop more({start}/{end}) than length from empty Cigar: {rng}(len: {len(rng)}). Skipping!")
-                        continue
-                    if not cg.is_empty():
-                        end_dropped, cg = cg.get_removed(end, start=False, ref=True)
-                    else:
-                        print(traceback.format_exc())
-                        logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
-                        continue
+                cdef:
+                    Cigar cg = self.cigars_dict[org]
+                    int start_dropped = -1
+                    int end_dropped = -1
 
-                except ValueError:
+                # remove from both end, if possible at each step
+                if not cg.is_empty():
+                    start_dropped, cg = cg.get_removed(start, start=True, ref=True)
+                if not cg.is_empty():
+                    end_dropped, cg = cg.get_removed(end, start=False, ref=True)
+                
+                # catch error cases, either because cg is empty and get_removed wasn't run, or because it returned -1
+                if start_dropped < 0 or end_dropped < 0:
                     print(traceback.format_exc())
                     logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
-                    continue
-
-                ranges_dict[org] = rng.drop(start_dropped, end_dropped)
-                cigars_dict[org] = cg
+                else:
+                    # only save if the drop worked
+                    ranges_dict[org] = rng.drop(start_dropped, end_dropped)
+                    cigars_dict[org] = cg
 
         return Multisyn(ref, ranges_dict, cigars_dict)
 
@@ -385,34 +383,27 @@ cdef class Multisyn:
                     self.ranges_dict[org] = rng.drop(start, end)
         else:
             for org, rng in self.ranges_dict.items():
-                cg = self.cigars_dict[org]
-                try:
-                    if not cg.is_empty():
-                        start_dropped, cg = cg.get_removed(start, start=True, ref=True)
-                    else:
-                        del self.cigars_dict[org]
-                        del self.ranges_dict[org]
-                        print(traceback.format_exc())
-                        logger.warning(f"Tried to drop more({start}/{end}) than length from empty Cigar: {rng}(len: {len(rng)}). Skipping!")
-                        continue
-                    if not cg.is_empty():
-                        end_dropped, cg = cg.get_removed(end, start=False, ref=True)
-                    else:
-                        del self.cigars_dict[org]
-                        del self.ranges_dict[org]
-                        print(traceback.format_exc())
-                        logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}). Skipping!")
-                        continue
+                cdef:
+                    Cigar cg = self.cigars_dict[org]
+                    int start_dropped = -1
+                    int end_dropped = -1
 
-                except ValueError:
+                # remove from both end, if possible at each step
+                if not cg.is_empty():
+                    start_dropped, cg = cg.get_removed(start, start=True, ref=True)
+                if not cg.is_empty():
+                    end_dropped, cg = cg.get_removed(end, start=False, ref=True)
+                
+                # catch error cases, either because cg is empty and get_removed wasn't run, or because it returned -1
+                if start_dropped < 0 or end_dropped < 0:
                     del self.cigars_dict[org]
                     del self.ranges_dict[org]
                     print(traceback.format_exc())
                     logger.warning(f"Tried to drop more({start}/{end}) than length on {rng}(len: {len(rng)}) on org {org}. Skipping!")
-                    continue
-
-                self.ranges_dict[org] = rng.drop(start_dropped, end_dropped)
-                self.cigars_dict[org] = cg
+                else:
+                    # only save if the drop worked
+                    self.ranges_dict[org] = rng.drop(start_dropped, end_dropped)
+                    self.cigars_dict[org] = cg
 
 class Private(Multisyn):
     def __init__(self, rng:Range):

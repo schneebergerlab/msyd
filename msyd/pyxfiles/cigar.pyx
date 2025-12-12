@@ -41,13 +41,13 @@ cdef:
     retup = r"(\d+)([=XIDMNSHP])"
 
 # declared outside of Cigar to be accessible from python, might move back later
-cpdef Cigar cigar_from_string(str cg):
+cpdef Cigar cigar_from_string(str cg):# noexcept nogil:
     """
     Takes a cigar string as input and returns a Cigar object
     """
     return Cigar.__new__(Cigar, tups=cigt_from_string(cg))
 
-cdef vector[Cigt] cigt_from_string(str cg):
+cdef vector[Cigt] cigt_from_string(str cg):# noexcept nogil:
     """
     Takes a cigar string as input and returns a Cigar tuple
     """
@@ -68,7 +68,7 @@ cdef vector[Cigt] cigt_from_string(str cg):
     return tups
 
 # maybe implement cigar_from_full_string?
-cpdef cigar_from_bam(bam):
+cpdef cigar_from_bam(bam):# noexcept nogil:
     """
     Takes a List of Cigar tuples with BAM codes as input, returns as a Cigar struct.
     """
@@ -110,7 +110,7 @@ cdef class Cigar:
     def get_matching(self):
         return self.get_len_of_type(c_matching)
 
-    cdef get_len_of_type(self, unordered_set[char] typeset):
+    cdef unsigned int get_len_of_type(self, unordered_set[char] typeset) noexcept nogil:
         cdef unsigned int buf = 0
         for tup in self.tups:
             if typeset.count(tup.t):  # contains method still not supported until C++20
@@ -124,20 +124,23 @@ cdef class Cigar:
             newtups.push_back(tup)
         return Cigar(newtups)
 
-    def get_identity(self):
+    cdef double get_identity(self) noexcept nogil:
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').
         """
-        return self.get_len_of_type(c_cig_exact_match)/len(self)
+        return self.get_len_of_type(c_cig_exact_match)/self.c__len__()
 
-    def __len__(self):
+    def  __len__(self):
+        return self.c__len__()
+
+    cdef unsigned int c__len__(self) noexcept nogil:
         cdef unsigned int buf = 0
         for tup in self.tups:
             buf += tup.n
         return buf
 
     # internal cdef'd method to avoid exposing tups directly to python
-    cdef equals(self, Cigar other):
+    cdef bint equals(self, Cigar other) noexcept nogil:
         if self.tups.size() != other.tups.size():
             return False
         for i in range(self.tups.size()):
@@ -160,7 +163,7 @@ cdef class Cigar:
         else:
             return True
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Cigar({self.to_string()})"
 
     def to_string(self):
@@ -215,7 +218,7 @@ cdef class Cigar:
 
         self.tups.erase(self.tups.end()-i_end, self.tups.end())
 
-    def split_indels(self, unsigned int thresh, unordered_set[char] indelset = c_indel):
+    cpdef list split_indels(self, unsigned int thresh, unordered_set[char] indelset = c_indel):# noexcept nogil:
         """
         Splits this CIGAR along indels larger than `thresh`.
         Indels are all CIGAR types contained in `indelset`.
@@ -301,7 +304,7 @@ cdef class Cigar:
 
         return Cigar(newtups)
 
-    cpdef trim(self, unsigned int s, unsigned int e, bint ref=True, bint only_pos=False):
+    cdef trim(self, unsigned int s, unsigned int e, bint ref=True, bint only_pos=False):# noexcept nogil:
         """
         Trims an alignment by removing `s` bases from the start and `e` from the end.
         If `ref` is set to `True`, the removed bases are counted on the reference sequence, otherwise on the alternative.
@@ -312,11 +315,17 @@ cdef class Cigar:
         """
         if only_pos:
             return (self.get_removed(s, ref=ref, only_pos=only_pos), self.get_removed(e, ref=ref, only_pos=only_pos))
-        sdrop, tmp = self.get_removed(s, ref=ref)
-        edrop, tmp = tmp.get_removed(e, ref=ref)
-        return (sdrop, edrop, tmp)
+        cdef sdrop = self.get_removed(s, ref=ref)
+        cdef edrop = sdrop[1].get_removed(e, ref=ref)
+        return (sdrop[0], edrop[0], edrop[1]) # last is the final Cigar
 
     cpdef trim_matching(self, only_pos=True, allow_mismatch=True):
+        cdef ret = self.c_trim_matching(only_pos=only_pos, allow_mismatch=allow_mismatch)
+        #return qstart, qend, rstart, rend, Cigar(newcg)
+        return ret[0], ret[1], ret[2], ret[3], Cigar(ret[4])
+
+
+    cdef c_trim_matching(self, only_pos=True, allow_mismatch=True):
         """
         Trims a CIGAR string until both ends start with a matching (=, M and X unless `allow_mismatch` is set to false) position.
         :returns: The number of bases deleted in the query/ref and a new CIGAR guaranteed to start and end with =.
@@ -368,14 +377,13 @@ cdef class Cigar:
             newcg.push_back(self.tups[start])
             start +=1
 
-        return qstart, qend, rstart, rend, Cigar(newcg)
+        return qstart, qend, rstart, rend, newcg
 
-    cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False): #nogil
+    cpdef get_removed(self, unsigned int n, bint ref=True, bint start=True, bint only_pos=False) noexcept:# noexcept nogil:
         """
         If ref=True, removes from the 'start'/end of the QUERY strand until 'n' bases from the REFERENCE strand have been removed, if ref=False vice versa.
         :return: The number of bases deleted in the query/ref and a CIGAR with these bases removed.
         """
-
         # shortcut for a common path, where nothing needs to be removed
         if n == 0 and (
                 (start and self.tups[0].t == ord('='))
@@ -389,7 +397,8 @@ cdef class Cigar:
         # deleting from an empty record is fine, so long as 0 is deleted
         if self.tups.empty():
             logger.error("Trying to remove from an empty Cigar!")
-            raise ValueError("empty Cigar!")
+            #raise ValueError("empty Cigar!")
+            return -1 # error return
 
         cdef:
             unsigned int ind = 0  # position currently being evaluated for skipping
@@ -413,7 +422,8 @@ cdef class Cigar:
 
         if rem > 0:
             logger.error(f"tried to remove more than CIGAR length Params: n: {n}, start: {start}, ref: {ref}, Cigar len on ref/alt: {self.get_len(ref=ref)}, terminated at index {ind}")
-            raise ValueError("tried to remove more than CIGAR length")
+            #raise ValueError("tried to remove more than CIGAR length")
+            return -1 # error return
 
         # remove overadded value (since rem must be <=0)
         if altfwd.count(cur.t):
