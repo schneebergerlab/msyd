@@ -37,7 +37,7 @@ class OrgContainer:
     def __len__(self):
         return self.n
 
-    def iter(self):
+    def __iter__(self):
         # have as separate method in tcase the backing changes in the future
         return self.get_names()
 

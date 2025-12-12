@@ -454,8 +454,8 @@ cdef class ChromContainer:
     def __contains__(self, key):
         return key in self.chromnames
 
-    def iter(self):
-        itertools.chain(msyncont.iter() for msyncont in self._backing.values())
+    def __iter__(self):
+        itertools.chain(iter(msyncont) for msyncont in self._backing.values())
 
     def __getitem__(self, key):
         if not key in self._backing:
@@ -507,13 +507,17 @@ cdef class MultisynContainer:
     def __repr__(self):
         return self.to_string(10)
 
+    def to_string(self, n: int):
+        #return repr(self._backing[:n])
+        return "".join([repr(msyn) for msyn in iter(self[:n])])
+
     @classmethod
     def from_iterable(cls, iterable):
         cdef MultisynContainer ret = Multisyn(iterable.__length_hint())
         for msyn in iterable:
             ret.append(msyn)
 
-    def iter(self):
+    def __iter__(self):
         cdef int i = 0
         for msyn in self._backing:
             yield msyn
@@ -523,7 +527,7 @@ cdef class MultisynContainer:
 
     def iter_cores_acc(self, norgs):
         acc = list() # buffer all merasyns preceding the coresyn
-        for msyn in self.iter():
+        for msyn in iter(self):
             if msyn.get_degree() == norgs:
                 yield msyn, acc
                 acc = list()
@@ -538,7 +542,7 @@ cdef class MultisynContainer:
 
     def iter_filter_acc(self, pred):
         acc = list() # buffer all msyns preceding to the one fulfilling the predicate
-        for msyn in self.iter():
+        for msyn in iter(self):
             if pred(msyn):
                 yield msyn, acc
                 acc = list()
@@ -551,7 +555,7 @@ cdef class MultisynContainer:
         `fn` takes an iterator guaranteeing ordering, contrary to normal flatmap concepts.
         """
         ret = MultisynContainer(len(self))#vector[Multisyn]()
-        for rets in fn(self.iter()):
+        for rets in fn(iter(self)):
             for ret in rets:
                 ret.append(ret)
         return ret

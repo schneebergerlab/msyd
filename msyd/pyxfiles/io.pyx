@@ -420,11 +420,11 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 
     #out.header.add_samples(util.get_orgs_from_df(syns)) # according to the documentation, this works, but the function doesn't seem to exist...
-    for org in orgs.iter():
+    for org in iter(orgs):
         out.header.add_sample(org)
 
     # add each multisyn object
-    for syn in chromcont.iter():
+    for syn in iter(chromcont):
 
         rec = out.new_record()
         # instantiate empty, then fill later
@@ -465,7 +465,7 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
         #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
 
         # input the values for every organism
-        for org in orgs.iter():
+        for org in iter(orgs):
             if org in syn.get_orgs():
                 rng = syn.ranges_dict[org]
                 ## comment out chr to int conversion for now
@@ -524,7 +524,7 @@ cpdef save_df_to_psf(syniter, buf, orgs, save_cigars=True, emit_header=True, for
 
     if emit_header:
         buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
-        buf.write("\t".join(orgs.iter()))
+        buf.write("\t".join(iter(orgs)))
         buf.write("\n")
 
     # TODO: assert that the columns and columns are in same order as the input file (genomes.csv)
@@ -605,7 +605,7 @@ cdef write_multisyn(multisyn, buf, orgs, save_cigars=False):
                     ','.join([multisyn.ranges_dict[org].to_psf(), multisyn.cigars_dict[org].to_string()]) )
                          if (not multisyn.is_private()) and (org in multisyn.ranges_dict) else
                          (multisyn.ref.to_psf() if multisyn.ref.org == org else '.') # if there is no synteny, put a .
-                 for org in orgs.iter()])
+                 for org in iter(orgs)])
               )
     buf.write("\n")
 
@@ -634,7 +634,7 @@ cpdef read_psf(fin):
 
         syn = Multisyn(refrng, {}, None)
 
-        for org, entry in zip(orgs.iter(), line[8:]):
+        for org, entry in zip(iter(orgs), line[8:]):
             if entry == '.' or org == reforg: # skip empty records and ref
                 continue
 
