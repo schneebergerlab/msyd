@@ -13,9 +13,10 @@ import multiprocessing
 
 import msyd.io as io
 import msyd.util as util
+from msyd.orgs import OrgContainer
 import msyd.syri_handler as syri_handler
 import msyd.cigar
-from msyd.multisyn import Multisyn
+from msyd.multisyn import Multisyn, MultisynContainer, ChromContainer
 
 cdef const int MIN_SYN_THRESH = 50
 cdef int SPLIT_INDEL_THRESH = MIN_SYN_THRESH # const as well, but compiler complains when annotating it
@@ -76,57 +77,32 @@ cdef filter_multisyn(multisyn, drop_small=True, allow_private=False):
 
     return True
     
-cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=False):
+cpdef find_overlaps(lmsyncont, rmsyncont, only_core=False, trim=False, allow_private=False):
     """
     This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
     It runs in O(len(left) + len(right)).
     """
-    cdef ret = deque()
-    #print("l:", left, "r:", right)
-
     # for finding fully private regions, only_core has to be passed
     #if allow_private:
     #    only_core = True
 
-    if right is None or right.empty:
-        logger.error("find_overlap called with no multisyn regions (right)!")
-        #raise ValueError("right is empty!")
-        return None
-    if left is None or left.empty:
-        logger.error("find_overlap called with no multisyn regions (left)!")
-        #raise ValueError("left is empty!")
-        return None
-
     cdef:
-        rit = right.iterrows()
-        lit = left.iterrows()
-        r = next(rit)[1][0]
-        l = next(lit)[1][0]
+        object lit = iter(lmsyncont)
+        object rit = iter(rmsyncont)
+        object ret = MultisynContainer() # MultisynContainer
+        object r # Multisyn, but cython doesn't like this as type annotation
+        object l
+        int cov = 0 # store the last position in the ref that has been covered in ret
+    try:
+        r = next(rit)
+        l = next(lit)
+        cov = 0 # store the last position in the ref that has been covered in ret
+    except StopIteration:
+        logger.error("Empty iterator passed to find_overlaps!")
+        raise ValueError("Empty iterator passed to find_overlaps!")
 
-    cdef int cov = 0 # store the last position in the ref that has been covered in ret
-
-    ## helper Fn to only add filtered multisyns to the final output
-    ## calls filter_multisyn and if only_core is set additionally filters for core synteny
-    #def add_filtered(multisyn):
-    #    if filter_multisyn(multisyn):
-    #        # filter non-core-syntenic regions in case that's relevant
-    #        # don't double count reference
-    #        if only_core and multisyn.get_degree() < (l.get_degree() + r.get_degree() - 1):
-    #            return
-    #        ret.append(multisyn)
-    
     while True:
         try: # python iterators suck, so this loop is entirely try-catch'ed
-            # ensure that the chr matches, reset the covered region
-            if r.ref.chr > l.ref.chr:
-                cov = -1
-                l = next(lit)[1][0]
-                continue
-            if l.ref.chr > r.ref.chr:
-                cov = -1
-                r = next(rit)[1][0]
-                continue
-            
             ovstart = max(r.ref.start, l.ref.start)
             ovend = min(r.ref.end, l.ref.end)
 
@@ -165,7 +141,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=Fals
                         ret.append(multisyn)
 
                 cov = r.ref.end
-                r = next(rit)[1][0]
+                r = next(rit)
 
             elif r.ref.end > l.ref.end: # right is after left
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
@@ -175,7 +151,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=Fals
                             multisyn.trim_matching_inplace()
                         ret.append(multisyn)
                 cov = l.ref.end
-                l = next(lit)[1][0]
+                l = next(lit)
 
             # if they stop at the same position, drop the one starting further left
             elif l.ref.start > r.ref.start:
@@ -187,7 +163,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=Fals
                         ret.append(multisyn)
 
                 cov = r.ref.end
-                r = next(rit)[1][0]
+                r = next(rit)
 
             else: # do whatever
                 if not only_core and l.ref.end - cov >= MIN_SYN_THRESH:
@@ -198,7 +174,7 @@ cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=Fals
                         ret.append(multisyn)
 
                 cov = l.ref.end
-                l = next(lit)[1][0]
+                l = next(lit)
 
         except StopIteration: # nothing more to match
             if not only_core and l.ref.chr == r.ref.chr: # the loop ended after an overlap call
@@ -216,52 +192,29 @@ cpdef find_overlaps(left, right, only_core=False, trim=False, allow_private=Fals
 
     if not only_core: # if calling crosssyn, also add remaining multisyn if there is any
         for l in lit:
-            l = l[1][0]
             if filter_multisyn(l):
                 if trim:
                     l.trim_matching_inplace()
                 ret.append(l)
         for r in rit:
-            r = r[1][0]
             if filter_multisyn(r):
                 if trim:
                     r.trim_matching_inplace()
                 ret.append(r)
 
     if len(ret) == 0:
-        return pd.DataFrame()
-    else:
-        return pd.DataFrame(data=list(ret)) # shouldn't need sorting
+        logger.error("find_multisynteny found no overlapping synteny!")
+    return ret # shouldn't need sorting
 #END
 
-cpdef reduce_find_overlaps(syns, cores, only_core=False, trim=True):
-    if len(syns) == 0:
-        return None
-    multisyns = None
-    ovlap = functools.partial(find_overlaps, only_core=only_core, trim=trim)
-    if cores > 1:
-        multisyns = util.parallel_reduce(ovlap, syns, cores)
-    else:
-        multisyns = functools.reduce(ovlap, syns)
-
-    return multisyns
-
-
-cpdef split_indels(syndf):
+cpdef object split_indels(msyncont: MultisynContainer):
+    cdef object ret = MultisynContainer(cap=len(msyncont))
     # split the multisyns if there are any large indels in the alignments
-    cdef ret = deque()
-
-    for _, multisyn in syndf.iterrows():
-        multisyn = multisyn[0]
+    for multisyn in iter(msyncont):
         # filter out short multisyns here
         ret.extend([msyn for msyn in multisyn.split_indels(SPLIT_INDEL_THRESH)\
-                if filter_multisyn(msyn)])
-        #for msyn in multisyn.split_indels(SPLIT_INDEL_THRESH):
-        #    if filter_multisyn(msyn):
-        #        ret.append(msyn)
-        #ret.extend(filter(filter_multisyn, multisyn.split_indels(SPLIT_INDEL_THRESH))) # doesn't work for some reason?
-    return pd.DataFrame(list(ret))
-
+                if filter_multisyn(msyn)]) # [] to work around cython not liking lambdas
+    return ret
 
 cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False, trim=True):
     """
@@ -278,49 +231,11 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     :return: a pandas dataframe containing the chromosome, start and end positions of the core syntenic region for each organism.
     """
 
-    syndict = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
+    chromsyn = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
     logger.info("Finished reading input files, starting intersection.")
 
-    return process_syndicts(syndict, cores=cores, only_core=only_core, trim=trim)
-
-
-def process_syndicts(syndict, cores=4, only_core=False, trim=True):
-    """
-    Small fn to do parallel processing of a dictionary of syndfs per chromosome.
-    """
-    ## NOTE THOUGHTS:
-    ## make syndict into ChromContainer
-    ## use mapreduce call to iter_chrom_par to get rid of this fn
-    ## should simplify some code
-    if not syndict:
-        return {}
-
-    _process_syndf = functools.partial(process_syndfs, only_core=only_core)
-    chroms, syndfs = zip(*syndict.items())
-
-    if cores > 1:
-        with multiprocessing.Pool(cores) as pool:
-            results = pool.map(_process_syndf, syndfs)
-    else:
-        results = map(_process_syndf, syndfs)
-    # map guarantees the order of results is the same as the order of input
-    return dict(zip(chroms, results))
-
-    #cdef list chromlist = list(syndict)
-    #cdef int n = len(chromlist)
-    #cdef int i
-    #for i in prange(n, nogil=True):
-    #    with gil:
-    #        chrom = chromlist[i]
-    #        syndf = syndict[chrom]
-    #    intersected = process_syndfs(syndf)
-    #    with gil:
-    #        syndict[chrom] = intersected
-    # return syndict
-
-cpdef _workaround(tup): # tup: [chrom, syndfs, dict kwargs]
-    # Annoying workaround, because multiprocessing doesn't like lambdas
-    return tup[0], process_syndfs(tup[1], **tup[2])
+    _process_synlists = functools.partial(process_synlists, only_core=only_core, trim=trim)
+    return chromsyn.apply_chroms_par(_process_synlists, ncores=ncores)
 
 
 cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
@@ -331,6 +246,8 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     """
     from msyd.syri_handler import extract_from_filelist, match_synal
 
+    ## read in as dict from chrnames to a list containing a dataframe with all syri SYNAL calls for each input org file
+    orgs = OrgContainer.from_list(qrynames)
     syndict = extract_from_filelist(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
         syndict = {chrom: [syndf.sort_values(syndf.columns[0]) for syndf in syndfs]for chrom, syndfs in syndict}
@@ -341,12 +258,14 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     #        'paf': io.readPAF
     #        }
 
+    ## non-cigar path
+    ## this code path shouldn't really be used anymore.
     if not (SYNAL and alns):
         logger.warning("No alignments found or `--syn` passed! Assuming all synteny to be exactly identical. This is fast but error-prone and inaccurate.")
-        return {chrom:[pd.DataFrame([Multisyn(ref=row[1][0],
+        return ChromContainer({chrom:[pd.DataFrame([Multisyn(ref=row[1][0],
                         ranges_dict={row[1][1].org:row[1][1]}, cigars_dict = None)
                         for row in s.iterrows()]) for s in syns]
-                for chrom, syns in syndict}
+                for chrom, syns in syndict}, orgs)
 
     #with multiprocessing.Pool(cores) as pool:
     #    alns = pool.map(lambda aln: io.alnfilelookup[aln.split('.')[-1]](aln), alns)
@@ -360,32 +279,47 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     for chrom in syndict: #TODO maybe parallelize over chrs instead
         #syndict[chrom] = pool.map(lambda syndf, alndf: match_synal(syndf, alndf, ref=ref), zip(syndict[chrom], alndict[chrom]))
         syndict[chrom] = [match_synal(syndf, alndf, ref=ref) for syndf, alndf in zip(syndict[chrom], alndict[chrom])]
-            
-    return syndict
+    
+    return ChromContainer(dict(syndict), orgs)
 
-cpdef process_syndfs(syndfs, base=None, disable_overlapcheck=False, cores=1, only_core=False, trim=True):
+cpdef process_synlists(msyncontlist, base=None, disable_overlapcheck=False, cores=1, only_core=False, trim=True):
+    # msyncontlist is a list of MultisynContainers
+
+
     # remove overlap
+    #NOTE could multithread this, but not sure its worth it
     if not disable_overlapcheck:
-        if cores == 1:
-            syndfs = [syri_handler.handle_conflicts(syndf) for syndf in syndfs]
-        else:
-            with multiprocessing.Pool(cores) as pool:
-                syndfs = pool.map(syri_handler.handle_conflicts, syndfs)
+        for msyncont in msyncontlist:
+            syri_handler.handle_conflicts(iter(msyncont))
 
     if SPLIT_INDEL_THRESH > 0:
         logger.info(f"Splitting alignments at indels > {SPLIT_INDEL_THRESH} bp")
         if cores == 1:
-            syndfs = [split_indels(syndf) for syndf in syndfs]
+            msyncontlist = [split_indels(msyncont) for msyncont in msyncontlist]
         else:
             with multiprocessing.Pool(cores) as pool:
-                syndfs = pool.map(split_indels, syndfs)
+                msyncontlist = pool.map(split_indels, msyncontlist)
 
     logger.info("overlapping synteny trimmed")
 
     # shouldn't need any overlap removal
     if base:
         logger.info("reading in PSF for incremental calling")
-        syndfs.append(base)
+        msyncontlist.append(base)
 
-    return reduce_find_overlaps(syndfs, cores, only_core=only_core, trim=trim)
+    return reduce_find_overlaps(msyncontlist, cores, only_core=only_core, trim=trim)
 # END
+
+cpdef reduce_find_overlaps(syns, cores, only_core=False, trim=True):
+    if len(syns) == 0:
+        return None
+    multisyns = None
+    ovlap = functools.partial(find_overlaps, only_core=only_core, trim=trim)
+    if cores > 1:
+        multisyns = util.parallel_reduce(ovlap, syns, cores)
+    else:
+        multisyns = functools.reduce(ovlap, syns)
+
+    return multisyns
+
+
