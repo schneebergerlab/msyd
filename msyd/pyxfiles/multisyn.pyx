@@ -453,6 +453,9 @@ cdef class ChromContainer:
     def get_chroms(self):
         return self.chromnames
 
+    def is_empty(self):
+        return any(len(x) == 0 for x in self._backing.values())
+
     def __repr__(self):
         return f"ChromContainer({','.join(chrom + ':' + type(cont) for chrom, cont in self._backing.items())}, Orgs: {self.orgs})"
 
@@ -463,7 +466,10 @@ cdef class ChromContainer:
         return key in self.chromnames
 
     def __iter__(self):
-        itertools.chain(iter(msyncont) for msyncont in self._backing.values())
+        #return itertools.chain(msyncont for msyncont in self._backing.values())
+        for msyncont in self._backing.values():
+            for msyn in iter(msyncont):
+                yield msyn
 
     def __getitem__(self, key):
         if not key in self._backing:
@@ -533,6 +539,9 @@ cdef class MultisynContainer:
         return len(self._backing)
         #return self._backing.size()
 
+    def is_empty(self):
+        return len(self) == 0
+
     def __repr__(self):
         return self.to_string(10)
 
@@ -552,12 +561,14 @@ cdef class MultisynContainer:
             yield msyn
 
     def sorted(self):
-        return MultisynContainer(init=sorted(self._backing))
+        return MultisynContainer(self.orgs, init=sorted(self._backing))
 
-    def iter_cores_acc(self, norgs):
-        acc = list() # buffer all merasyns preceding the coresyn
+    def iter_cores_acc(self):
+        cdef:
+            acc = list() # buffer all merasyns preceding the coresyn
+            n = len(self.orgs)
         for msyn in iter(self):
-            if msyn.get_degree() == norgs:
+            if msyn.get_degree() == n:
                 yield msyn, acc
                 acc = list()
             else:
@@ -579,6 +590,8 @@ cdef class MultisynContainer:
                 acc.append(msyn)
         yield None, acc # emit last one
 
+    #NOTE:
+    # should this pass along org as well?
     cdef MultisynContainer apply(self, fn):
         """
         fn:Fn(Iter[Msyn]) -> Iter[Msyn]
@@ -659,7 +672,7 @@ cdef class MultisynContainer:
         pass
         #self._backing.shrink_to_fit()
 
-    def find(self, org: Org, start: int, end: int):
+    def find(self, org: OrgContainer, start: int, end: int):
         """
         Return a slice of all multisyns overlapping with `start:end` (inclusive) on `org`.
         """
@@ -672,7 +685,7 @@ cdef class MultisynContainer:
         #TODO does this work if start is not covered?
         return self[self.find_ind(org, start):endind]
 
-    def find(self, org:Org, pos: int):
+    def find(self, org:OrgContainer, pos: int):
         """
         Find the Multisyn covering `pos` on `org`.
         Return None if that position is not covered.
@@ -681,7 +694,7 @@ cdef class MultisynContainer:
         ms = self[self.find_ind(org, pos)]
         return ms if pos in ms else None
 
-    cdef find_ind(self, org:Org, pos: int):
+    cdef find_ind(self, org:OrgContainer, pos: int):
         """
         Find the index at or immediately before `pos` using binary search.
         """
