@@ -40,7 +40,9 @@ cdef class OrgContainer:
 
     def __iter__(self):
         # have as separate method in tcase the backing changes in the future
-        return self.get_names()
+        #return self.get_names()
+        for org in self.orgs:
+            yield org
 
     def get_names(self) -> List[Org]:
         """
@@ -70,7 +72,7 @@ cdef class OrgContainer:
 
     def __add__(self, other):
         ret = copy.copy(self)
-        for org in other.get_orgs():
+        for org in other.orgs:
             ret.add_org(org)
         return ret
 

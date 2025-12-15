@@ -89,7 +89,7 @@ cpdef find_overlaps(lmsyncont, rmsyncont, only_core=False, trim=False, allow_pri
     cdef:
         object lit = iter(lmsyncont)
         object rit = iter(rmsyncont)
-        object ret = MultisynContainer() # MultisynContainer
+        object ret = MultisynContainer(lmsyncont.orgs + rmsyncont.orgs) # MultisynContainer
         object r # Multisyn, but cython doesn't like this as type annotation
         object l
         int cov = 0 # store the last position in the ref that has been covered in ret
@@ -208,7 +208,7 @@ cpdef find_overlaps(lmsyncont, rmsyncont, only_core=False, trim=False, allow_pri
 #END
 
 cpdef object split_indels(msyncont: MultisynContainer):
-    cdef object ret = MultisynContainer(cap=len(msyncont))
+    cdef object ret = MultisynContainer(orgs = msyncont.orgs, cap=len(msyncont))
     # split the multisyns if there are any large indels in the alignments
     for multisyn in iter(msyncont):
         # filter out short multisyns here
@@ -248,6 +248,7 @@ cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, so
 
     ## read in as dict from chrnames to a list containing a dataframe with all syri SYNAL calls for each input org file
     orgs = OrgContainer.from_list(qrynames)
+    orgs.add_org(refname) # add ref to orgs
     syndict = extract_from_filelist(syris, qrynames, cores=cores, anns=["SYNAL"] if SYNAL else ["SYN"])
     if sort:
         syndict = {chrom: [syndf.sort_values(syndf.columns[0]) for syndf in syndfs]for chrom, syndfs in syndict}
@@ -304,7 +305,7 @@ cpdef process_synlists(msyncontlist, base=None, disable_overlapcheck=False, core
 
     # shouldn't need any overlap removal
     if base:
-        logger.info("reading in PSF for incremental calling")
+        logger.info("Adding msyns from PSF file for incremental calling")
         msyncontlist.append(base)
 
     return reduce_find_overlaps(msyncontlist, cores, only_core=only_core, trim=trim)

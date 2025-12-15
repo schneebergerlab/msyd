@@ -12,6 +12,7 @@ import msyd.util as util
 import msyd.cigar as cigar
 from msyd.multisyn import Multisyn, MultisynContainer, ChromContainer
 from msyd.coords import Range
+from msyd.orgs import OrgContainer
 
 import logging
 logger = util.CustomFormatter.getlogger(__name__)
@@ -143,7 +144,7 @@ cpdef match_synal(syndf, alndf, ref='a', refname="ref"):
     :returns: a dataframe containing the SYNAL regions with corresponding CIGAR strings as `Multisyn` objects.
     """
     cdef:
-        ret = MultisynContainer()
+        ret = MultisynContainer(None) # org info is set when returning
         syniter = syndf.iterrows()
         alniter = alndf.iterrows()
         str refchr = ref + "chr"
@@ -184,6 +185,7 @@ cpdef match_synal(syndf, alndf, ref='a', refname="ref"):
 
     if len(ret) <= 0.1*counter:
         logger.error("Less than 10% of syns had a matching alignment! Check that syri was run on the same alignment as was provided!")
+    ret.orgs = OrgContainer.from_list([refname, org])
     return ret
 
 cpdef handle_conflicts(syniter):
