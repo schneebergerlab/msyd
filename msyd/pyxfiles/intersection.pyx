@@ -216,7 +216,7 @@ cpdef object split_indels(msyncont: MultisynContainer):
                 if filter_multisyn(msyn)]) # [] to work around cython not liking lambdas
     return ret
 
-cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False, only_core=False, trim=True):
+cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', refname="ref", SYNAL=True, disable_overlapcheck=False, only_core=False, trim=True):
     """
     Finds core and cross-syntenic regions containing the reference in the input files, depending on if the parameter `only_core` is `True` or `False`.
     Fairly conservative.
@@ -234,11 +234,11 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     chromsyn = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
     logger.info("Finished reading input files, starting intersection.")
 
-    _process_synlists = functools.partial(process_synlists, only_core=only_core, trim=trim)
+    _process_synlists = functools.partial(process_synlists, refname=refname, only_core=only_core, trim=trim)
     return chromsyn.apply_chroms_par(_process_synlists, ncores=ncores)
 
 
-cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
+cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
     """
     Fetches input from filenames given to it; mostly parallelized.
     :Returns: a Dict of chromosome IDs to a list of Multisyn DFs (one per sample).
@@ -278,7 +278,7 @@ cpdef prepare_input(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
 
     for chrom in syndict: #TODO maybe parallelize over chrs instead
         #syndict[chrom] = pool.map(lambda syndf, alndf: match_synal(syndf, alndf, ref=ref), zip(syndict[chrom], alndict[chrom]))
-        syndict[chrom] = [match_synal(syndf, alndf, ref=ref) for syndf, alndf in zip(syndict[chrom], alndict[chrom])]
+        syndict[chrom] = [match_synal(syndf, alndf, ref=ref, refname=refname) for syndf, alndf in zip(syndict[chrom], alndict[chrom])]
     
     return ChromContainer(dict(syndict), orgs)
 
