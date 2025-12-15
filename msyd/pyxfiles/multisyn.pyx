@@ -445,11 +445,17 @@ cdef class ChromContainer:
 
     def __cinit__(self, dict chrdict, orgs: OrgContainer):
         self._backing = chrdict
-        self.chromnames = set(chrdict.values())
+        self.chromnames = set(chrdict.keys())
         self.orgs = orgs
 
     def get_chroms(self):
         return self.chromnames
+
+    def __repr__(self):
+        return f"ChromContainer({','.join(chrom + ':' + type(cont) for chrom, cont in self._backing.items())}, Orgs: {self.orgs})"
+
+    def __len__(self):
+        return len(self.chromnames)
 
     def __contains__(self, key):
         return key in self.chromnames
@@ -464,19 +470,37 @@ cdef class ChromContainer:
         else:
             return self._backing[key]
 
-    def apply_chrs(self, fn, chromfn):
-        _new = dict()
+    def apply_chroms(self, fn, chromfn) -> ChromContainer:
+        """
+        fn: Fn(T) -> T, with T being the type stored per Chromosome, typically MultisynContainer.
+        chromfn: Fn(str) -> None
+        The ordering is guaranteed to be sorted, per chromosome.
+        :returns: a new ChromosomeContainer that is the result of applying fn along all chromosomes contained in this one.
+        chromfn is called with the name of each chrom before starting to execute it, mostly for logging purposes.
+        """
+        cdef dict _new = dict()
         for chrom, cont in self._backing.items():
             chromfn(chrom)
-            _new[chrom] = cont.ordered_flatmap(fn)
+            _new[chrom] = fn(cont)
         return ChromContainer(_new, self.orgs)
 
-    def flatmap_chrs_par(self, fn, ncores=1):
+    def apply_chroms_par(self, fn, ncores=0):
+        """
+        fn: Fn(T) -> T, with T being the type stored per Chromosome, typically MultisynContainer.
+        The ordering is guaranteed to be sorted per chromosome.
+        :returns: a new ChromosomeContainer that is the result of applying fn along all chromosomes contained in this one.
+        """
+        if ncores == 1:
+            return self.apply_chroms(fn, lambda x: None)
+        elif ncores == 0: # default to 1 core per chrom
+            ncores = len(self)
+
         # linearize, map, then reconstruct as apparently pool.map preserves the order
         cdef list chroms = list(self._backing.keys())
         cdef list conts = list(self._backing.values())
         with multiprocessing.Pool(ncores) as pool:
             conts = pool.map(fn, conts)
+
         return ChromContainer(dict(zip(chroms, conts)))
 
 #THOUGHT: write NodeContainer/Graph class in syngraph that inherits from this?
@@ -552,32 +576,36 @@ cdef class MultisynContainer:
 
     cdef MultisynContainer apply(self, fn):
         """
-        `fn` takes an iterator guaranteeing ordering, contrary to normal flatmap concepts.
+        fn:Fn(Iter[Msyn]) -> Iter[Msyn]
+        The ordering is guaranteed to be sorted.
+        :returns: a new MultisynContainer that is the result of applying fn to this one.
+        """
+        return MultisynContainer.from_iterable(fn(iter(self)))
+
+    cdef MultisynContainer apply_flatten(self, fn):
+        """
+        fn:Fn(Iter[Msyn]) -> Iter[Iter[Msyn]]
+        The ordering is guaranteed to be sorted.
+        :returns: a new MultisynContainer that is the result of applying fn to this one.
         """
         ret = MultisynContainer(len(self))#vector[Multisyn]()
-        for rets in fn(iter(self)):
-            for ret in rets:
-                ret.append(ret)
+        for retvals in fn(iter(self)):
+            ret.extend(retvals)
         return ret
 
-    def to_string(self, n: int):
-        #return repr(self._backing[:n])
-        return "".join([msyn.to_string() for msyn in self[:n]])
-
-    def __getitem__(self, key: int):
+    def __getitem__(self, key):
         """
         `key` may be an index, or a tuple for a slice.
         """
         #TODO handle slicing – copy to smaller Multisyn_container maybe?
-        if len(key) == 1:
+        if isinstance(key, int):
             return self.getat(key)
-        elif len(key) == 2:
+        elif isinstance(key, slice):
             #raise NotImplemented("Slicing not yet supported!")
-            return self._backing[key[0]:key[1]]
-        elif len(key) == 3:
-            return self._backing[key[0]:key[1]:key[2]]
+            return self._backing[key]
         else:
-            raise ValueError("Too many indices for slice!")
+            raise ValueError("Invalid indexing call!")
+
 
 
     cdef getat(self, pos:int):
@@ -596,6 +624,11 @@ cdef class MultisynContainer:
         #self._backing.push_back(ms)
         self._backing.append(ms)
 
+    cpdef extend(self, mslist):
+        self._backing.extend(mslist)
+        #for ms in mslist:
+        #   self.append(ms)
+
     cpdef reserve(self, cap:int):
         """
         Pre-allocate to contain `cap` elements.
@@ -610,7 +643,6 @@ cdef class MultisynContainer:
         """
         pass
         #self._backing.shrink_to_fit()
-
 
     def find(self, org: Org, start: int, end: int):
         """
