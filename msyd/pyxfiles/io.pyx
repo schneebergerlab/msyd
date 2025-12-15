@@ -498,25 +498,27 @@ cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False):
     Preserves the sorting of the DFs, sorts chroms lexicallicaly.
     Calls to `save_cont_to_psf`.
     """
-    if len(dfmap) == 0:
+    if chromcont.is_empty():
         raise ValueError("Empty dfmap provided!")
+
+    chromcont.orgs.sort()
 
     # write header; assumes the first chrom contains all orgs at least once
     buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
-    buf.write("\t".join(sorted(util.get_orgs_from_df(list(dfmap.values())[0]))))
+    buf.write("\t".join(chromcont.orgs.get_names()))
     buf.write("\n")
 
     # write contents
     #TODO parallelize?
     #TODO print comment about which chrom is starting?
-    save_df_to_psf(iter(chromcont), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
+    save_msyncont_to_psf(iter(chromcont), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
 
-cpdef save_df_to_psf(syniter, buf, orgs, save_cigars=True, emit_header=True, force_ref_pos=False):
+cpdef save_msyncont_to_psf(syniter, buf, orgs, save_cigars=True, emit_header=True, force_ref_pos=False):
     """Takes a  a `MultisynContainer` per chromosome and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
     cdef:
-        int n = len(orgs) + 1 # to account for ref
+        int n = len(orgs)
         int corecounter = 0
         int counter = 0
         int coreend = 0
@@ -614,13 +616,14 @@ cpdef read_psf(fin):
     Takes a file object or path to a file in PSF format and reads it in as a DataFrame of Multisynteny objects.
     Supports the new version of PSF format; for legacy files, use the deprecated version of this function.
     """
-    chromdict = defaultdict(MultisynContainer)
     if isinstance(fin, str):
         fin = open(fin, 'rt')
 
     #CHR  START  END  ANN  REF  CHR  START  END  G1  G2  G3...
-    line = fin.readline().strip().split()
-    orgs = OrgContainer.from_list(line[8:]) # preserve file order
+    cdef:
+        line = fin.readline().strip().split() # Header line
+        orgs = OrgContainer.from_list(line[8:]) # preserve file order
+        chromdict = dict()#defaultdict(lambda: MultisynContainer(orgs))
 
     for line in fin:
         line = line.strip().split()
@@ -648,6 +651,8 @@ cpdef read_psf(fin):
                 else: # initialise if it hasn't been already
                     syn.cigars_dict = {org: cigar.cigar_from_string(vals[1])}
         # add read in syn to output
+        if chrom not in chromdict:
+            chromdict[chrom] = MultisynContainer(orgs)
         chromdict[chrom].append(syn)
 
     # clean up, return
