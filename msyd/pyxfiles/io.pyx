@@ -509,7 +509,7 @@ cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False):
     # write contents
     #TODO parallelize?
     #TODO print comment about which chrom is starting?
-    save_df_to_psf(chromcont.iter_all(), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
+    save_df_to_psf(iter(chromcont), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
 
 cpdef save_df_to_psf(syniter, buf, orgs, save_cigars=True, emit_header=True, force_ref_pos=False):
     """Takes a  a `MultisynContainer` per chromosome and writes them in population synteny file format to `buf`.
