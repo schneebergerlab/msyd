@@ -184,45 +184,44 @@ def crosssyn_from_lists(syns, alns, **kwargs):
     import msyd.intersection as intersection
     return intersection.find_multisyn(syns, alns, only_core=False, **kwargs)
 
-def get_orgs_from_df(df):
-    """Small utility function to get all organism from a DataFrame of `Multisyn` objects.
-    :param df: A `DataFrame` containing `Multisyn` objects.
-    :param_type df: `pandas.DataFrame`
-    :returns: A `set` containing all of the organisms in a DataFrame of `Multisyn` objects.
-    """
-    if df.empty:
-        logger.error(f"get_orgs_from_df called with empty dataframe: {df}")
-        raise ValueError("DF is empty!")
-    return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()) if x[1][0].get_degree() > 1 else set(), df.iterrows()))
+#def get_orgs_from_df(df):
+#    """Small utility function to get all organism from a DataFrame of `Multisyn` objects.
+#    :param df: A `DataFrame` containing `Multisyn` objects.
+#    :param_type df: `pandas.DataFrame`
+#    :returns: A `set` containing all of the organisms in a DataFrame of `Multisyn` objects.
+#    """
+#    if df.empty:
+#        logger.error(f"get_orgs_from_df called with empty dataframe: {df}")
+#        raise ValueError("DF is empty!")
+#    return functools.reduce(lambda x, y: x.union(y), map(lambda x: set(x[1][0].ranges_dict.keys()) if x[1][0].get_degree() > 1 else set(), df.iterrows()))
 
 
-def get_len(df):
-    if df.empty:
-        logger.error(f"get_len called with empty dataframe: {df}")
-        raise ValueError("DF is empty!")
-    return sum(map(lambda x: len(x.ref), map(lambda x: x[1][0], df.iterrows())))
+def get_len(msyncont):
+    if len(msyncont) == 0:
+        logger.error(f"tabularize_lens_byorg called with empty dataframe: {msyncont}")
+        raise ValueError("msyncont is empty!")
+    return sum(map(lambda x: len(x.ref), map(lambda x: x, iter(msyncont))))
 
 # the warnings in the two functions below are spurious, see
 # https://github.com/cython/cython/issues/1699
-def tabularize_lens(df):
-    if df.empty:
-        logger.error(f"tabularize_lens called with empty dataframe: {df}")
-        raise ValueError("DF is empty!")
-    maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
-    return [sum(len(x[1][0].ref) for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
+def tabularize_lens(msyncont):
+    if len(msyncont) == 0:
+        logger.error(f"tabularize_lens_byorg called with empty dataframe: {msyncont}")
+        raise ValueError("msyncont is empty!")
+    maxdegree = max(map(lambda x: x.get_degree(), iter(msyncont)))
+    return [sum(len(x[1][0].ref) for x in iter(msyncont) if x.get_degree() == i+1) for i in range(maxdegree)]
     #return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
-def tabularize_lens_byorg(df):
-    if df.empty:
-        logger.error(f"tabularize_lens_byorg called with empty dataframe: {df}")
-        raise ValueError("DF is empty!")
-    maxdegree = max(map(lambda x: x[1][0].get_degree(), df.iterrows()))
+def tabularize_lens_byorg(chromcont):
+    #if len(msyncont) == 0:
+    #    logger.error(f"tabularize_lens_byorg called with empty dataframe: {df}")
+    #    raise ValueError("msyncont is empty!")
+    maxdegree = len(chromcont.orgs)#max(x.get_degree() for x in iter(msyncont))
 
-    outdict = {org: [0]*(maxdegree) for org in get_orgs_from_df(df)}
+    outdict = {org: [0]*(maxdegree) for org in chromcont.orgs}
     outdict['ref'] = [0]*(maxdegree)
 
-    for _, multisyn in df.iterrows():
-        multisyn = multisyn[0]
+    for multisyn in iter(chromcont):
         deg = multisyn.get_degree()
         # add ref
         outdict[multisyn.ref.org][deg-1] += len(multisyn.ref)
@@ -232,12 +231,12 @@ def tabularize_lens_byorg(df):
 
     return outdict
 
-def tabularize_nos(df):
-    if df.empty:
-        logger.error(f"tabularize_nos called with empty dataframe: {df}")
-        raise ValueError("DF is empty!")
-    maxdegree = max(x[1][0].get_degree() for x in df.iterrows())
-    return [sum(1 for x in df.iterrows() if x[1][0].get_degree() == i+1) for i in range(maxdegree)]
+def tabularize_nos(chromcont):
+    #if len(msyncont) == 0:
+    #    logger.error(f"tabularize_nos called with empty dataframe: {chromcont}")
+    #    raise ValueError("msyncont is empty!")
+    #maxdegree = len(chromcont.orgs)#max(x.get_degree() for x in iter(msyncont))
+    return [sum(1 for x in iter(chromcont) if x.get_degree() == i+1) for i in range(len(chromcont.orgs))]
 
 def lensdict_to_table(lensdict, sep='\t', si=True, header=True):
     header = 'deg' + sep + sep.join(lensdict.keys()) if header else ''
@@ -257,17 +256,17 @@ def get_map_stats(dfmap, collapse_chrs=True):
     else:
         return get_stats(pd.concat(dfmap.values()))
 
-def get_stats(df):
+def get_stats(chromcont):
     """
     Utility function to output some stats for a df containing computed multisyn objects.
     Calls get_len and tabularize_lens, prettyprints their output.
     """
-    tot_len = get_len(df)
+    tot_len = get_len(chromcont)
     if tot_len == 0:
         return "Empty!"
 
-    lens = tabularize_lens(df)
-    nos = tabularize_nos(df)
+    lens = tabularize_lens(chromcont)
+    nos = tabularize_nos(chromcont)
     avglens = list(map(lambda x: x[0]/x[1] if x[1] > 0 else 0, zip(lens, nos)))
     ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\tAvg. Length\n" + "\n".join([f"{i + 1}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
     return ret
@@ -335,45 +334,6 @@ def eval_combinations(syns, alns, cores=1):
         ret += ":\n"
         ret += get_call_stats(syns, alns, only_core=only_core, SYNAL=SYNAL)
     return ret
-
-def filter_multisyns(df, predicate):
-    #TODO refactor to use Cpp vectors later
-    # remember appropriate preallocation
-    inds = df[0].apply(predicate)
-    return df.loc[inds]
-
-def apply_filtering(df, exp):
-    return filter_multisyns(df, compile_filter(exp))
-
-def filter_multisyn_df(df, rng, only_contained=False):
-    """DEPRECATED, use filter_multisyns or apply_filtering instead
-    Misc function for filtering a DF produced by find_multisyn for a certain range.
-    Only the position on the reference is taken into account.
-    Only the chromosome, start and end of the supplied `Range` are used, org and chromosome information is discarded.
-
-    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
-    :type df: `DataFrame[Multisyn]`
-    :param rng: `Range` for selecting the `Multisyn` objects.
-    :param only_contained: switches between selecting any region intersecting or contained in the specified `Range`.
-    :type only_contained: bool
-    """
-    def filter_fn(x):
-        ref = x.ref
-        # check if on same chr
-        if not rng.chr == ref.chr:
-            return False
-        # check if contained:
-        if rng.start < ref.start < rng.end and rng.start < ref.end < rng.end:
-            return True
-        # quit if only looking for contained regions
-        if only_contained:
-            return False
-        # check if start or end within rng
-        return rng.start < ref.start < rng.end or rng.start < ref.end < rng.end
-
-    inds = df[0].apply(filter_fn)
-    #print(inds)
-    return df.loc[inds]
 
 def compile_filter_py(exp: str):
     return compile_filter(exp)
@@ -457,7 +417,7 @@ def compile_filter(exp: str):
     match = re.fullmatch("(in)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
         #TODO error handling?
-        rng = coords.read_psf_range(None, match[2])
+        rng = coords.read_psf_range(match[2])
         return lambda x: x.ref in rng
 
     # chr filter
@@ -478,18 +438,6 @@ def compile_filter(exp: str):
     raise ValueError(f"compile_filter called with invalid expression: {exp}")
 # END
 
-
-def filter_multisyn_df_chr(df, chr):
-    """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
-    Does essentially the same thing as `filter_multsyn_df`, but only uses chromosome information
-
-    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
-    :type df: `DataFrame[Multisyn]`
-    :param chr: Chromosome to select.
-    :type chr: `str`
-    """
-    return df.loc[df[0].apply(lambda x: chr == x.ref.chr)]
-
 def length_compare(syns, alns, cores=1):
     syns, alns = list(syns), list(alns)
     for _ in range(len(syns)):
@@ -497,20 +445,20 @@ def length_compare(syns, alns, cores=1):
         syns = syns[1:]
         alns = alns[1:]
 
-def psf_to_file(df, path):
+def psf_to_file(msyncont, path):
     """Convenience wrapper for to_format to save to a file directly
     """
     import msyd.io
     with open(path, 'wt') as f:
-        msyd.io.to_psf(df, f)
+        msyd.io.to_psf(msyncont, f)
 
-def psf_to_string(df, save_cigars=False):
+def psf_to_string(msyncont, save_cigars=False):
     """Convenience wrapper for to_format, saves to a stringbuffer, returns the string.
     Mainly meant for printing small-ish callsets.
     """
     import msyd.io
     with io.StringIO() as buf:
-        msyd.io.to_psf(df, buf, save_cigars=save_cigars)
+        msyd.io.to_psf(msyncont, buf, save_cigars=save_cigars)
         return buf.get_value()
 
 cpdef chrom_to_int(chrom):
@@ -526,16 +474,15 @@ cpdef chrom_to_int(chrom):
     elif type(chrom) is str:
         return int(chrom[3:])
     else:
-        raise ValueError(f"{chrom} is neither int nor str!")
+        raise ValueError(f"{chrom} is neither int nor in ChrXX format!")
 
-cpdef validate_top_sort(msyns):
+cpdef validate_top_sort(msyncont): #TODO think whether to pass orgs along every time or have reference in msyncont
     """
     Validates that msyns is topologically sorted, i.e. is consistently increasing across all organisms.
     Throws an error if this is not the case or any position is annotated twice, otherwise returns `None`.
     """
-    orgs = sorted(get_orgs_from_df(msyns))
-    curinds = {org:-1 for org in ["ref"] + orgs} #defaultdict(lambda: -1)
-    for _, msyn in msyns.iterrows():
+    curinds = {org:-1 for org in msyncont.orgs}#["ref"] + orgs} #defaultdict(lambda: -1)
+    for msyn in iter(msyncont):
         msyn = msyn[0]
         # check ref
         if curinds[msyn.ref.org] >= msyn.ref.start:
@@ -548,4 +495,54 @@ cpdef validate_top_sort(msyns):
             curinds[org] = rng.end # update index
     return
 
+
+#def filter_multisyns(df, predicate):
+#    #TODO refactor to use Cpp vectors later
+#    # remember appropriate preallocation
+#    inds = df[0].apply(predicate)
+#    return df.loc[inds]
+#
+#def apply_filtering(df, exp):
+#    return filter_multisyns(df, compile_filter(exp))
+#
+#def filter_multisyn_df(df, rng, only_contained=False):
+#    """DEPRECATED, use filter_multisyns or apply_filtering instead
+#    Misc function for filtering a DF produced by find_multisyn for a certain range.
+#    Only the position on the reference is taken into account.
+#    Only the chromosome, start and end of the supplied `Range` are used, org and chromosome information is discarded.
+#
+#    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
+#    :type df: `DataFrame[Multisyn]`
+#    :param rng: `Range` for selecting the `Multisyn` objects.
+#    :param only_contained: switches between selecting any region intersecting or contained in the specified `Range`.
+#    :type only_contained: bool
+#    """
+#    def filter_fn(x):
+#        ref = x.ref
+#        # check if on same chr
+#        if not rng.chr == ref.chr:
+#            return False
+#        # check if contained:
+#        if rng.start < ref.start < rng.end and rng.start < ref.end < rng.end:
+#            return True
+#        # quit if only looking for contained regions
+#        if only_contained:
+#            return False
+#        # check if start or end within rng
+#        return rng.start < ref.start < rng.end or rng.start < ref.end < rng.end
+#
+#    inds = df[0].apply(filter_fn)
+#    #print(inds)
+#    return df.loc[inds]
+#
+#def filter_multisyn_df_chr(df, chr):
+#    """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
+#    Does essentially the same thing as `filter_multsyn_df`, but only uses chromosome information
+#
+#    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
+#    :type df: `DataFrame[Multisyn]`
+#    :param chr: Chromosome to select.
+#    :type chr: `str`
+#    """
+#    return df.loc[df[0].apply(lambda x: chr == x.ref.chr)]
 
