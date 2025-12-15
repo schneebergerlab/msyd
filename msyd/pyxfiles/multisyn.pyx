@@ -92,6 +92,10 @@ cdef class Multisyn:
             dict cigdict = {org:cig.copy() for org, cig in self.cigars_dict.items()}
         return Multisyn(ref, rngdict, cigdict)
 
+    # for pickling
+    #def 
+
+
     def add(self, rng:Range, cg: Cigar):
         self.ranges_dict[rng.org] = rng
         if cg:
@@ -268,7 +272,7 @@ cdef class Multisyn:
         return Multisyn(self.ref, rngs, cgs)
 
 
-    def drop_on_org(self, start, end, org):
+    cpdef drop_on_org(self, start, end, org):
         """
         Similar to drop, but supports specifying the number of bases to drop on an organism other than the reference.
         Returns a new `Multisyn` object with `start`/`end` positions from the start/end of this multisyntenic region removed counting on `org`, respecting cigar alignments if not `None`.
@@ -286,7 +290,7 @@ cdef class Multisyn:
 
         return self.drop(start, end)
 
-    def drop_on_org_inplace(self, start, end, org):
+    cpdef drop_on_org_inplace(self, start, end, org):
         """
         Same as `drop_on_org`, but instead of returning a new Multisyn object, this mutates the current object.
         """
@@ -303,7 +307,7 @@ cdef class Multisyn:
 
         self.drop_inplace(start, end)
 
-    def drop(self, start, end):
+    cpdef drop(self, start, end):
         #, prop=False): #DEPRECATED
         #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Multisyn` without CIGAR strings.
         """
@@ -331,12 +335,11 @@ cdef class Multisyn:
                 if start + end < len(rng):
                     ranges_dict[org] = rng.drop(start, end)
         else:
-            cdef dict cigars_dict = dict()
+            cigars_dict = dict()
             for org, rng in self.ranges_dict.items():
-                cdef:
-                    Cigar cg = self.cigars_dict[org]
-                    int start_dropped = -1
-                    int end_dropped = -1
+                cg = self.cigars_dict[org]
+                start_dropped = -1
+                end_dropped = -1
 
                 # remove from both end, if possible at each step
                 if not cg.is_empty():
@@ -356,7 +359,7 @@ cdef class Multisyn:
         return Multisyn(ref, ranges_dict, cigars_dict)
 
     #TODO? write test testing that this is equivalent to drop
-    def drop_inplace(self, start, end):
+    cpdef drop_inplace(self, start, end):
         #, prop=False): #DEPRECATED
         #:param prop: Controls whether to drop the same amount in absolute terms (default) or proportional to the region lengths when dropping from a `Multisyn` without CIGAR strings.
         """
@@ -383,10 +386,9 @@ cdef class Multisyn:
                     self.ranges_dict[org] = rng.drop(start, end)
         else:
             for org, rng in self.ranges_dict.items():
-                cdef:
-                    Cigar cg = self.cigars_dict[org]
-                    int start_dropped = -1
-                    int end_dropped = -1
+                cg = self.cigars_dict[org]
+                start_dropped = -1
+                end_dropped = -1
 
                 # remove from both end, if possible at each step
                 if not cg.is_empty():
@@ -606,7 +608,14 @@ cdef class MultisynContainer:
         else:
             raise ValueError("Invalid indexing call!")
 
+    # support pickling, for use with multiprocessing
+    # NOTE: better to just use PSF format for this?
+    # NOTE: would require an Orgs object though, which fits better in CHromContainer
+    def __getstate__(self):
+        return ';'.join(msyn.__getstate__() for msyn in self._backing)
 
+    def __setstate__(self, state):
+        self._backing = [Multisyn.from_ser(ser) for ser in state.split(";")]
 
     cdef getat(self, pos:int):
         #return self._backing.at(pos)
