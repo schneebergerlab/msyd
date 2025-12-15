@@ -304,7 +304,7 @@ cdef class Cigar:
 
         return Cigar(newtups)
 
-    cdef trim(self, unsigned int s, unsigned int e, bint ref=True, bint only_pos=False):# noexcept nogil:
+    cpdef trim(self, unsigned int s, unsigned int e, bint ref=True, bint only_pos=False):# noexcept nogil:
         """
         Trims an alignment by removing `s` bases from the start and `e` from the end.
         If `ref` is set to `True`, the removed bases are counted on the reference sequence, otherwise on the alternative.
