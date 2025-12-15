@@ -98,7 +98,7 @@ def main():
                              help="Do not filter the input VCFs to only contain SNPs and INDELs")
     call_parser.add_argument("-r", "--reference",
                              dest='ref', type=argparse.FileType('r'),
-                             help="Reference to use for the VCF output")
+                             help="Reference FASTA file to use for the reference sequence tags in VCF output")
     call_parser.add_argument("--incremental", dest='incremental',
                              type=argparse.FileType('r'),
                              help="A PSF file containing a previous multisynteny callset to combine with the calls derived from the input TSV. Should contain CIGAR strings.")
@@ -151,6 +151,9 @@ def main():
     call_parser.add_argument("--max-realign", dest="max_realign",
                              type=int, default=-1,
                              help="Maximum number of realignment steps to perform. Default 0 (unlimited).")
+    call_parser.add_argument("--refname", "-rn", dest="refname",
+                             type=str, default="ref",
+                             help="Identifier to use for the reference used for the initial SyRI calls. Defaults to 'ref'")
     call_parser.add_argument("--minimap-preset", dest="mp_preset",
                              type=str, default="asm20",
                              help="minimap2 alignment preset to use. Default 'asm20'.")
@@ -186,7 +189,7 @@ def main():
                              help="Do not print some statistics about the synteny to stdout. Useful for saving runtime in large samples, or when piping stdout somewhere.")
     view_parser.add_argument("-r", "--reference",
                              dest='ref', type=argparse.FileType('r'),
-                             help="If saving to VCF, the reference to use can be specified with this flag")
+                             help="Reference FASTA file to use for the reference sequence tags in VCF output")
     view_parser.add_argument("--intersect", dest='intersect',
                              type=argparse.FileType('r'),
                              help="VCF File to intersect with the PSF file given with -i. Will only keep annotations within multisyntenic regions")
@@ -364,9 +367,10 @@ def call(args):
     # find reference synteny
     #syndicts = intersection.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
     chromsyn = intersection.prepare_input(qrynames, syns, alns,
-                                         cores=args.cores,
-                                         SYNAL=args.SYNAL,
-                                         base=args.incremental)
+                                          refname=args.refname,
+                                          cores=args.cores,
+                                          SYNAL=args.SYNAL,
+                                          base=args.incremental)
     logger.info("Read input files")
 
     # start logging dropped bases
