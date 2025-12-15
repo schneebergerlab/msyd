@@ -47,7 +47,7 @@ cdef class Multisyn:
 
 
     # ranges_dict, cigars_dict have type Dict[String, Range]/Dict[String, Cigar], respectively, but cython cannot deal with generic type hints
-    def __cinit__(self, ref:Range, dict ranges_dict, dict cigars_dict):
+    def __init__(self, ref:Range, dict ranges_dict, dict cigars_dict):
         #if not ranges_dict:
         #    raise ValueError(f"ERROR: Trying to initialize Multisyn with no non-reference Range (ref: {ref})")
         #if cigars_dict and not ranges_dict.keys() == cigars_dict.keys():
@@ -95,7 +95,6 @@ cdef class Multisyn:
     # for pickling
     #def 
 
-
     def add(self, rng:Range, cg: Cigar):
         self.ranges_dict[rng.org] = rng
         if cg:
@@ -110,7 +109,8 @@ cdef class Multisyn:
     def get_orgs(self):
         return self.get_organisms()
     def get_organisms(self):
-        #TODO fix: add reference
+        #NOTE: is this efficient?
+        #return [self.ref.org] + self.ranges_dict.keys()
         return self.ranges_dict.keys()
 
     def iter_ranges(self):
@@ -442,10 +442,10 @@ class Private(Multisyn):
 cdef class ChromContainer:
     cdef:
         dict _backing # holds MultisynContainers, 
-        set[str] chromnames
-        object orgs
+        public set[str] chromnames
+        public object orgs
 
-    def __cinit__(self, dict chrdict, orgs: OrgContainer):
+    def __init__(self, dict chrdict, orgs: OrgContainer):
         self._backing = chrdict
         self.chromnames = set(chrdict.keys())
         self.orgs = orgs
@@ -514,15 +514,18 @@ cdef class MultisynContainer:
     This allows the use of binary search to efficiently retrieve even sequences not present in the first reference.
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     """
-    cdef List[Multisyn] _backing
+    cdef:
+        list _backing # List[Multisyn]
+        public object orgs
     #cdef vector[Multisyn] _backing
 
-    def __cinit__(self, list init=None, int cap=0):
+    def __init__(self, orgs:OrgContainer, list init=None, int cap=0):
         """
         `cap` specifies the initial capacity the vector backing should be initialised with.
         """
         #self._backing = vector[object]()
         self._backing = init if init else list()
+        self.orgs = orgs
         #if cap: # currently a no-op
         #    self.reserve(cap)
 
@@ -611,11 +614,14 @@ cdef class MultisynContainer:
     # support pickling, for use with multiprocessing
     # NOTE: better to just use PSF format for this?
     # NOTE: would require an Orgs object though, which fits better in CHromContainer
-    def __getstate__(self):
-        return ';'.join(msyn.__getstate__() for msyn in self._backing)
+    #def __getstate__(self):
+    #    return self.orgs.__getstate__() + ";"+\
+    #            ','.join(msyn.__getstate__() for msyn in self._backing)
 
-    def __setstate__(self, state):
-        self._backing = [Multisyn.from_ser(ser) for ser in state.split(";")]
+    #def __setstate__(self, state):
+    #    orgser, msynser = state.split(";")
+    #    self.orgs = OrgContainer.from_ser(orgser)
+    #    self._backing = [Multisyn.from_ser(ser) for ser in msynser.split(",")]
 
     cdef getat(self, pos:int):
         #return self._backing.at(pos)
