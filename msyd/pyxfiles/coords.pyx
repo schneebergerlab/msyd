@@ -53,7 +53,7 @@ cdef class Position:
 
     def __setstate__(self, state):
         # kind of ugly, but pickling requires to keep the object
-        rng = read_psf_pos(None, state)
+        rng = read_psf_pos(state, org=None)
         self.org = rng.org
         self.chr = rng.chr
         self.start = rng.pos
@@ -123,7 +123,7 @@ cdef class Range:
 
     def __setstate__(self, state):
         # kind of ugly, but pickling requires to keep the object
-        rng = read_psf_range(None, state)
+        rng = read_psf_range(state, org=None)
         self.org = rng.org
         self.chr = rng.chr
         self.start = rng.start
@@ -205,7 +205,7 @@ cdef class Range:
             return False
         return True
 
-cpdef read_psf_range(org:str, cell: str):
+cpdef read_psf_range(cell: str, org=None):
     """Parse a Range in PSF format
     PSF format contains the chromosome identifier followed by a colon (:) and the start and end position separated by -.
     Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.
@@ -230,7 +230,7 @@ cpdef read_psf_range(org:str, cell: str):
     return Range(org, chrom, start, end)
 
 
-cpdef read_psf_pos(org:str, cell: str):
+cpdef read_psf_pos(cell: str, org=None):
     """Parse a point position in PSF format
     PSF format contains the chromosome identifier followed by a colon (:) and the position.
     Optionally, the organism may be specified as well, at the first position and separated by a colon (:). This overrides `org`, if it is passed.

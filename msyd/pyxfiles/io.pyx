@@ -639,7 +639,7 @@ cpdef read_psf(fin):
                 continue
 
             vals = entry.split(',')
-            syn.ranges_dict[org] = read_psf_range(org, vals[0])
+            syn.ranges_dict[org] = read_psf_range(vals[0], org=org)
             
             # read cigars if present
             if len(vals) > 1:
@@ -778,7 +778,7 @@ cpdef read_old_psf(fin):
 
                 vals = samplecell[i].split(',')
                 reforg = vals[1] # should be the same in all records, but we don't know which ones are present, so set it each time to be sure
-                syn.ranges_dict[sample] = read_psf_range(sample, vals[0])
+                syn.ranges_dict[sample] = read_psf_range(vals[0], org=sample)
                 
                 # read cigars if present
                 if len(vals) > 2:
@@ -816,8 +816,8 @@ cpdef read_ancient_psf(f):
     for l in f:
         l = l.strip().split('\t')
         if l[0] == 'SYN': # line contains a multisyn region
-            syn = Multisyn(read_psf_range("ref", l[1]), # extract reference range
-                {orgs[i]:read_psf_range(orgs[i], cell.split(",")[0]) # extract ranges dict
+            syn = Multisyn(read_psf_range(l[1], org="ref"), # extract reference range
+                {orgs[i]:read_psf_range(cell.split(",")[0], org=orgs[i]) # extract ranges dict
                         for i, cell in enumerate(l[2:]) if cell != '.'},
                 {orgs[i]:cigar.cigar_from_string(cell.split(',')[1])
                  for i, cell in enumerate(l[2:]) if cell != '.' and len(cell.split(',')) > 1} # extract cigars dict
