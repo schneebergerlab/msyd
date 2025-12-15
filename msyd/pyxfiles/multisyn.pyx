@@ -509,7 +509,7 @@ cdef class ChromContainer:
         with multiprocessing.Pool(ncores) as pool:
             conts = pool.map(fn, conts)
 
-        return ChromContainer(dict(zip(chroms, conts)))
+        return ChromContainer(dict(zip(chroms, conts)), self.orgs)
 
 #THOUGHT: write NodeContainer/Graph class in syngraph that inherits from this?
 cdef class MultisynContainer:
