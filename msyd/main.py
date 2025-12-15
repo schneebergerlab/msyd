@@ -19,6 +19,7 @@ import pandas as pd
 import argparse
 import sys
 import os
+import functools
 
 """
 This file serves as the main entrypoint for the msyd CLI.
@@ -362,7 +363,7 @@ def call(args):
     qrynames, syns, alns, vcfs, fastas = util.parse_input_tsv(args.infile)
     # find reference synteny
     #syndicts = intersection.find_multisyn(qrynames, syns, alns, only_core=args.core, SYNAL=args.SYNAL, base=args.incremental)
-    syndict = intersection.prepare_input(qrynames, syns, alns,
+    chromsyn = intersection.prepare_input(qrynames, syns, alns,
                                          cores=args.cores,
                                          SYNAL=args.SYNAL,
                                          base=args.incremental)
@@ -371,15 +372,20 @@ def call(args):
     # start logging dropped bases
     intersection.start_log_dropped_bases()
 
+    # pass split indel thresh along to intersection module
     if args.split_indel_thresh:
         intersection.set_SPLIT_INDEL_THRESH(args.split_indel_thresh)
 
-    syndict = intersection.process_syndicts(syndict, cores=args.cores, only_core=args.core, trim=args.trim)
+    #syndict = intersection.process_syndicts(syndict, cores=args.cores, only_core=args.core, trim=args.trim)
+    # do the synteny intersection
+    _process_synlists = functools.partial(intersection.process_synlists, only_core=args.core, trim=args.trim)
+    chromsyn = chromsyn.apply_chroms_par(_process_synlists, ncores=args.cores)
+
     logger.info("Intersected synteny")
     logger.info(f"Dropped {util.siprefix(intersection.get_dropped_bases())} across all organisms during initial intersection.")
 
     if args.private:
-        syndict = priv.complement_dict(syndict, add=True, cores=args.cores)
+        chromsyn = priv.complement_dict(chromsyn, add=True, cores=args.cores)
         logger.info("Annotated private regions on ref.")
 
 
@@ -387,7 +393,7 @@ def call(args):
         # reset counter
         intersection.start_log_dropped_bases()
         # use reference synteny as base to identify all haplotypes
-        syndict = realignment.realign(syndict, qrynames, fastas,
+        chromsyn = realignment.realign(chromsyn, qrynames, fastas,
                                       MIN_REALIGN_LEN=args.min_realign,
                                       MIN_SYN_ID=args.min_syn_id,
                                       MAX_REALIGN=args.max_realign,
@@ -408,18 +414,18 @@ def call(args):
 
     if args.print:
         try:
-            print(syndict)#df.head(args.print))
+            print(chromsyn)#df.head(args.print))
         except:
             logger.error("Error printing sample to STDOUT!")
     if args.get_stats:
         try:
-            print(util.get_stats(pd.concat(syndict.values())))
+            print(util.get_stats())
         except:
             logger.error("Error printing sample to STDOUT!")
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
-    io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
+    io.save_to_psf(chromsyn, args.psf, save_cigars=args.cigars)
 
     if args.gfa:
         logger.info("Parsing FASTA files")
@@ -427,7 +433,7 @@ def call(args):
         if args.fastas:
             seqh = SeqHandler.from_fasta_tsv(args.fastas)
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
-        graph = syngraph.make_graphs_chrdict(syndict, seqh=seqh)
+        graph = syngraph.make_graphs_chrdict(chromsyn, seqh=seqh)
         io.save_to_gfa1(graph, args.gfa)
 
 
