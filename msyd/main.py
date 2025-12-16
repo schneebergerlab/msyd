@@ -446,7 +446,7 @@ def call(args):
         logger.info(f"Merging VCFs into {args.vcf.name}")
         ref = None
         # merge all dfs into one
-        df = pd.concat(syndict.values())
+        df = None #TODO
         if args.ref:
             logger.info("Reading in Reference")
             ref = io.readfasta(args.ref.name)

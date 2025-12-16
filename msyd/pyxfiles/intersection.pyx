@@ -234,6 +234,7 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
     chromsyn = prepare_input(qrynames, syris, alns, cores=cores, base=base, sort=sort, ref=ref, SYNAL=SYNAL)
     logger.info("Finished reading input files, starting intersection.")
 
+    #NOTE pass along cores/len(chroms) as cores to here?
     _process_synlists = functools.partial(process_synlists, refname=refname, only_core=only_core, trim=trim)
     return chromsyn.apply_chroms_par(_process_synlists, ncores=ncores)
 
@@ -283,9 +284,8 @@ cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, so
     
     return ChromContainer(dict(syndict), orgs)
 
-cpdef process_synlists(msyncontlist, base=None, disable_overlapcheck=False, cores=1, only_core=False, trim=True):
+cpdef process_synlists(chrom, msyncontlist, base=None, disable_overlapcheck=False, cores=1, only_core=False, trim=True):
     # msyncontlist is a list of MultisynContainers
-
 
     # remove overlap
     #NOTE could multithread this, but not sure its worth it
@@ -294,14 +294,14 @@ cpdef process_synlists(msyncontlist, base=None, disable_overlapcheck=False, core
             syri_handler.handle_conflicts(iter(msyncont))
 
     if SPLIT_INDEL_THRESH > 0:
-        logger.info(f"Splitting alignments at indels > {SPLIT_INDEL_THRESH} bp")
+        logger.info(f"{chrom}: Splitting alignments at indels > {SPLIT_INDEL_THRESH} bp")
         if cores == 1:
             msyncontlist = [split_indels(msyncont) for msyncont in msyncontlist]
         else:
             with multiprocessing.Pool(cores) as pool:
                 msyncontlist = pool.map(split_indels, msyncontlist)
 
-    logger.info("overlapping synteny trimmed")
+    logger.info("{chrom}: overlapping synteny trimmed")
 
     # shouldn't need any overlap removal
     if base:
