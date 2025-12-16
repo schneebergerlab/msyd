@@ -478,9 +478,9 @@ cdef class ChromContainer:
         else:
             return self._backing[key]
 
-    def apply_chroms(self, fn, chromfn) -> ChromContainer:
+    def apply_chroms(self, fn) -> ChromContainer:
         """
-        fn: Fn(T) -> T, with T being the type stored per Chromosome, typically MultisynContainer.
+        fn: Fn(str, T) -> T, with str being the chromosome name and T being the type stored per Chromosome, typically MultisynContainer.
         chromfn: Fn(str) -> None
         The ordering is guaranteed to be sorted, per chromosome.
         :returns: a new ChromosomeContainer that is the result of applying fn along all chromosomes contained in this one.
@@ -488,18 +488,17 @@ cdef class ChromContainer:
         """
         cdef dict _new = dict()
         for chrom, cont in self._backing.items():
-            chromfn(chrom)
-            _new[chrom] = fn(cont)
+            _new[chrom] = fn(chrom, cont)
         return ChromContainer(_new, self.orgs)
 
     def apply_chroms_par(self, fn, ncores=0):
         """
-        fn: Fn(T) -> T, with T being the type stored per Chromosome, typically MultisynContainer.
+        fn: Fn(str, T) -> T, with str being the chromosome name and T being the type stored per Chromosome, typically MultisynContainer.
         The ordering is guaranteed to be sorted per chromosome.
         :returns: a new ChromosomeContainer that is the result of applying fn along all chromosomes contained in this one.
         """
         if ncores == 1:
-            return self.apply_chroms(fn, lambda x: None)
+            return self.apply_chroms(fn)
         elif ncores == 0: # default to 1 core per chrom
             ncores = len(self)
 
@@ -507,7 +506,7 @@ cdef class ChromContainer:
         cdef list chroms = list(self._backing.keys())
         cdef list conts = list(self._backing.values())
         with multiprocessing.Pool(ncores) as pool:
-            conts = pool.map(fn, conts)
+            conts = pool.starmap(fn, zip(chroms, conts))
 
         return ChromContainer(dict(zip(chroms, conts)), self.orgs)
 
