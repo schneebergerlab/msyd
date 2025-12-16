@@ -271,8 +271,8 @@ cdef class Panco:
         self.merai = merai
 
     @classmethod
-    def start_counter(cls):
-        return cls("", 0, 0)
+    def start_counter(cls, chrom):
+        return cls(chrom, 0, 0)
 
     def __eq__(l, r):
         if not isinstance(r, Panco):

@@ -404,7 +404,7 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
     #TODO add functionality to incorporate reference information as optional argument
     cdef:
         out = pysam.VariantFile(outf, 'w')
-        ounter = Panco.start_counter()
+        counter = Panco.start_counter("") # add chrom later
         # ensure consistent, alphabetical sorting of organisms
         int orgsc = len(orgs)
         header_chrs = set() # do dynamically in python, hopefully more efficiently than looping twice
@@ -452,14 +452,14 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
                 rec.alleles = [ref[rec.chrom][rec.start], "<CORESYN>"]
             else:
                 rec.alleles = ["<SYN>", "<CORESYN>"]
-            rec.id = "CORESYN{}".format(counter)
+            rec.id = "CORESYN:{}".format(counter)
             counter.increment_c()
         else:
             if ref:
                 rec.alleles = [ref[rec.chrom][rec.start], "<MERASYN>"]
             else:
                 rec.alleles = ["<SYN>", "<MERASYN>"]
-            rec.id = "MERASYN{}".format(counter)
+            rec.id = "MERASYN:{}".format(counter)
             counter.increment_m()
 
         #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now

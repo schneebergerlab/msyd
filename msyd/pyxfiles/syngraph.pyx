@@ -24,20 +24,19 @@ logger.setLevel(logging.INFO)
 # add a private node in between (or do not annotate the link if add_private is not passed)
 cdef int MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
-#cdef
-class Node:
+cdef class Node:#(Multisyn):
     """
     Internal graph representation for msyd's synteny graph.
     """
-    #cdef:
-    #    public Panco index
-    #    public str seq
-    #    public Multisyn msyn
-    #    public dict[str, Node] post
-    #    public dict[str, Node] prev
+    cdef:
+        public object index # PanCo
+        public str seq
+        public object msyn
+        public dict[str, Node] post
+        public dict[str, Node] prev
 
-    def __init__(self, msyn, seqh=None):
-        self.index = "0.0"
+    def __init__(self, index, msyn, seqh=None):
+        self.index = index
         self.seq = None
         self.msyn = msyn
         self.post = dict()
