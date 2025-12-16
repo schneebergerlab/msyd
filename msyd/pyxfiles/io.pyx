@@ -611,7 +611,7 @@ cdef write_multisyn(multisyn, buf, orgs, save_cigars=False):
               )
     buf.write("\n")
 
-cpdef read_psf(fin):
+cpdef object read_psf(fin): # -> ChromContainer
     """
     Takes a file object or path to a file in PSF format and reads it in as a DataFrame of Multisynteny objects.
     Supports the new version of PSF format; for legacy files, use the deprecated version of this function.
