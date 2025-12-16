@@ -7,9 +7,9 @@ import functools
 from collections import defaultdict, deque # or use cpp vector/custom?
 from multiprocessing import Pool
 
-import pandas as pd
+#import pandas as pd
 
-from msyd.multisyn import Multisyn, Private
+from msyd.multisyn import ChromContainer, MultisynContainer, Multisyn, Private
 from msyd.coords import Range, Panco
 from msyd.seq import SeqHandler
 
@@ -82,46 +82,42 @@ cdef class Node:#(Multisyn):
         return self.msyn is None
 
 
-def make_graphs_chrdict(msyndict, seqh=None, add_private=True, ncores=1):
+def make_graphs_chrdict(chromcont: ChromContainer, seqh=None, add_private=True, ncores=1) -> ChromContainer:
     """
     Calls make_graph to compute a graph representation from a dictionary containing Multisyn lists indexed by chromosome.
     The graph will be indexed by chromosome and returned in a topological ordering.
     """
     graphs_call = functools.partial(make_graph, seqh=seqh, add_private=add_private)
-    ncores = min(len(msyndict), ncores)
+    ncores = min(len(chromcont), ncores)
 
-    if ncores > 1:
-        with Pool(ncores) as pool:
-            return dict(pool.map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
-    else:
-        return dict(map(graphs_call, [msyndict[chrom] for chrom in msyndict]))
+    return chromcont.apply_chroms_par(graphs_call, ncores=ncores)
 
-cpdef make_graph(msyns, seqh=None, add_private=True):
+cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
     """
     Computes a graph representation from a list of Multisyns.
     Coresyns are used to contrain the graph to a single shared node.
     Between two coresyns, nodes are topologically ordered, and their neighbourhood is then reconstructed by tracing along the ordering.
     Returns a DataFrame of Nodes, by default maintaining their topological sorting.
     """
-    ret = deque()
-    chrom = msyns.iat[0, 0].ref.chr
-    # TODO find nice way to figure out if incrementing core or mera counter; or do panco imputation after graph construction
-    #panco = Panco(chrom, 0, 0)
-    curdict = dict()#defaultdict(lambda: None)
+    cdef:
+        # store start and end, add as virtual nodes later
+        int n = len(msyncont.orgs)
+        object index = Panco(chrom, 0, 0)
+        Node starting = Node(None, None)
+        Node ending = Node(None, None)
+        list ret = [starting, ending]
+        dict curdict = dict()#defaultdict(lambda: None)
+        # TODO find nice way to figure out if incrementing core or mera counter; or do panco imputation after graph construction
 
-    logger.info(f"Starting graph construction on {chrom}, containing {msyns.size} Msyns")
-    msyns.sort_values(by=[0], inplace=True) # note: if too inefficient, fetch regions between coresyns and call subfunction to sort, or implement insertion sort
+    #logger.info(f"Starting graph construction on {chrom}, containing {msyns.size} Msyns")
+    msyncont = msyncont.sorted() # note: if too inefficient, fetch regions between coresyns and call subfunction to sort, or implement insertion sort
     logger.info(f"Finished top. sorting on {chrom}")
-    util.validate_top_sort(msyns)
+    util.validate_top_sort(msyncont)
 
-    # store start and end, add as virtual nodes later
-    starting = Node(None)
-    ending = Node(None)
 
     logger.info(f"Starting graph construction on {chrom}")
-    for _, msyn in msyns.iterrows():
-        msyn = msyn[0]
-        node = Node(msyn, seqh=seqh)
+    for msyn in iter(msyncont):
+        node = Node(index, msyn, seqh=seqh)
         # add links to predecessors per organism
         for org, rng in msyn.iter_orgs_ranges(): #[(msyn.ref.org, msyn.ref)] + list(msyn.ranges_dict.items()): # how to handle ref?
             if org in curdict: # default case
@@ -152,7 +148,12 @@ cpdef make_graph(msyns, seqh=None, add_private=True):
                 starting.post[org] = node
                 curdict[org] = node
                 #node.prev['_start'] = starting # to make the graph traversable
+
         # done with looping over orgs
+        if msyn.get_degree == n:
+            index = index.increment_c()
+        else:
+            index = index.increment_m()
         ret.append(node)
 
     # log current state as ending nodes
@@ -160,10 +161,11 @@ cpdef make_graph(msyns, seqh=None, add_private=True):
     #for node in curdict.values():
     #    node.post['_end'] = ending
 
-    ret.appendleft(ending) # second pos
-    ret.appendleft(starting) # first pos
+    # already done in init
+    #ret.appendleft(ending) # second pos
+    #ret.appendleft(starting) # first pos
 
-    return (chrom, pd.DataFrame(data=list(ret)))
+    return MultisynContainer(ret, msyncont.orgs)#(chrom, pd.DataFrame(data=list(ret)))
 
 cpdef trace_org(begin, org, forward=True):
     """
