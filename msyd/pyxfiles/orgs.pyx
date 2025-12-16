@@ -35,6 +35,9 @@ cdef class OrgContainer:
         """
         return self.n
 
+    def __repr__(self):
+        return ",".join(self.orgs)
+    
     def __len__(self):
         return self.n
 

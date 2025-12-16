@@ -457,7 +457,7 @@ cdef class ChromContainer:
         return any(len(x) == 0 for x in self._backing.values())
 
     def __repr__(self):
-        return f"ChromContainer({','.join(chrom + ':' + type(cont) for chrom, cont in self._backing.items())}, Orgs: {self.orgs})"
+        return f"ChromContainer({','.join(chrom + ':' + str(type(cont)) for chrom, cont in self._backing.items())}; Orgs: {self.orgs})"
 
     def __len__(self):
         return len(self.chromnames)
