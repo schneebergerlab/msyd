@@ -211,7 +211,7 @@ cpdef handle_conflicts(syniter):
         ov = prev.ref.end - cur.ref.start +1
         if ov > 0:
             # there is overlap on ref
-            logger.warning(f"Found {ov} bp overlapping synteny on reference at {cur.ref.start}, trimming latter record!")
+            logger.warning(f"Found {ov} bp overlapping synteny on {cur.ref.org} at {cur.ref.start}, trimming latter record!")
             logger.debug(f"Cur before dropping: {cur}")
             cur.drop_inplace(ov, 0) # call drop_inplace to mutate the dataframe from a reference
             logger.debug(f"Cur after dropping: {cur}")
