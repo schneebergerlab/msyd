@@ -301,7 +301,7 @@ cpdef process_synlists(chrom, msyncontlist, base=None, disable_overlapcheck=Fals
             with multiprocessing.Pool(cores) as pool:
                 msyncontlist = pool.map(split_indels, msyncontlist)
 
-    logger.info("{chrom}: overlapping synteny trimmed")
+    logger.info(f"{chrom}: overlapping synteny trimmed")
 
     # shouldn't need any overlap removal
     if base:
