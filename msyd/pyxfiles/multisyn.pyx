@@ -550,9 +550,12 @@ cdef class MultisynContainer:
 
     @classmethod
     def from_iterable(cls, iterable):
-        cdef MultisynContainer ret = Multisyn(iterable.__length_hint())
+        cdef MultisynContainer ret = Multisyn(OrgContainer(), cap=iterable.__length_hint())
         for msyn in iterable:
+            for org in msyn.get_orgs():
+                ret.orgs.add_org(org)
             ret.append(msyn)
+        return ret
 
     def __iter__(self):
         cdef int i = 0
