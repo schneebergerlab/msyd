@@ -746,9 +746,9 @@ cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=s
             if not walk:
                 logger.warning(f"Empty trace found for {org}!")
                 continue
-            startrng = walk[0].msyn.ranges_dict[org]
+            startrng = walk[0].msyn.ranges_dict[org] if org in walk[0].msyn.ranges_dict else walk[0].msyn.ref
             # write fixed part of line
-            buf.write(f"W\t{org}\t{startrng.start}\t{startrng.chr}")
+            buf.write(f"\nW\t{org}\t{startrng.start}\t{startrng.chr}")
             #TODO finish writing non-fixed part of line
             # notes
             # think if it makes sense to combine this with msyn refactor
