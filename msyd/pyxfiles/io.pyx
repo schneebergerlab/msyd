@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import *
 import pysam
+import functools
 
 #from multiprocessing import Pool
 from collections import deque, defaultdict, OrderedDict
@@ -661,7 +662,7 @@ cpdef object read_psf(fin): # -> ChromContainer
     # return as ChromContainer
     return ChromContainer(chromdict, orgs)
 
-cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True):
+cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, tag_orgs_l=True, walks_orgs=True):
     """
     Takes a map of chrom IDs to DFs containing Node objects and writes them to buf in GFA1 format.
     Preserves the sorting of the DFs (should be in topological sorting) and sorts chroms lexicallicaly.
@@ -671,29 +672,35 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
     :rgfa_tags: True (default), False. Whether to emit the rGFA tags of `SN`, `SO` and `SR`. The latter will always be 1 by convention.
     :vg_header: True (default), False. Whether to write vg's extended headers to the output GFA1.
     """
-    if len(dfmap) == 0:
+    if chromcont.is_empty():
         raise ValueError("Empty dfmap provided!")
 
     # get list of all orgs to simplify regularization
     # start node contains all orgs
-    all_orgs = set(dfmap[list(dfmap.keys())[0]].at[0, 0].post.keys())
-    logger.info(f"Orgs found: {all_orgs}")
+    logger.info(f"Orgs found: {chromcont.orgs}")
     # regularize input args to sets
     if tag_orgs_s == True: # == required to not match truthy nonempty sets
-        tag_orgs_s = all_orgs
+        tag_orgs_s = chromcont.orgs
         #TODO handle organism regularization, or just handle in main?
     elif tag_orgs_s == False:
-        tag_orgs_s = set()
+        tag_orgs_s = OrgContainer()
+    else:
+        tag_orgs_s = OrgContainer.from_list(tag_orgs_s)
+
 
     if tag_orgs_l == True: # == required to not match truthy nonempty sets
-        tag_orgs_l = all_orgs
+        tag_orgs_l = chromcont.orgs
     elif tag_orgs_l == False:
-        tag_orgs_l = set()
+        tag_orgs_l = OrgsContainer()
+    else:
+        tag_orgs_l = OrgContainer.from_list(tag_orgs_l)
 
     if walks_orgs == True: # == required to not match truthy nonempty sets
-        walks_orgs = all_orgs
+        walks_orgs = chromcont.orgs
     elif walks_orgs == False:
-        walks_orgs = set()
+        walks_orgs = OrgsContainer()
+    else:
+        walks_orgs = OrgContainer.from_list(walks_orgs)
 
     logger.info(f"Tracing on S lines: {tag_orgs_s}")
     logger.info(f"Tracing on L lines: {tag_orgs_l}")
@@ -702,11 +709,13 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
     ## write header
     buf.write("H\tVN:Z:1.2")
     if vg_header and (tag_orgs_s or tag_orgs_l):
-        buf.write("\tRS:Z:" + " ".join(tag_orgs_s.union(tag_orgs_l)))
+        buf.write("\tRS:Z:" + " ".join(tag_orgs_s + tag_orgs_l))
     buf.write("\n")
 
     ## write contents
-    #TODO parallelize?
+    #NOTE could parallelize?
+    _save_msyncont_to_gfa1 = functools.partial(save_msyncont_to_gfa1, buf=buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
+    chromcont.apply_chroms(_save_msyncont_to_gfa1)
     for chrom in sorted(dfmap):
         buf.write(f"# <chrom:{chrom}>\n")
         save_df_to_gfa1(dfmap[chrom], buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
@@ -714,15 +723,15 @@ cpdef save_to_gfa1(dfmap, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=True, 
         logger.info(f"Finished {chrom} part of GFA")
     logger.info(f"Finished writing GFA")
 
-cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True, walks_orgs=set()):
+cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True, walks_orgs=set()):
     # get start and end node from the beginning of the DF
-    nodeiter = df.iterrows()
-    startnode = next(nodeiter)[1][0]
-    endnode = next(nodeiter)[1][0]
+    nodeiter = iter(msyncont)
+    startnode = next(nodeiter)
+    endnode = next(nodeiter)
+    buf.write(f"# <chrom:{chrom}>\n")
 
     # write S and L lines corresponding to nodes
-    for _, node in nodeiter:
-        node = node[0]
+    for node in nodeiter:
         buf.write(node.to_gfa1(rgfa_tags=rgfa_tags, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l))
         buf.write("\n")
         
@@ -744,6 +753,9 @@ cpdef save_df_to_gfa1(df, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=Tru
             # notes
             # think if it makes sense to combine this with msyn refactor
             # => does including the ref in ranges_dict break stuff in intersection/realignment?
+
+    buf.write(f"# </chrom:{chrom}>\n")
+    logger.info(f"Finished {chrom} part of GFA")
 
 cpdef read_old_psf(fin):
     """
