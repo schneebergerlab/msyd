@@ -68,14 +68,15 @@ cdef class OrgContainer:
         return self.posdict[org]
 
     def add_org(self, org:str):
-        org = sys.intern(org) # make sure this goes to the string literal pool
-        self.posdict[org] = self.n
-        self.orgs.append(org)
-        self.n += 1
+        if org not in self: # do not add duplicates
+            org = sys.intern(org) # make sure this goes to the string literal pool
+            self.posdict[org] = self.n
+            self.orgs.append(org)
+            self.n += 1
 
     def __add__(self, other):
         ret = copy.copy(self)
-        for org in other.orgs:
+        for org in iter(other):
             ret.add_org(org)
         return ret
 
@@ -103,9 +104,3 @@ cdef class OrgContainer:
         for org in lst:
             ret.add_org(org)
         return ret
-
-
-
-
-
-
