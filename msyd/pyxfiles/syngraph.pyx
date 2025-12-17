@@ -159,7 +159,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
         ret.append(node)
 
     # log current state as ending nodes
-    ending.pre = curdict
+    ending.prev = curdict
     #for node in curdict.values():
     #    node.post['_end'] = ending
 
@@ -182,7 +182,7 @@ cpdef trace_org(begin, org, forward=True):
     while True: # graph is a DAG, no need to worry about cycles
         if cur.msyn: # to not append start/end node
             # make sure we don't mistraverse
-            #assert org in cur.msyn.get_organisms()
+            assert org in cur.msyn.get_organisms()
             ret.append(cur)
 
         # continue traversal
