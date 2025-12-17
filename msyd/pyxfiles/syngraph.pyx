@@ -53,7 +53,7 @@ cdef class Node:#(Multisyn):
     def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
         ret = f"S\t{self.index}\t*" 
         if tag_orgs_s:
-            orgs = tag_orgs_s.union(self.msyn.get_organisms())
+            orgs = tag_orgs_s + self.msyn.get_organisms()
             if orgs:
                 ret += f"\tSO:Z:{','.join(orgs)}" # originally used ' '
         if rgfa_tags:
@@ -69,8 +69,8 @@ cdef class Node:#(Multisyn):
             if not node.is_terminal():
                 prevnodes[node].add(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
-        return [(f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}" if not tag_orgs_l.union(orgs)
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}\tLO:Z:{' '.join(tag_orgs_l.union(orgs))}") for node, orgs in prevnodes.items()]
+        return [(f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}" if not tag_orgs_l or orgs
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}\tLO:Z:{' '.join(tag_orgs_l + orgs)}") for node, orgs in prevnodes.items()]
 
     #def __hash__(self):
     #    return self.index.__hash__()
@@ -132,7 +132,9 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
                     node.prev[org] = curprev
                     curprev.post[org] = node
                 else: # add private region
-                    privnode = Node(Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)))
+                    #NOTE should private regions get some special panco?
+                    index = index.increment_m() # pre-increment, to avoid reusing the one as the main node
+                    privnode = Node(index, Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)))
 
                     # add two back/frontlinks
                     curprev.post[org] = privnode
@@ -165,7 +167,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
     #ret.appendleft(ending) # second pos
     #ret.appendleft(starting) # first pos
 
-    return MultisynContainer(ret, msyncont.orgs)#(chrom, pd.DataFrame(data=list(ret)))
+    return MultisynContainer(msyncont.orgs, init=ret)#(chrom, pd.DataFrame(data=list(ret)))
 
 cpdef trace_org(begin, org, forward=True):
     """
