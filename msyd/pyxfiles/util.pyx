@@ -481,9 +481,9 @@ cpdef validate_top_sort(msyncont): #TODO think whether to pass orgs along every 
     Validates that msyns is topologically sorted, i.e. is consistently increasing across all organisms.
     Throws an error if this is not the case or any position is annotated twice, otherwise returns `None`.
     """
+    logger.info(f"Found orgs:{msyncont.orgs}")
     curinds = {org:-1 for org in msyncont.orgs}#["ref"] + orgs} #defaultdict(lambda: -1)
     for msyn in iter(msyncont):
-        msyn = msyn[0]
         # check ref
         if curinds[msyn.ref.org] >= msyn.ref.start:
             raise ValueError(f"Overlap or sorting violation in {msyn.ref}")
@@ -493,6 +493,7 @@ cpdef validate_top_sort(msyncont): #TODO think whether to pass orgs along every 
             if curinds[org] >= rng.start:
                 raise ValueError(f"Overlap or sorting violation in {rng}")
             curinds[org] = rng.end # update index
+    logger.info("Topological Ordering valid!")
     return
 
 
