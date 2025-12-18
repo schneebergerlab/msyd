@@ -493,7 +493,7 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False):
+cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False, ref="ref"):
     """
     Takes a `ChromContainer` object containing one `MultisynContainer` per chromosome and writes them to buf.
     Preserves the sorting of the DFs, sorts chroms lexicallicaly.
@@ -509,89 +509,51 @@ cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False):
     buf.write("\t".join(chromcont.orgs.get_names()))
     buf.write("\n")
 
-    # write contents
+    ## write records
+    _save_msyncont_to_psf = functools.partial(save_msyncont_to_psf, buf=buf, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos, ref=ref)
+    chromcont.apply_chroms(_save_msyncont_to_psf)
     #TODO parallelize?
     #TODO print comment about which chrom is starting?
-    save_msyncont_to_psf(iter(chromcont), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
+    #save_msyncont_to_psf(iter(chromcont), buf, chromcont.orgs, emit_header=False, save_cigars=save_cigars, force_ref_pos=force_ref_pos)
 
-cpdef save_msyncont_to_psf(syniter, buf, orgs, save_cigars=True, emit_header=True, force_ref_pos=False):
+cpdef save_msyncont_to_psf(chrom, msyncont, buf, save_cigars=True, emit_header=True, force_ref_pos=False, ref="ref"):
     """Takes a  a `MultisynContainer` per chromosome and writes them in population synteny file format to `buf`.
     Can be used to print directly to a file, or to print or further process the output.
     """
     cdef:
-        int n = len(orgs)
-        int corecounter = 0
-        int counter = 0
-        int coreend = 0
-        str corechr = ''
+        #int n = len(msyncont.orgs)
+        str coreend = "0"
+        object counter = Panco.start_counter(chrom)
 
     if emit_header:
         buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
-        buf.write("\t".join(iter(orgs)))
+        buf.write("\t".join(iter(msyncont.orgs)))
         buf.write("\n")
 
-    # TODO: assert that the columns and columns are in same order as the input file (genomes.csv)
-    while True: # iterate from coresyn to coresyn
-        mesyns = []
-        refmesyns = []
-        privs = [] # ref private is handled during writing
-        syn = None
-        try:
-            syn = next(syniter)
-            # get all mesyns, separate by those having a position on reference and those that don't
-            while syn.get_degree() < n:
-                if syn.ref.org == "ref":
-                    refmesyns.append(syn)
-                else:
-                    if syn.get_degree() > 1:
-                        mesyns.append(syn)
-                    else:
-                        privs.append(syn)
-                syn = next(syniter)
-        except StopIteration: # try/catch block internal, so things still get written after we run out of multisyn regions
-            pass
-
+    for core, mesyns in msyncont.iter_cores_acc():
         # first, write non-ref-position merasynteny
         # write to the first position it can be
         # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
         for mesyn in mesyns:
-            counter += 1
-            panco_id = f"MERASYN{corecounter}.{counter}"
-            if force_ref_pos:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
+            counter.increment_m()
+            # write the BED-like pre record cols
+            panco_id = f"MERASYN{counter}" if mesyn.get_degree() > 1 else f"PRIVATE{counter}"
+
+            if mesyn.ref.org == ref:
+                buf.write('\t'.join([mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), panco_id, mesyn.ref.org, '.', '.', '.', '']))
+            elif force_ref_pos:
+                buf.write('\t'.join([chrom, coreend, coreend, panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             else:
                 buf.write('\t'.join(['.', '.', '.', panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
-            write_multisyn(mesyn, buf, orgs, save_cigars=save_cigars)
-
-        for priv in privs:
-            counter += 1
-            panco_id = f"PRIVATE{corecounter}.{counter}"
-            if force_ref_pos:
-                buf.write('\t'.join([corechr, str(coreend+1), str(coreend+1), panco_id, priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
-            else:
-                buf.write('\t'.join(['.', '.', '.', panco_id, priv.ref.org, priv.ref.chr, str(priv.ref.start), str(priv.ref.end), '']))
-
-            write_multisyn(priv, buf, orgs, save_cigars=save_cigars)
-
-        # write mesyn regions that have a position on reference at their appropriate position
-        for refmesyn in refmesyns:
-            counter += 1
-            panco_id = f"MERASYN{corecounter}.{counter}" if refmesyn.get_degree() > 1 else f"PRIVATE{corecounter}.{counter}"
-            ref = refmesyn.ref
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), panco_id, ref.org, '.', '.', '.', '']))
-            write_multisyn(refmesyn, buf, orgs, save_cigars=save_cigars)
+            # write the record
+            write_multisyn(mesyn, buf, msyncont.orgs, save_cigars=save_cigars)
 
         # write coresyn region
-        if syn:
-            corecounter += 1
-            counter = 0 # reset counter; or make it globally unique?
-            ref = syn.ref
-            coreend = ref.end
-            corechr = ref.chr
-            buf.write('\t'.join([ref.chr, str(ref.start), str(ref.end), f"CORESYN{corecounter}.{counter}", ref.org, '.', '.', '.', '']))
-            write_multisyn(syn, buf, orgs, save_cigars=save_cigars)
-        else:
-            break
+        if core:
+            counter.increment_c()
+            buf.write('\t'.join([core.ref.chr, str(core.ref.start), str(core.ref.end), f"CORESYN{counter}", core.ref.org, '.', '.', '.', '']))
+            write_multisyn(core, buf, msyncont.orgs, save_cigars=save_cigars)
+            coreend = str(core.ref.end + 1)
 
     buf.write("\n")
     buf.flush()
