@@ -678,11 +678,7 @@ cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=Tr
     #NOTE could parallelize?
     _save_msyncont_to_gfa1 = functools.partial(save_msyncont_to_gfa1, buf=buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
     chromcont.apply_chroms(_save_msyncont_to_gfa1)
-    for chrom in sorted(dfmap):
-        buf.write(f"# <chrom:{chrom}>\n")
-        save_df_to_gfa1(dfmap[chrom], buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
-        buf.write(f"# </chrom:{chrom}>\n")
-        logger.info(f"Finished {chrom} part of GFA")
+
     logger.info(f"Finished writing GFA")
 
 cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True, walks_orgs=set()):

@@ -74,7 +74,7 @@ class SeqHandler:
         assert rng.org in self._backing
         fa = self._backing[rng.org]
         end = min(fa.get_reference_length(rng.chr), rng.end + margin + 1)
-        return self._backing.fetch(reference=rng.chr, start=max(0, rng.start-margin), end=end).upper()
+        return fa.fetch(region=rng.chr, start=max(0, rng.start-margin), end=end).upper()
 
     def get_all_seq(self, msyn: Multisyn):
         """

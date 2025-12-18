@@ -495,6 +495,7 @@ def graph(args):
     import msyd.io as io
     import msyd.util as util
     import msyd.syngraph as syngraph
+    from msyd.seq import SeqHandler
 
     if not (args.gfa or args.outfile):
         logger.warning("No output specified! Output will not be saved.")
@@ -509,7 +510,7 @@ def graph(args):
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
 
     logger.info(f"Computing graph representation")
-    graphdict = syngraph.make_graphs_chrdict(syndict, ncores=args.cores)
+    graphdict = syngraph.make_graphs_chrdict(syndict, seqh=seqh, ncores=args.cores)
     logger.info(f"Finished computing graph representation")
 
     if args.gfa:
