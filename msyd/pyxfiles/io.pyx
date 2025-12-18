@@ -502,7 +502,11 @@ cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False, ref="re
     if chromcont.is_empty():
         raise ValueError("Empty dfmap provided!")
 
+    # make sure all orderings are consistent with the current header
     chromcont.orgs.sort()
+    for chrom in chromcont.get_chroms():
+        chromcont[chrom].orgs.sort()
+    #print(chromcont.orgs)
 
     # write header; assumes the first chrom contains all orgs at least once
     buf.write("#CHR\tSTART\tEND\tANN\tREP\tRCHR\tRSTART\tREND\t")
@@ -537,7 +541,7 @@ cpdef save_msyncont_to_psf(chrom, msyncont, buf, save_cigars=True, emit_header=T
         for mesyn in mesyns:
             counter = counter.increment_m()
             # write the BED-like pre record cols
-            panco_id = f"MERASYN{counter}" if mesyn.get_degree() > 1 else f"PRIVATE{counter}"
+            panco_id = f"MERA{counter}" if mesyn.get_degree() > 1 else f"PRIV{counter}"
 
             if mesyn.ref.org == ref:
                 buf.write('\t'.join([mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), panco_id, mesyn.ref.org, '.', '.', '.', '']))
@@ -551,7 +555,7 @@ cpdef save_msyncont_to_psf(chrom, msyncont, buf, save_cigars=True, emit_header=T
         # write coresyn region
         if core:
             counter = counter.increment_c()
-            buf.write('\t'.join([core.ref.chr, str(core.ref.start), str(core.ref.end), f"CORESYN{counter}", core.ref.org, '.', '.', '.', '']))
+            buf.write('\t'.join([core.ref.chr, str(core.ref.start), str(core.ref.end), f"CORE{counter}", core.ref.org, '.', '.', '.', '']))
             write_multisyn(core, buf, msyncont.orgs, save_cigars=save_cigars)
             coreend = str(core.ref.end + 1)
 

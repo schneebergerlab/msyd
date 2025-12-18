@@ -45,6 +45,7 @@ cdef class Node:#(Multisyn):
             self.add_sequence(seqh)
 
     def add_sequence(self, seqh: SeqHandler):
+        #logger.info(f"Adding sequence for {self.msyn}")
         self.seq = seqh.get_rep_seq(self.msyn)
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
@@ -139,6 +140,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
                 else: # add private region
                     #NOTE should private regions get some special panco?
                     index = index.increment_m() # pre-increment, to avoid reusing the one as the main node
+                    #logger.info(f"Retrieving private sequence between {curprevrng} and {rng}")
                     privnode = Node(index, Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)), seqh=seqh)
 
                     # add two back/frontlinks
@@ -186,7 +188,7 @@ cpdef trace_org(begin, org, forward=True):
     cur = begin
 
     while True: # graph is a DAG, no need to worry about cycles
-        logger.info(ret, cur, cur.post)
+        #logger.info(ret, cur, cur.post)
         if cur.msyn: # to not append start/end node
             # make sure we don't mistraverse
             assert org in cur.msyn.get_organisms()
