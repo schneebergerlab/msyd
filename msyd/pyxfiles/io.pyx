@@ -681,7 +681,7 @@ cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=Tr
     buf.write("# END")
     buf.flush()
 
-    logger.info(f"Finished writing GFA")
+    logger.info(f"Finished writing GFA") # NOTE write filename here?
 
 cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True, walks_orgs=set()):
     # get start and end node from the beginning of the DF

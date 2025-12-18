@@ -122,7 +122,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
 
     logger.info(f"Starting graph construction on {chrom}")
     for msyn in iter(msyncont):
-        node = Node(index, msyn, seqh=seqh)
+        node = Node(None, msyn, seqh=seqh) # assign index when writing to ret
         # add links to predecessors per organism
         for org, rng in msyn.iter_orgs_ranges(): #[(msyn.ref.org, msyn.ref)] + list(msyn.ranges_dict.items()): # how to handle ref?
             if org in curdict: # default case
@@ -161,6 +161,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
             index = index.increment_c()
         else:
             index = index.increment_m()
+        node.index = index
         ret.append(node)
 
     # log current state as ending nodes
