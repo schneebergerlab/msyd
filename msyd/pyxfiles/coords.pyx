@@ -12,6 +12,16 @@ logger = util.CustomFormatter.getlogger(__name__)
 cdef str DELIM = ":" # changeable to respect panSN spec; leave as : for now
 # note: reimplement hap to further support panSN?
 
+cdef str PANCO_STYLE = "DOT"
+# DOT: default, CHRDOT: include Chr, NO: force numeric representation (for GFA plotting mostly)
+cpdef str get_PANCO_STYLE():
+    global PANCO_STYLE
+    return PANCO_STYLE
+
+cpdef set_PANCO_STYLE(str val):
+    global PANCO_STYLE
+    PANCO_STYLE = val
+
 # these classes form a part of the general SV format
 # A position is specified by the organism, chromosome, haplotype and base position
 # A range takes a start and an end position. If the end < start, the range is defined as inverted
@@ -272,7 +282,7 @@ cdef class Panco:
 
     @classmethod
     def start_counter(cls, chrom):
-        return cls(chrom, 0, 0)
+        return cls(chrom, 0, 1)
 
     def __eq__(l, r):
         if not isinstance(r, Panco):
@@ -288,8 +298,30 @@ cdef class Panco:
             return l.corei < r.corei
 
     def __repr__(self):
-        #return f"{self.hap}{DELIM}{self.chrom}{DELIM}{self.corei}.{self.merai}"
+        if PANCO_STYLE == "DOT":
+            return self.to_dot()
+        elif PANCO_STYLE == "CHRDOT":
+            return self.to_chrdot()
+        elif PANCO_STYLE == "NO":
+            return self.to_no()
+        else:
+            logger.error(f"Invalid PANCO_STYLE: {PANCO_STYLE}")
+            raise ValueError("")
+
+    def to_dot(self) -> str:
+        return f"{self.corei}.{self.merai}"
+
+    def to_chrdot(self) -> str:
         return f"{self.chrom}{DELIM}{self.corei}.{self.merai}"
+        #return f"{self.hap}{DELIM}{self.chrom}{DELIM}{self.corei}.{self.merai}"
+
+    def to_no(self) -> str:
+        """
+        Workaround for annoying software expecting GFA to have numeric IDs
+        """
+        chrno = int(self.chrom[-1:])
+        #return int(str(chrno) + "0" + str(self.corei) + "0" + str(self.merai))
+        return str(chrno) + "0" + str(self.corei) + "0" + str(self.merai)
 
     def increment_m(self):
         return Panco(self.chrom, self.corei, self.merai +1)

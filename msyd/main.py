@@ -332,6 +332,9 @@ def main():
     graph_parser.add_argument("--w-orgs", dest="walks_orgs",
                                 type=str, default="False",
                                 help="Whether/Which organisms to add as paths to the exported GFA1 file (using W lines). False (Default) emits no paths at all, True emits a path for every organism, specific organisms can be supplied as a comma-separated list of their names.")
+    graph_parser.add_argument("--panco-style", dest="panco_style",
+                              type=str, default="DOT",
+                              help="How to format the PanCo. Options are dot (default, '<CORE>.<MERA>'), chrdot ('<CHR>:<CORE>.<MERA>') and numeric/no ('<CHR>0<CORE>0<MERA>'. The latter is mostly to provide compatibility with tools expecting numeric identifiers.")
     graph_parser.add_argument("-c", dest="cores",
                              type=int, default=1,
                              help="Number of cores to use for parallel computation. Recommended to set it to at most 4 times the number of chromoosomes of the organism, larger values may lead to low per-core peformance. Defaults to 1.")
@@ -495,6 +498,7 @@ def graph(args):
     import msyd.io as io
     import msyd.util as util
     import msyd.syngraph as syngraph
+    import msyd.coords as coords
     from msyd.seq import SeqHandler
 
     if not (args.gfa or args.outfile):
@@ -508,6 +512,10 @@ def graph(args):
     seqh = None
     if args.fastas:
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
+
+    # set panco style
+    if args.panco_style:
+        coords.set_PANCO_STYLE(args.panco_style.upper())
 
     logger.info(f"Computing graph representation")
     graphcont = syngraph.make_graphs_chromcont(syndict, seqh=seqh, ncores=args.cores)
