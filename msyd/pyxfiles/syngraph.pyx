@@ -139,7 +139,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
                 else: # add private region
                     #NOTE should private regions get some special panco?
                     index = index.increment_m() # pre-increment, to avoid reusing the one as the main node
-                    privnode = Node(index, Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)))
+                    privnode = Node(index, Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)), seqh=seqh)
 
                     # add two back/frontlinks
                     curprev.post[org] = privnode
