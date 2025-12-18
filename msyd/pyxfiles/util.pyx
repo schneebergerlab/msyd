@@ -476,7 +476,7 @@ cpdef chrom_to_int(chrom):
     else:
         raise ValueError(f"{chrom} is neither int nor in ChrXX format!")
 
-cpdef validate_top_sort(msyncont): #TODO think whether to pass orgs along every time or have reference in msyncont
+cpdef validate_top_sort(msyncont):
     """
     Validates that msyns is topologically sorted, i.e. is consistently increasing across all organisms.
     Throws an error if this is not the case or any position is annotated twice, otherwise returns `None`.

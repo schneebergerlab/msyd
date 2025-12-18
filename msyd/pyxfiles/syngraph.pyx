@@ -126,7 +126,11 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
         node = Node(None, msyn, seqh=seqh) # assign index when writing to ret
         # add links to predecessors per organism
         for org, rng in msyn.iter_orgs_ranges(): #[(msyn.ref.org, msyn.ref)] + list(msyn.ranges_dict.items()): # how to handle ref?
-            if org in curdict: # default case
+            if not org in curdict: # init if not already
+                starting.post[org] = node
+                curdict[org] = node
+                #node.prev['_start'] = starting # to make the graph traversable
+            else:
                 curprev = curdict[org]
                 curprevrng = curprev.msyn.ranges_dict[org] if org in curprev.msyn.ranges_dict else curprev.msyn.ref # has to be on ref if it isn't in ranges_dict
                 # make sure this assumption is valid
@@ -153,10 +157,6 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
                     ret.append(privnode)
                 # change curdict to this node
                 curdict[org] = node
-            else: # init case
-                starting.post[org] = node
-                curdict[org] = node
-                #node.prev['_start'] = starting # to make the graph traversable
 
         # done with looping over orgs
         if msyn.get_degree() == n:
