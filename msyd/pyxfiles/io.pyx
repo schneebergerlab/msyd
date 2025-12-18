@@ -692,8 +692,9 @@ cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=s
 
     # write S and L lines corresponding to nodes
     for node in nodeiter:
-        buf.write(node.to_gfa1(rgfa_tags=rgfa_tags, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l))
-        buf.write("\n")
+        for line in node.to_gfa1(rgfa_tags=rgfa_tags, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l):
+            buf.write(line)
+            buf.write("\n")
         
     # write W lines
     if len(walks_orgs) > 0:

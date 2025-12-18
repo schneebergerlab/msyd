@@ -48,16 +48,21 @@ cdef class Node:#(Multisyn):
         self.seq = seqh.get_rep_seq(self.msyn)
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):
-        return self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags) + "\n".join(self.gfa1_pre_l(tag_orgs_l=tag_orgs_l))
+        return [self.gfa1_s(tag_orgs_s=tag_orgs_s, rgfa_tags=rgfa_tags)] + self.gfa1_pre_l(tag_orgs_l=tag_orgs_l)
     
     def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
-        ret = f"S\t{self.index}\t*" 
+        ret = f"S\t{self.index}\t{'*' if not self.seq else self.seq}" 
         if tag_orgs_s:
             orgs = tag_orgs_s + self.msyn.get_organisms()
             if orgs:
                 ret += f"\tSO:Z:{','.join(orgs)}" # originally used ' '
         if rgfa_tags:
             ret += f"\tSN:Z:{self.msyn.ref.org}\tSO:i:{self.msyn.ref.start}\tSR:i:1"
+        # not sure if the sequence can also go last
+        #if self.seq:
+        #    ret += "\t" + self.seq
+        #else:
+        #    ret += "\t*"
         return ret
 
     # copy to have post, if necessary later
@@ -69,8 +74,8 @@ cdef class Node:#(Multisyn):
             if not node.is_terminal():
                 prevnodes[node].add(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
-        return [(f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}" if not tag_orgs_l or orgs
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t{'*' if not self.seq else self.seq}\tLO:Z:{' '.join(tag_orgs_l + orgs)}") for node, orgs in prevnodes.items()]
+        return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_l or orgs
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l + orgs)}") for node, orgs in prevnodes.items()]
 
     #def __hash__(self):
     #    return self.index.__hash__()
