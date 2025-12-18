@@ -82,7 +82,7 @@ cdef class Node:#(Multisyn):
         return self.msyn is None
 
 
-def make_graphs_chrdict(chromcont: ChromContainer, seqh=None, add_private=True, ncores=1) -> ChromContainer:
+def make_graphs_chromcont(chromcont: ChromContainer, seqh=None, add_private=True, ncores=1) -> ChromContainer:
     """
     Calls make_graph to compute a graph representation from a dictionary containing Multisyn lists indexed by chromosome.
     The graph will be indexed by chromosome and returned in a topological ordering.

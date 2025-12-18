@@ -317,16 +317,16 @@ def main():
     graph_parser.add_argument("-f", "--fastas", dest='fastas',
                                 required=False, type=argparse.FileType('r'),
                                 help="TSV containing the sample names and path to genome fastas. If this is not provided, all segment lines will be annotated without a sequence (as *)")
-    graph_parser.add_argument("--no-rgfa", dest='rgfa',
+    graph_parser.add_argument("--no-rgfa", dest='rgfa_tags',
                               action='store_false', default=True,
                               help="If passed, msyd will not emit rGFA1 tags in the exported GFA1 output.")
     graph_parser.add_argument("--no-vg-header", dest='vg_header',
                               action='store_false', default=True,
                               help="If passed, msyd will not add the vg tags to the header of the exported GFA1 output.")
-    graph_parser.add_argument("--s-orgs", dest="tags_orgs_s",
+    graph_parser.add_argument("--s-orgs", dest="tag_orgs_s",
                                 type=str, default="False",
                                 help="Whether/Which organisms to add as tags to the segments of the exported GFA1 file. False (Default) emits no tags, True tags all organisms, specific organisms can be supplied as a comma-separated list of their names.")
-    graph_parser.add_argument("--l-orgs", dest="tags_orgs_l",
+    graph_parser.add_argument("--l-orgs", dest="tag_orgs_l",
                                 type=str, default="False",
                                 help="Whether/Which organisms to add as tags to the links of the exported GFA1 file. False (Default) emits no tags, True tags all organisms, specific organisms can be supplied as a comma-separated list of their names.")
     graph_parser.add_argument("--w-orgs", dest="walks_orgs",
@@ -437,7 +437,7 @@ def call(args):
         if args.fastas:
             seqh = SeqHandler.from_fasta_tsv(args.fastas)
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
-        graph = syngraph.make_graphs_chrdict(chromsyn, seqh=seqh)
+        graph = syngraph.make_graphs_chromcont(chromsyn, seqh=seqh)
         io.save_to_gfa1(graph, args.gfa)
 
 
@@ -510,12 +510,12 @@ def graph(args):
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
 
     logger.info(f"Computing graph representation")
-    graphdict = syngraph.make_graphs_chrdict(syndict, seqh=seqh, ncores=args.cores)
+    graphcont = syngraph.make_graphs_chromcont(syndict, seqh=seqh, ncores=args.cores)
     logger.info(f"Finished computing graph representation")
 
     if args.gfa:
         logger.info(f"exporting to GFA1 output at {args.gfa.name}")
-        io.save_to_gfa1(graph, args.gfa)
+        io.save_to_gfa1(graphcont, args.gfa, rgfa_tags=args.rgfa_tags, vg_header=args.vg_header, tag_orgs_s=args.tag_orgs_s, tag_orgs_l=args.tag_orgs_l, walks_orgs=args.walks_orgs)
 
     if args.outfile:
         io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)

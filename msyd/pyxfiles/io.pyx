@@ -641,26 +641,26 @@ cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=Tr
     # start node contains all orgs
     logger.info(f"Orgs found: {chromcont.orgs}")
     # regularize input args to sets
-    if tag_orgs_s == True: # == required to not match truthy nonempty sets
+    if tag_orgs_s == True or tag_orgs_s == "True": # == required to not match truthy nonempty sets
         tag_orgs_s = chromcont.orgs
         #TODO handle organism regularization, or just handle in main?
-    elif tag_orgs_s == False:
+    elif tag_orgs_s == False or tag_orgs_s == "False":
         tag_orgs_s = OrgContainer()
     else:
         tag_orgs_s = OrgContainer.from_list(tag_orgs_s)
 
 
-    if tag_orgs_l == True: # == required to not match truthy nonempty sets
+    if tag_orgs_l == True or tag_orgs_l == "True": # == required to not match truthy nonempty sets
         tag_orgs_l = chromcont.orgs
-    elif tag_orgs_l == False:
-        tag_orgs_l = OrgsContainer()
+    elif tag_orgs_l == False or tag_orgs_l == "False":
+        tag_orgs_l = OrgContainer()
     else:
         tag_orgs_l = OrgContainer.from_list(tag_orgs_l)
 
-    if walks_orgs == True: # == required to not match truthy nonempty sets
+    if walks_orgs == True or walks_orgs == "True": # == required to not match truthy nonempty sets
         walks_orgs = chromcont.orgs
-    elif walks_orgs == False:
-        walks_orgs = OrgsContainer()
+    elif walks_orgs == False or walks_orgs == "False":
+        walks_orgs = OrgContainer()
     else:
         walks_orgs = OrgContainer.from_list(walks_orgs)
 
