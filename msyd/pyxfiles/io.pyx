@@ -454,14 +454,14 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
             else:
                 rec.alleles = ["<SYN>", "<CORESYN>"]
             rec.id = "CORESYN:{}".format(counter)
-            counter.increment_c()
+            counter = counter.increment_c()
         else:
             if ref:
                 rec.alleles = [ref[rec.chrom][rec.start], "<MERASYN>"]
             else:
                 rec.alleles = ["<SYN>", "<MERASYN>"]
             rec.id = "MERASYN:{}".format(counter)
-            counter.increment_m()
+            counter = counter.increment_m()
 
         #rec.info['NS'] = syn.get_degree() # update NS column, include not only orgs in sample now
 
@@ -535,7 +535,7 @@ cpdef save_msyncont_to_psf(chrom, msyncont, buf, save_cigars=True, emit_header=T
         # write to the first position it can be
         # maybe this should be annotated for the entire range it can be instead (coreend+1:syn.start-1)
         for mesyn in mesyns:
-            counter.increment_m()
+            counter = counter.increment_m()
             # write the BED-like pre record cols
             panco_id = f"MERASYN{counter}" if mesyn.get_degree() > 1 else f"PRIVATE{counter}"
 
@@ -550,7 +550,7 @@ cpdef save_msyncont_to_psf(chrom, msyncont, buf, save_cigars=True, emit_header=T
 
         # write coresyn region
         if core:
-            counter.increment_c()
+            counter = counter.increment_c()
             buf.write('\t'.join([core.ref.chr, str(core.ref.start), str(core.ref.end), f"CORESYN{counter}", core.ref.org, '.', '.', '.', '']))
             write_multisyn(core, buf, msyncont.orgs, save_cigars=save_cigars)
             coreend = str(core.ref.end + 1)
@@ -678,6 +678,8 @@ cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=Tr
     #NOTE could parallelize?
     _save_msyncont_to_gfa1 = functools.partial(save_msyncont_to_gfa1, buf=buf, rgfa_tags=True, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l, walks_orgs=walks_orgs)
     chromcont.apply_chroms(_save_msyncont_to_gfa1)
+    buf.write("# END")
+    buf.flush()
 
     logger.info(f"Finished writing GFA")
 
@@ -694,7 +696,7 @@ cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=s
         buf.write("\n")
         
     # write W lines
-    if walks_orgs:
+    if len(walks_orgs) > 0:
         logger.info(f"Writing Walks for {walks_orgs}")
         for org in walks_orgs:
             # example walk line from the GFA1 spec
@@ -713,7 +715,8 @@ cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=s
             # => does including the ref in ranges_dict break stuff in intersection/realignment?
 
     buf.write(f"# </chrom:{chrom}>\n")
-    logger.info(f"Finished {chrom} part of GFA")
+    buf.flush()
+    logger.info(f"Finished writing {chrom} as GFA")
 
 cpdef read_old_psf(fin):
     """

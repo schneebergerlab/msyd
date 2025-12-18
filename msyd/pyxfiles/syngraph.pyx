@@ -152,7 +152,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
                 #node.prev['_start'] = starting # to make the graph traversable
 
         # done with looping over orgs
-        if msyn.get_degree == n:
+        if msyn.get_degree() == n:
             index = index.increment_c()
         else:
             index = index.increment_m()
@@ -180,6 +180,7 @@ cpdef trace_org(begin, org, forward=True):
     cur = begin
 
     while True: # graph is a DAG, no need to worry about cycles
+        logger.info(ret, cur, cur.post)
         if cur.msyn: # to not append start/end node
             # make sure we don't mistraverse
             assert org in cur.msyn.get_organisms()
