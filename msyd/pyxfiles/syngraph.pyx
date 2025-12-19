@@ -54,7 +54,7 @@ cdef class Node:#(Multisyn):
     def gfa1_s(self, tag_orgs_s=set(), rgfa_tags=True):
         ret = f"S\t{self.index}\t{'*' if not self.seq else self.seq}" 
         if tag_orgs_s:
-            orgs = tag_orgs_s + self.msyn.get_organisms()
+            orgs = tag_orgs_s.intersection(self.msyn.get_organisms())
             if orgs:
                 ret += f"\tSO:Z:{','.join(orgs)}" # originally used ' '
         if rgfa_tags:
@@ -76,7 +76,7 @@ cdef class Node:#(Multisyn):
                 prevnodes[node].add(org)
         # iterates over all previous nodes, adds the tagged ones as an annotation (if any are tagged)
         return [(f"L\t{node.index}\t+\t{self.index}\t+\t*" if not tag_orgs_l or orgs
-                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(tag_orgs_l + orgs)}") for node, orgs in prevnodes.items()]
+                 else f"L\t{node.index}\t+\t{self.index}\t+\t*\tLO:Z:{' '.join(orgs.intersection(tag_orgs_l))}") for node, orgs in prevnodes.items()]
 
     #def __hash__(self):
     #    return self.index.__hash__()

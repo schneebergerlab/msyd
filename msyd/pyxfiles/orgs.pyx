@@ -80,6 +80,13 @@ cdef class OrgContainer:
             ret.add_org(org)
         return ret
 
+    def intersection(self, other) -> OrgContainer:
+        ret = OrgContainer()
+        for org in self:
+            if org in other:
+                ret.add_org(org)
+        return ret
+
     def sort(self):
         """
         Sorts this OrgContainer alphabetically.
