@@ -211,7 +211,7 @@ cpdef trace_org(begin, org, forward=True):
     logger.info(f"Tracing {org}, starting from {begin}")
 
     while True: # graph is a DAG, no need to worry about cycles
-        logger.info(cur, cur.post)
+        #logger.info(cur, cur.post)
         if cur.msyn: # to not append start/end node
             # make sure we don't mistraverse
             assert org in cur.msyn.get_organisms()
@@ -219,7 +219,7 @@ cpdef trace_org(begin, org, forward=True):
 
         # continue traversal
         iterdict = cur.post if forward else cur.prev
-        if iterdict:
+        if iterdict and org in iterdict:
             cur = iterdict[org]
         else:
             logger.info(f"Finished traversing on {org} at {cur}")
