@@ -689,16 +689,15 @@ cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=Tr
 
 cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True, walks_orgs=set()):
     # get start and end node from the beginning of the DF
-    nodeiter = iter(msyncont)
-    startnode = next(nodeiter)
-    endnode = next(nodeiter)
-    buf.write(f"# <chrom:{chrom}>\n")
+    cdef:
+        nodeiter = iter(msyncont)
+        startnode = next(nodeiter)
+        endnode = next(nodeiter)
+        list linecont = [f"# <chrom:{chrom}>"]
 
     # write S and L lines corresponding to nodes
     for node in nodeiter:
-        for line in node.to_gfa1(rgfa_tags=rgfa_tags, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l):
-            buf.write(line)
-            buf.write("\n")
+        linecont.extend(node.to_gfa1(rgfa_tags=rgfa_tags, tag_orgs_s=tag_orgs_s, tag_orgs_l=tag_orgs_l))
         
     # write W lines
     if len(walks_orgs) > 0:
@@ -712,14 +711,16 @@ cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=s
                 logger.warning(f"Empty trace found for {org}!")
                 continue
             startrng = walk[0].msyn.ranges_dict[org] if org in walk[0].msyn.ranges_dict else walk[0].msyn.ref
+            endrng = walk[-1].msyn.ranges_dict[org] if org in walk[0].msyn.ranges_dict else walk[0].msyn.ref
             # write fixed part of line
-            buf.write(f"\nW\t{org}\t{startrng.start}\t{startrng.chr}")
-            #TODO finish writing non-fixed part of line
-            # notes
-            # think if it makes sense to combine this with msyn refactor
-            # => does including the ref in ranges_dict break stuff in intersection/realignment?
+            hap='0' # NOTE could later update this with startrng's hap
+            # NOTE use chr as seqident or use org+chr?
+            line = f"W\t{org}\t{hap}\t{startrng.chr}\t{startrng.start}\t{endrng.end}\t{'>'.join([str(node.index) for node in walk])}"
+            linecont.append(line)
 
-    buf.write(f"# </chrom:{chrom}>\n")
+    linecont.append(f"# </chrom:{chrom}>")
+    buf.write("\n".join(linecont))
+    buf.write("\n")
     buf.flush()
     logger.info(f"Finished writing {chrom} as GFA")
 
