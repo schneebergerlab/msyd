@@ -186,9 +186,10 @@ cpdef trace_org(begin, org, forward=True):
     """
     ret = deque()
     cur = begin
+    logger.info(f"Tracing {org}, starting from {begin}")
 
     while True: # graph is a DAG, no need to worry about cycles
-        #logger.info(ret, cur, cur.post)
+        logger.info(cur, cur.post)
         if cur.msyn: # to not append start/end node
             # make sure we don't mistraverse
             assert org in cur.msyn.get_organisms()
