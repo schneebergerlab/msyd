@@ -164,6 +164,9 @@ cdef class Multisyn:
         # aln check
         reflen = len(self.ref)
         for org in self.get_organisms():
+            # ref doesn't need to have a cigar
+            if org == self.ref.org:
+                continue
             # check len on ref
             if self.cigars_dict[org].get_len(ref=True) != reflen:
                 logger.warning(f"Multisyn.check() found invalid Multisyn! CIGAR len ({self.cigars_dict[org].get_len(ref=True)}) not matching reference len ({reflen}) on ref!")
