@@ -175,7 +175,29 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
     #ret.appendleft(ending) # second pos
     #ret.appendleft(starting) # first pos
 
-    return MultisynContainer(msyncont.orgs, init=ret)#(chrom, pd.DataFrame(data=list(ret)))
+    cdef nodecont = MultisynContainer(msyncont.orgs, init=ret)#(chrom, pd.DataFrame(data=list(ret)))
+    check_graph(nodecont)
+    return nodecont
+
+cpdef check_graph(nodecont):
+    cdef:
+        nodeiter = iter(nodecont)
+        starting = next(nodeiter)
+        ending = next(nodeiter)
+
+    for node in nodeiter:
+        # Ignore starting/ending nodes for now
+        if node in starting.post.values() or node in ending.prev.values():
+            continue
+
+        # check connectivity
+        # all ingoing edges should have an outgoing edge
+        if not node.prev.keys() == node.post.keys():
+            logger.error(f"Mismatch between ingoing and outgoing edges in {node}")
+        
+        # and an annotation in the msyn
+        if not set(node.prev.keys()) == node.msyn.get_orgs():
+            logger.error(f"Mismatch between ingoing edges and msyn annotation in {node}")
 
 cpdef trace_org(begin, org, forward=True):
     """

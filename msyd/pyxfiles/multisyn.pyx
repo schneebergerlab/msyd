@@ -110,8 +110,8 @@ cdef class Multisyn:
         return self.get_organisms()
     def get_organisms(self):
         #NOTE: is this efficient?
-        #return [self.ref.org] + self.ranges_dict.keys()
-        return self.ranges_dict.keys()
+        return {self.ref.org}.union(self.ranges_dict.keys())
+        #return self.ranges_dict.keys()
 
     def iter_ranges(self):
         yield self.ref
