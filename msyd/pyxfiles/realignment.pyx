@@ -316,15 +316,16 @@ cpdef generate_seqdict(seqh, mappingtrees, chrdict):
         for org in mappingtrees}
 
 
-cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
+cpdef get_at_pos(alns, rrng, qrng):
     """
     Function that takes a Dataframe of alignments, and extracts the part of each alignment overlapping with the specified regions.
     :returns: Returns a new dataframe in the same format.
     """
-    ret = deque()
+    cdef:
+        list ret = list()
 
     # iterate over all alns overlapping on both qry and ref
-    alns = get_overlapping(get_overlapping(alns, rstart, rend, chrom=rchrom), qstart, qend, chrom=qchrom, ref=False)
+    alns = get_overlapping(get_overlapping(alns, rrng.start, rrng.end, chrom=rrng.chrom), qrng.start, qrng.end, chrom=qrng.chrom, ref=False)
 
     if alns is None:
         return None
@@ -338,19 +339,19 @@ cpdef get_at_pos(alns, rchrom, rstart, rend, qchrom, qstart, qend):
             logger.error(f"CIGAR len ({cg.get_len()}) not matching len on reference ({aln.aend - aln.astart + 1})!")
 
         # trim alns to only the gap we are realigning, to make subsequent drops more efficient
-        srem, erem, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
+        srem, erem, cg = cg.trim(max(0, rrng.start - aln.astart), max(0, aln.aend - rrng.end))
         #_, _, cg = cg.trim(max(0, rstart - aln.astart), max(0, aln.aend - rend))
         
         # check that the positions after removing match
-        if srem != qstart - aln.bstart:
+        if srem != qrng.start - aln.bstart:
             logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
-        if erem != aln.bend - qend:
+        if erem != aln.bend - qrng.end:
             logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
 
         ## check that lengths match
-        if rend - rstart + 1 != cg.get_len(ref=True):
+        if len(rrng) != cg.get_len(ref=True):
             logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
-        if qend - qstart + 1 != cg.get_len(ref=False):
+        if len(qrng) != cg.get_len(ref=False):
             logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
 
         # use cigar lens to force eager trimming of CIGARS
