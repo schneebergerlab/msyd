@@ -110,7 +110,8 @@ cdef class Range:
 
     def __repr__(self):
         #return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
-        return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
+        #return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
+        return self.to_psf()
 
     def copy(self):
         return Range(org=self.org, chr=self.chr, start=self.start, end=self.end)
