@@ -126,6 +126,22 @@ cdef class Multisyn:
     def get_ranges(self):
         return self.ranges_dict.values()
 
+    def get_range(self, org):
+        if not self.__contains__(org):
+            raise ValueError(f"ERROR retrieving rng for {org}! Not in {self}!")
+        if self.ref.org == org:
+            return self.ref
+        elif org in self.ranges_dict:
+            return self.ranges_dict[org]
+
+    def __contains__(self, org):
+        if org == self.ref.org:
+            return True
+        elif org in self.ranges_dict:
+            return True
+        else:
+            return False
+
     def get_lens(self):
         return {org: len(self.ranges_dict[org]) for org in self.get_organisms()}
 
