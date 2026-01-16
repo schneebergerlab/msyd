@@ -236,7 +236,7 @@ cpdef find_multisyn(qrynames, syris, alns, cores=1, base=None, sort=False, ref='
 
     #NOTE pass along cores/len(chroms) as cores to here?
     _process_synlists = functools.partial(process_synlists, refname=refname, only_core=only_core, trim=trim)
-    return chromsyn.apply_chroms_par(_process_synlists, ncores=ncores)
+    return chromsyn.apply_chroms_par(_process_synlists, ncores=cores)
 
 
 cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, sort=False, ref='a', SYNAL=True, disable_overlapcheck=False):
