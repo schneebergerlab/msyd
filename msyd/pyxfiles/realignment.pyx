@@ -71,7 +71,7 @@ cpdef construct_mts(merasyns, old, syn):
     listdict = defaultdict(list)
     offsetdict = {org:rng.end for org, rng in old.ranges_dict.items()} # stores the current offset in each org
 
-    for merasyn in merasyns:
+    for merasyn in iter(merasyns):
         # mark private regions as covered, if they are 
         if merasyn.is_private():
             if merasyn.ref.org != 'ref':
@@ -132,12 +132,12 @@ cpdef mt_to_privates(mt, org, chrom):
     :org: organism mt corresponds to
     :chrom: chromosome we are working on
     """
-    cdef ret = deque()
+    cdef list ret = list()
     for entry in mt:
         if entry.end - entry.start >= priv.MIN_PRIV_THRESH:
             ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
 
-    return pd.DataFrame(list(ret))
+    return MultisynContainer.from_iterable(ret)
 
 
 cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
@@ -149,11 +149,12 @@ cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
     The initial implementation was just reconstructing the trees at every step, but subtracting is more efficient.
     """
     # core iteration is the same as in construct_mts, except we don't need to store the offsets
-    curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
-    listdict = defaultdict(list) # used to construct the output mappingtrees
+    cdef:
+        curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
+        listdict = defaultdict(list) # used to construct the output mappingtrees
     # these need to be reconstructed to take care of handling the separator intervals
 
-    for merasyn in merasyns:
+    for merasyn in iter(merasyns):
         # only subtract on the ref if explicitly specified;
         # would get deleted anyway unless annotating private regions
         for org, rng in\
@@ -227,10 +228,7 @@ cdef get_aligner(seq, preset, ns=True):
     #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
     
     #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
-
-    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255) # requires a patched version of minimap2; TODO wait for PR to get merged (https://github.com/lh3/minimap2/pull/1240)
-
-
+    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255)
     return aligner
 
 cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
@@ -315,11 +313,12 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     return None if alns.empty else alns
 
 
-cpdef generate_seqdict(fafin, mappingtrees, chrdict):
+cpdef generate_seqdict(seqh, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
-        fafin[org].fetch(reference = chrdict[org], #TODO is this correct?
-                         start = interval.data,
-                         end = interval.data + interval.end - interval.begin).upper()
+        seqh.get_range(Range(org, chrdict[org], interval.data, interval.data + (interval.end - interval.begin)), margin=0)
+        #fafin[org].fetch(reference = chrdict[org], #TODO is this correct?
+        #                 start = interval.data,
+        #                 end = interval.data + interval.end - interval.begin).upper()
         for interval in sorted(mappingtrees[org])])
         for org in mappingtrees}
 
@@ -435,7 +434,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     return syrify(pd.concat(ret))
 
 
-cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
+cpdef realign(syndict, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
     """
     High-level interface to the realignment functionality.
     Takes a dict of DataFrames containing per-chromosome Multisyn annotations.
@@ -466,18 +465,20 @@ cpdef realign(syndict, qrynames, fastas, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, 
         global _NULL_CNT
         _NULL_CNT = int(NULL_CNT)
 
+    #TODO largely eliminate from here on
     cores = min(len(syndict), ncores)
 
-    if cores > 1:
-        with Pool(cores) as pool:
-            return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
-    else:
-        return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1, annotate_private) for chrom in syndict]))
+    #TODO replace with ChromContainer's API
+    #if cores > 1:
+    #    with Pool(cores) as pool:
+    #        return dict(pool.map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, max(1, int(ncores/len(syndict)))) for chrom in syndict]))
+    #else:
+    #    return dict(map(_workaround, [(chrom, pd.DataFrame(syndict[chrom]), qrynames, fastas, mp_preset, 1, annotate_private) for chrom in syndict]))
 
-cpdef _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
-    return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5], annotate_private=args[6]))
+cpde#f _workaround(args): # args: (chrom, syndf, qrynames, fastas, mp_preset, ncores)
+    #return (args[0], process_gaps(args[1], args[2], args[3], args[4], args[5], annotate_private=args[6]))
 
-cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
+cdef process_gaps(chrom, msyncont, seqh, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
     """
     Workhorse function of the realignment functionality.
     Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
@@ -500,229 +501,193 @@ cdef process_gaps(df, qrynames, fastas, mp_preset='asm20', ncores=1, annotate_pr
     """
     # init stuff
     cdef:
-        ret = deque()#pd.DataFrame()
-        int n = len(qrynames) + 1 # to account for reference
-    if not n == len(fastas) + 1:
-        logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
-        raise ValueError("Wrong number of fastas!")
+        list ret = list()#deque()#pd.DataFrame()
+        orgs = msyncont.orgs
+        int realcount = 0
+    #if not n == len(fastas) + 1:
+    #    logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
+    #    raise ValueError("Wrong number of fastas!")
 
-    # load fasta files
-    #TODO maybe refactor to use seq module
-    fafin = {qrynames[i]: pysam.FastaFile(fastas[i]) for i in range(len(qrynames))}
+    #TODO rewrite to use MultisynContainer
 
     # iterate through each gap between coresyn blocks
     # call the alignment/ functionality and merge   
+    prevcore = None # store a backlink to the previous coresyn
+    for nextcore, merasyns in msyncont.iter_cores_acc():
+        # start and end of the non-ref region, on the reference
+        # end/start are inclusive
+        start = prevcore.ref.end +1 if prevcore else 1
+        end = nextcore.ref.start -1 if nextcore else 0
+        aligned_orgs = set()
+        #TODO how to handle end of Chrom?
+        realsyns = list()
+        #logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")#\n Full borders {old}, {syn}")
 
-    syniter = df.iterrows()
-    try:
-        syn = next(syniter)[1][0]
-        # skip to first core
-        while syn.get_degree() < n:
-            if not output_only_realign:
-                ret.append(syn)
-            syn = next(syniter)[1][0]
-            # print(vars(syn))
-        old = syn
-        # TODO: Misses the merasyn before the first coresyn region? This would become if there are no or very few coresyn regions
-        # leon: yes, the merasyn before the first and after the last coresyn of a chromosome will be missed.
-        # my thinking was that this would correspond to the highly polymorphic tails of the chromosomes
-        # this seems to work out in Ampril (the first coresyn starts at <2 kb in my local test dataset),
-        # but might cause problems in datasets with very little coresyn
-        merasyns = dict()
-        while True:
-            # find block between two coresyn regions
-            merasyns = dict()
-
-            # store merasyn-regions, to be added once we know if we need to realign
-            refmerasyns = []
-            while syn.get_degree() < n:
-                refmerasyns.append(syn)
-                syn = next(syniter)[1].iloc[0]
-
-            merasyns[old.ref.org] = refmerasyns
-
-            # syn must be core now
-
-            # start and end of the non-ref region, on the reference
-            end = syn.ref.start -1 # end/start are inclusive
-            start = old.ref.end +1
-            #logger.debug(f"Realigning between {start} and {end}. Borders on ref: {old.ref}, {syn.ref}")#\n Full borders {old}, {syn}")
-
-            # if there is not enough novel sequence on any organism to realign, skip this realignment preemptively
-            if end - start < _MIN_REALIGN_LEN:
-                if all([syn.ranges_dict[org].start - old.ranges_dict[org].end < _MIN_REALIGN_LEN \
-                        for org in syn.ranges_dict]):
-                    if not output_only_realign:
-                        ret.append(syn)
-                    old = syn
-                    syn = next(syniter)[1][0]
-                    continue
-
-            # between chromosomes, there isn't a single gap
-            if syn.ref.chr != old.ref.chr:
-                logger.error("Chr case found: {syn.ref}, {old.ref}")
-                old = syn
+        # check if we have enough seq on any organism to realign
+        # otherwise, skip this step
+        if end - start < _MIN_REALIGN_LEN:
+            if all(\
+                    [nextcore.ranges_dict[org].start - prevcore.ranges_dict[org].end < _MIN_REALIGN_LEN \
+                    for org in nextcore.ranges_dict]):
+                # add multisyns if instructed
                 if not output_only_realign:
-                    ret.append(syn)
-                syn = next(syniter)[1][0]
+                    if prevcore:
+                        ret.append(prevcore)
+                    ret.extend(sorted(merasyns))
+                prevcore = nextcore
                 continue
 
-            ## Block has been extracted and is long enough;
-            ## extract appropriate sequences, respecting already found merasyn
+        ## Block has been extracted and is long enough;
+        ## extract appropriate sequences, respecting already found merasyn
+        
+        ## construct the mapping, and prepare sequences for realignment
+        mappingtrees = construct_mts(merasyns, prevcore, nextcore)
+        seqdict = generate_seqdict(seqh, mappingtrees, {org: chrom for org in mappingtrees})
+
+        #TODO refactor out into separate fn?
+        ## Realign iteratively until all synteny is found
+        # counts all sequences that are still above _MIN_REALIGN_LENGTH
+        while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2:
+            # stop realignment if we have already found _MAX_REALIGN haplotypes
+            if _MAX_REALIGN > 0 and len(aligned_orgs) > _MAX_REALIGN:
+                break
+
+            ## choose a reference
+            # uses the sample containing the most non-merasyntenic sequence
+            # if a dict of pairwise alns is passed, will always prefer samples in the dict
+            if pairwise:
+                ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
+            else:
+                ref = max([(len(v), k) for k,v in seqdict.items()])[1]
+
+            refseq = seqdict[ref]
+            del seqdict[ref]
+            reftree = mappingtrees[ref]
+            del mappingtrees[ref]
+            aligned_orgs.add(ref) # mark org as covered
+
+            # both indices should be inclusive
+            refstart = 1 + (prevcore.ref.end if ref == 'ref' else prevcore.ranges_dict[ref].end)
+            refend = -1 + (nextcore.ref.start if ref == 'ref' else nextcore.ranges_dict[ref].start)
+            # log start of realignment
+            logger.debug(f"Realigning {prevcore.ref.chr}:{refstart}-{refend} (len {util.siprefix(refend - refstart)}) to {ref}. Seqdict lens: {[(k, len(v)) for k,v in seqdict.items()]}")
+
+            if refstart > refend:
+                logger.error(f"{refstart} after {refend}! Seqdict {[(k, len(v)) for k,v in seqdict.items()]}")
+                #continue
+
+
+            ## get alignments to reference construct alignment index from the reference
+            # if we have pairwise alns, fetch & prepare them
+            #TODO factor this out into separate fn?
+            if pairwise and ref in pairwise:
+                logger.debug(f"Fetching from existing alignments. Left core: {prevcore.ref} ({prevcore.ranges_dict}). Right core: {nextcore.ref} ({nextcore.ranges_dict}). Ref {ref}")
+                
+                refalnsdict = pairwise[ref]
+                # get all the alns overlapping this region; syri should do the rest
+                # regions not in seqdict will be ignored
+                alns = {org: get_nonsyn_alns(
+                                get_at_pos(refalnsdict[org], chrom, refstart, refend, chrom, prevcore.ranges_dict[org].end, nextcore.ranges_dict[org].start), # pre-process alignments to restrict to this realn region
+                                reftree, mappingtrees[org])
+                        for org in seqdict}
+            else:
+                # otherwise realign ourselves
+                logger.debug(f"Starting Alignment. Left core: {prevcore.ref}. Right core: {nextcore.ref}. Ref {ref}")
+                # Launching a pool in a pool causes python to crash, disabled parallelization here for now
+                if False: #ncores > 1 and len(refseq) > 50000:
+                    logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
+                    alignargs = [[seqdict[org], chrom, mappingtrees[org]] for org in seqdict.keys()]
+                    with Pool(processes=ncores) as pool:
+                        alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=chrom, reftree=reftree, aligner=None), alignargs)
+                    alns = dict(zip(list(seqdict.keys()), alns))
+                else:
+                    aligner = get_aligner(seq=refseq, preset=mp_preset)
+                    alns = dict()
+                    for org, seq in seqdict.items():
+                        if seq == '': # skip empty sequences
+                            alns[org] = None
+                            continue
+
+                        logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
+                        alns[org] = align_concatseqs(seq, chrom, mappingtrees[org], refseq, mp_preset, chrom, reftree, aligner=aligner)
+
+
+            # filter out alignments only containing inversions
+            for org in alns:
+                if alns[org] is not None and all(alns[org].bDir == -1):
+                    logger.warning(f"{org} in alns only contains inverted alignments: \n{alns[org]}")
+                    alns[org] = None
+
+            ## run syri
+            logger.debug("Running syri")
+            syns = syri_get_syntenic(ref, alns)
+
+            # no synteny found; can be genuine, or an issue with alignment
+            if len(syns) == 0:
+                logger.info(f"No synteny to {ref} was found!")
+                # debug: emit non-aligning sequences
+                #if refend - refstart > 1000:
+                #    print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
+                #    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
+                # draw out remaining sequences as private from the mappingtree
+                # if there is none, there wouldn't have been any to call as large enough anyway
+                if annotate_private and ref in mappingtrees:
+                    realsyns.extend(mt_to_privates(mappingtrees[ref], ref, chrom))
+                continue
+
+            ## Find merasyn in the realignment syri calls
             
-            ## construct the mapping, and prepare sequences for realignment
-            mappingtrees = construct_mts(refmerasyns, old, syn)
-            seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
-
-            ## Realign iteratively until all synteny is found
-            while sum([1 if len(x) >= _MIN_REALIGN_LEN else 0 for x in seqdict.values()]) >= 2:
-
-                # TODO: Have some heuristic terminate realignment in highly repetitive regions
-                # stop realignment if we have already found _MAX_REALIGN haplotypes
-                if _MAX_REALIGN > 0 and len(merasyns) > _MAX_REALIGN:
-                    break
-
-                ## choose a reference
-                # uses the sample containing the most non-merasyntenic sequence
-                # if a dict of pairwise alns is passed, will always prefer samples in the dict
-                if pairwise:
-                    ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
-                else:
-                    ref = max([(len(v), k) for k,v in seqdict.items()])[1]
-
-                refseq = seqdict[ref]
-                del seqdict[ref]
-                reftree = mappingtrees[ref]
-                del mappingtrees[ref]
-
-                refstart = old.ref.end if ref == 'ref' else old.ranges_dict[ref].end
-                refend = syn.ref.start if ref == 'ref' else syn.ranges_dict[ref].start
-
-
-                logger.debug(f"Realigning {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Seqdict lens: {[(k, len(v)) for k,v in seqdict.items()]}")
-
-                if refstart > refend:
-                    logger.error(f"{refstart} after {refend}! Seqdict {[(k, len(v)) for k,v in seqdict.items()]}")
-                    #continue
-
-
-                ## get alignments to reference construct alignment index from the reference
-                # if we have pairwise alns, fetch & prepare them
-                if pairwise and ref in pairwise:
-                    logger.debug(f"Fetching from existing alignments. Left core: {old.ref} ({old.ranges_dict}). Right core: {syn.ref} ({syn.ranges_dict}). Ref {ref}")
-                    
-                    refalnsdict = pairwise[ref]
-                    # get all the alns overlapping this region; syri should do the rest
-                    # regions not in seqdict will be ignored
-                    alns = {org: get_nonsyn_alns(
-                                    get_at_pos(refalnsdict[org], old.ref.chr, refstart, refend, old.ranges_dict[org].chr, old.ranges_dict[org].end, syn.ranges_dict[org].start), # pre-process alignments to restrict to this realn region
-                                    reftree, mappingtrees[org])
-                            for org in seqdict}
-                else:
-                    # otherwise realign ourselves
-                    logger.debug(f"Starting Alignment. Left core: {old.ref}. Right core: {syn.ref}. Ref {ref}")
-                    # Launching a pool in a pool causes python to crash, disabled parallelization here for now
-                    if False: #ncores > 1 and len(refseq) > 50000:
-                        logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
-                        alignargs = [[seqdict[org], syn.ranges_dict[org].chr, mappingtrees[org]] for org in seqdict.keys()]
-                        with Pool(processes=ncores) as pool:
-                            alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=syn.ref.chr, reftree=reftree, aligner=None), alignargs)
-                        alns = dict(zip(list(seqdict.keys()), alns))
-                    else:
-                        aligner = get_aligner(seq=refseq, preset=mp_preset)
-                        alns = dict()
-                        for org, seq in seqdict.items():
-                            if seq == '': # skip empty sequences
-                                alns[org] = None
-                                continue
-
-                            logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
-                            alns[org] = align_concatseqs(seq, syn.ranges_dict[org].chr, mappingtrees[org], refseq, mp_preset, syn.ref.chr, reftree, aligner=aligner)
-
-
-                # filter out alignments only containing inversions
-                for org in alns:
-                    if alns[org] is not None and all(alns[org].bDir == -1):
-                        logger.warning(f"{org} in alns only contains inverted alignments: \n{alns[org]}")
-                        alns[org] = None
-
-                ## run syri
-                logger.debug("Running syri")
-                syns = syri_get_syntenic(ref, alns)
-
-                # no synteny found; can be genuine, or an issue with alignment
-                if len(syns) == 0:
-                    logger.info(f"No synteny to {ref} was found!")
-                    # debug: emit non-aligning sequences
-                    #if refend - refstart > 1000:
-                    #    print(f"\n===\n>{ref} {list(reftree)}\n{refseq}")
-                    #    print('\n'.join([f">{id} {list(mappingtrees[id])}\n{seq}" for id, seq in seqdict.items()]))
-                    # draw out remaining sequences as private from the mappingtree
-                    # if there is none, there wouldn't have been any to call as large enough anyway
-                    if annotate_private and ref in mappingtrees:
-                        merasyns[ref] = mt_to_privates(mappingtrees[ref], ref, syn.ranges_dict[org].chr)
-                    continue
-
-                ## Find merasyn in the syri calls
-                multisyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores)
-
-                # no need to recalculate the tree if no multisynteny was found
-                if multisyns is None or multisyns.empty:
-                    logger.info("No multisynteny was found in this round!")
-                    if annotate_private and ref in mappingtrees:
-                        merasyns[ref] = mt_to_privates(mappingtrees[ref], ref, syn.ranges_dict[org].chr)
-                    continue
-
+            newmsyns = intersection.reduce_find_overlaps(list(syns.values()), cores=ncores)
+            # no need to recalculate the tree if no multisynteny was found
+            if newmsyns is None or len(newmsyns) == 0:
+                logger.info("No multisynteny was found in this round!")
+                if annotate_private and ref in mappingtrees:
+                    realsyns.extend(mt_to_privates(mappingtrees[ref], ref, chrom))
+                continue
+            else:
                 # Add all merasyns with alphabetical sorting by reference name
-                merasyns[ref] = [psyn[1][0] for psyn in multisyns.iterrows()]
-                added = sum([len(x.ref) for x in merasyns[ref]])
+                realsyns.extend(newmsyns)
+                added = sum([len(x.ref) for x in iter(newmsyns)])
+                logger.info(f"Realigned {chrom}:{start}-{end} (len {util.siprefix(start-end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(newmsyns))}) of merasynteny.")
 
-                logger.info(f"Realigned {old.ref.chr}:{old.ref.end}-{syn.ref.start} (len {util.siprefix(syn.ref.start - old.ref.end)}) to {ref}. Found {util.siprefix(added)} (avg {util.siprefix(added/len(merasyns))}) of merasynteny.")
+            ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
+            logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {newmsyns}.")
+            mappingtrees = subtract_mts(mappingtrees, newmsyns, skip_ref=not annotate_private)
+            logger.debug(f"New Mappingtrees: {mappingtrees}")
 
-                ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
-                logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Adding {merasyns[ref]}.")
-                mappingtrees = subtract_mts(mappingtrees, merasyns[ref], skip_ref=not annotate_private)
-                logger.debug(f"New Mappingtrees: {mappingtrees}")
+            # remove all orgs that have already been used as a reference
+            for reforg in aligned_orgs:
+                if reforg in mappingtrees:
+                    if annotate_private:
+                        realsyns.extend(mt_to_privates(mappingtrees[reforg], reforg, chrom))
+                    #TODO handle early exit cases
+                    del mappingtrees[reforg]
 
-                # remove all orgs that have already been used as a reference
-                for reforg in merasyns:
-                    if reforg in mappingtrees:
-                        if annotate_private:
-                            merasyns[ref] = util.merge(merasyns[ref], mt_to_privates(mappingtrees[reforg], reforg, syn.ref.chr))
-                        #TODO handle early exit cases
-                        del mappingtrees[reforg]
+            ## extract the remaining sequences for future realignment
 
-                ## extract the remaining sequences for future realignment
+            # cache the current lens, for debugging
+            lendict = {org: len(seqdict[org]) for org in seqdict}
 
-                # cache the current lens, for debugging
-                lendict = {org: len(seqdict[org]) for org in seqdict}
+            seqdict = generate_seqdict(seqh, mappingtrees, {org: chrom for org in mappingtrees})
+            if not seqdict: # if all sequences have been discarded, finish realignment
+                break
 
-                seqdict = generate_seqdict(fafin, mappingtrees, {org: syn.ranges_dict[org].chr for org in mappingtrees})
-                if not seqdict: # if all sequences have been discarded, finish realignment
-                    break
+            # check that the sequence length has not been extended during the update
+            # allow for up to one spacer to be inserted, though
+            for org in seqdict:
+                if org in lendict: # eliminating sequences is always okay
+                    #logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
+                    assert len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update"
+            # END realignment loop
 
-                # check that the sequence length has not been extended during the update
-                # allow for up to one spacer to be inserted, though
-                for org in seqdict:
-                    if org in lendict: # eliminating sequences is always okay
-                        #logger.info(f"Re-constructing {org} sequence. New len {util.siprefix(len(seqdict[org]))}, old {util.siprefix(lendict[org])}")
-                        assert len(seqdict[org]) <= lendict[org] + _NULL_CNT, "sequence length extended during update"
+        # incorporate into output DF, sorted alphabetically by ref name
+        # does nothing if no merasyn was found
+        if not output_only_realign:
+            ret.append(prevcore)
+        ret.extend(sorted(realsyns))
 
-
-            # incorporate into output DF, sorted alphabetically by ref name
-            # does nothing if no merasyn was found
-            for org in sorted(merasyns.keys()):
-                ret.extend(merasyns[org])
-
-            # continue checking the next coresyn gap
-            old = syn
-            if not output_only_realign:
-                ret.append(syn)
-            syn = next(syniter)[1][0]
-            #print(old, syn)
-    except StopIteration as e:
-        logger.warning(f'Stopped iteration: {e}')
-    return pd.DataFrame(list(ret))
+    # Done with all gaps, return as new MultisynContainer
+    return MultisynContainer.from_iterable(ret)
 # END
 
 
