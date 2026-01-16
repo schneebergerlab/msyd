@@ -66,6 +66,12 @@ class SeqHandler:
 
         return cls(_backing)
 
+    def get_len(self, org, chrom):
+        return self._backing[org].get_reference_length(chrom)
+
+    def get_len_dict(self, chrom):
+        return {org: self._backing[org].get_reference_length(chrom) for org in self._backing}
+
 
     def get_range(self, rng: Range, margin=0):
         """
