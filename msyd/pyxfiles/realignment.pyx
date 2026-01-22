@@ -55,11 +55,8 @@ cpdef listdict_to_mts(lists):
         #if len(tree) > 0:
         ret[org] = tree
             
-    #return {org: IntervalTree(functools.reduce(Interval())
-    #        for org, lst in lists.items()}
     return ret
 
-# <editor-fold desc='Support functions for realign'>
 cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
@@ -107,14 +104,6 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
 
     return listdict_to_mts(listdict)
 # END
-
-## THOUGHTS for private region reporting
-## run subtract_mts with skip_ref=False
-## write fn that turns mappingtree into list of private regions
-## run after subtract_mt, or when exiting early due to no synteny found
-## use sorted join from private to merge with realignment multisyns
-## private regions will be at least MIN_REALIGN long
-## => kind of enforced on ref anyway?
 
 cpdef mt_to_privates(mt, org, chrom):
     """
@@ -208,11 +197,6 @@ cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
 
 
 cdef get_aligner(seq, preset, ns=True):
-    #aligner = mp.Aligner(seq=refseq, preset=preset)
-
-    # set --score-N parameter to 10
-    #aligner.map_opt.sc_ambi = 10
-
     #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
     # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
     # https://github.com/lh3/minimap2/issues/155
@@ -221,6 +205,7 @@ cdef get_aligner(seq, preset, ns=True):
     #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
     
     #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
+    # set --score-N parameter to 10
     aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255)
     return aligner
 
@@ -309,9 +294,6 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 cpdef generate_seqdict(seqh, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
         seqh.get_range(Range(org, chrdict[org], interval.data, interval.data + (interval.end - interval.begin)), margin=0)
-        #fafin[org].fetch(reference = chrdict[org], #TODO is this correct?
-        #                 start = interval.data,
-        #                 end = interval.data + interval.end - interval.begin).upper()
         for interval in sorted(mappingtrees[org])])
         for org in mappingtrees}
 
@@ -392,8 +374,6 @@ cdef get_overlapping(alnsdf, start, end, chrom=None, ref=True, dir=1):
                     ((startcol >= start) & (startcol < end)) | # or starting and ending beyond
                     ((endcol > start) & (endcol <= end) ) # or starting before and ending within
                     )]
-    #print(f"Called with {start}, {end}, {chrom}, {ref}, {dir}")
-    #print(f"{ret}")
     return ret
 
 cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
@@ -408,14 +388,11 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     """
 
     ret = []
-    #logger.debug(f"get_nonsyn called with ref {reftree}, qry {qrytree}")
     for rint in reftree:
         # pre-fetch overlapping alns
         # do not drop now, another copy is probably slower anyway
         rintlen = rint.end - rint.begin
         rintalns = get_overlapping(alnsdf, rint.data, rint.data + rintlen)
-        #rintalns = get_at_pos(alnsdf, None, rint.data, rint.data + rintlen, None, None)
-        #logger.debug(f"{rint}: found {rintalns}")
 
         for qint in qrytree:
             qintlen = qint.end - qint.begin
@@ -599,6 +576,8 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
 
     return ret
 
+#NOTE unfortunately, mappy doesn't seem to expose any multithreading.
+# Could manually parallelize by organism?
 cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None):
     cdef:
         refmtree = mtrees[ref]
@@ -769,7 +748,7 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
 #cimport posix.unistd as unistd
 #
 
-## TODO: Make parameters adjustable. Also, now (12.03.24) this could be deprecated.
+## DEPRECATED
 #cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
 #    """DEPRECATED"""
 #    BRT = 20
