@@ -78,7 +78,7 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
 
         # iterate through all multisyns found so far
         for org, rng in merasyn.ranges_dict.items():
-            #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mappingtrees[org]}")
+            #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mtrees[org]}")
             l = rng.start - offsetdict[org] # len of the region to be added
             if l < 0:
                 logger.error(f"improper sorting: {rng.start} < {offsetdict[org]}") # improper sorting – skip
@@ -344,19 +344,19 @@ cpdef get_at_pos(alns, rrng, qrng):
         
         # check that the positions after removing match
         if srem != qrng.start - aln.bstart:
-            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qstart - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
+            logger.error(f"Mismatch during alignment trimming, start does not map on query! Should have removed {qrng.start - aln.bstart}, actually removed {srem}. CIGAR: {cg.to_string()}")
         if erem != aln.bend - qrng.end:
-            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qend}, actually removed {erem}. CIGAR: {cg.to_string()}")
+            logger.error(f"Mismatch during alignment trimming, end does not map on query! Should have removed {aln.bend - qrng.end}, actually removed {erem}. CIGAR: {cg.to_string()}")
 
         ## check that lengths match
         if len(rrng) != cg.get_len(ref=True):
-            logger.error(f"Coordinate length ({rend - rstart + 1}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
+            logger.error(f"Coordinate length ({len(rrng)}) not matching cigar length ({cg.get_len(ref=True)}) on ref! Occurred in {aln}")
         if len(qrng) != cg.get_len(ref=False):
-            logger.error(f"Coordinate length ({qend - qstart + 1}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
+            logger.error(f"Coordinate length ({len(qrng)}) not matching cigar length ({cg.get_len(ref=False)}) on qry! Occurred in {aln}")
 
         # use cigar lens to force eager trimming of CIGARS
         # otherwise, I/D records at the end of the ALN could stick around, confusing later steps
-        ret.append([rstart, rstart + cg.get_len(), qstart, qstart + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
+        ret.append([rrng.start, rrng.start + cg.get_len(), qrng.start, qrng.start + cg.get_len(ref=False), cg.get_len(), cg.get_len(ref=False), cg.get_identity()*100,
                     aln.adir, aln.bdir, aln.achr, aln.bchr, cg.to_string()]) # we change neither orientation nor chromosome of the ALN
 
 
@@ -419,7 +419,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
 
         for qint in qrytree:
             qintlen = qint.end - qint.begin
-            ret.append(get_at_pos(rintalns, None, rint.data, rint.data + rintlen, None, qint.data, qint.data + qintlen))
+            ret.append(get_at_pos(rintalns, Range(start=rint.data, end=rint.data + rintlen), Range(start=qint.data, end=qint.data + qintlen)))
 
     #logger.debug(f"Found: {ret}")
     if len(ret) == 0 or all([r is None for r in ret]):
@@ -510,11 +510,6 @@ cpdef process_gaps(chrom, msyncont, seqh, mp_preset='asm20', ncores=1, annotate_
         list ret = list()#deque()#pd.DataFrame()
         orgs = msyncont.orgs
         dict lendict = seqh.get_len_dict(chrom)
-    #if not n == len(fastas) + 1:
-    #    logger.error(f"More/less query names than fastas passed to process_gaps: {qrynames}, {fastas}")
-    #    raise ValueError("Wrong number of fastas!")
-
-    #TODO rewrite to use MultisynContainer
 
     # iterate through each gap between coresyn blocks
     # call the alignment/ functionality and merge   
@@ -527,7 +522,7 @@ cpdef process_gaps(chrom, msyncont, seqh, mp_preset='asm20', ncores=1, annotate_
             logger.info(f"Realigning gaps {gap_intervals}")
 
             ## iteratively reprocess with new reference
-            ITERATE_PROCESSING()
+            realsyns = iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=mp_preset, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
 
             # write directly if only storing realigned;
             # otherwise insert into DF respecting sorting
@@ -549,7 +544,7 @@ cpdef process_gaps(chrom, msyncont, seqh, mp_preset='asm20', ncores=1, annotate_
     return MultisynContainer.from_iterable(ret)
 # END
 
-cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, pairwise=None, annotate_private=False):
+cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=1, pairwise=None, annotate_private=False):
     ## construct the mapping, and prepare sequences for realignment
     cdef:
         dict mtrees = construct_mts(merasyns, gap_intervals)
@@ -558,12 +553,13 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, pairwis
         list added_lens = list()
         list added_privs = list()
         list used_refs = list()
+        dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
 
     ## Realign iteratively until all synteny is found
     # counts all sequences that are still above _MIN_REALIGN_LENGTH
     while len(seqdict) >= 2 and len(used_refs) <= _MAX_REALIGN:
         # fetch sequences
-        seqdict = generate_seqdict(seqh, mtrees, {org: chrom for org in mappingtrees})
+        seqdict = generate_seqdict(seqh, mtrees, chromdict)
 
         ## choose a reference
         # uses the sample containing the most non-merasyntenic sequence
@@ -579,22 +575,23 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, pairwis
         # Find merasyn in the realignment syri calls
         syns = intersection.reduce_find_overlaps(syns, cores=1)#ncores)
 
-        ## log length of sequences we are about to add
-        added_lens.append(sum([len(x.ref) for x in iter(newmsyns)]))
-
         ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
-        logger.debug(f"Old Mappingtrees: {mappingtrees}.\n Subtracting {newmsyns}.")
-        mtrees = subtract_mts(mappingtrees, newmsyns, skip_ref=not annotate_private)
-        logger.debug(f"New Mappingtrees: {mappingtrees}")
+        logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {syns}.")
+        mtrees = subtract_mts(mtrees, syns, skip_ref=not annotate_private)
+        logger.debug(f"New Mappingtrees: {mtrees}")
 
         if annotate_private:
             # after aligning all against ref, we can call the remainder as private to ref
-            privs = mt_to_privates(mtrees[ref], ref, chrom)
+            privs = mt_to_privates(mtrees[ref], ref, chromdict[ref])
             added_privs.append(sum([len(x.ref) for x in iter(privs)]))
             ret.extend(privs)
         # no more to discover on ref
         used_refs.append(ref)
         del mtrees[ref]
+
+        ## log length of sequences, append to ret
+        added_lens.append(sum([len(x.ref) for x in iter(syns)]))
+        ret.extend(syns)
 
     logger.info(f"Realigned {gap_intervals}. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
     if annotate_private:
@@ -612,7 +609,7 @@ cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None
     ## get alignments to reference construct alignment index from the reference
     # if we have pairwise alns, fetch & prepare them
     if pairwise and ref in pairwise:
-        logger.debug(f"Fetching from existing alignments. Left core: {prevcore.ref} ({prevcore.ranges_dict}). Right core: {nextcore.ref} ({nextcore.ranges_dict}). Ref {ref}")
+        logger.debug(f"Fetching {refrng} from existing alignments.")
         
         refalnsdict = pairwise[ref]
         # get all the alns overlapping this region; syri should do the rest
@@ -629,7 +626,7 @@ cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None
         # Launching a pool in a pool causes python to crash, disabled parallelization here for now
         #if False: #ncores > 1 and len(refseq) > 50000:
         #    logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
-        #    alignargs = [[seqdict[org], chrom, mappingtrees[org]] for org in seqdict.keys() if not org == ref]
+        #    alignargs = [[seqdict[org], chrom, mtrees[org]] for org in seqdict.keys() if not org == ref]
         #    with Pool(processes=ncores) as pool:
         #        alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=chrom, reftree=reftree, aligner=None), alignargs)
         #    alns = dict(zip(list(seqdict.keys()), alns))
@@ -643,7 +640,7 @@ cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None
                 alns[org] = None
                 continue
             logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
-            alns[org] = align_concatseqs(seq, chrom, mtrees[org], refseq, mp_preset, chrom, reftree, aligner=aligner)
+            alns[org] = align_concatseqs(seq, chrom, mtrees[org], refseq, mp_preset, chrom, refmtree, aligner=aligner)
 
     # filter out alignments only containing inversions
     for org in alns:
