@@ -124,7 +124,10 @@ cdef class Cigar:
             newtups.push_back(tup)
         return Cigar(newtups)
 
-    cdef double get_identity(self) noexcept nogil:
+    cpdef double get_identity(self):
+        return self._get_identity()
+
+    cdef double _get_identity(self) noexcept nogil:
         """
         Returns the fraction of covered bases (of the reference/query) that are an exact match ('=').
         """
