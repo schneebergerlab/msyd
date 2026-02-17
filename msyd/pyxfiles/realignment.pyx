@@ -414,8 +414,8 @@ cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendi
     cdef ret = dict()
 
     for org in lendict: # prevcore and nextcore may both be None if at start/end
-       start = prevcore.get_range(org) if prevcore else 0,
-       end = nextcore.get_range(org) if nextcore else lendict[org]
+       start = prevcore.get_range(org).end +1 if prevcore else 0
+       end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
        assert end >= start
 
        if end - start > _MIN_REALIGN_LEN:
