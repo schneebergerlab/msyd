@@ -434,7 +434,7 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
         rec.pos = syn.ref.start
 
         ## store Chr as string for now, maybe change later
-        chrom = syn.ref.chr
+        chrom = syn.ref.chrom
         counter.chrom = chrom # make sure to update it
         if chrom not in header_chrs:
             #logger.info(f"save_to_vcf Adding {chrom} to header")
@@ -469,17 +469,17 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
         for org in iter(orgs):
             if org in syn.get_orgs():
                 rng = syn.ranges_dict[org]
-                ## comment out chr to int conversion for now
+                ## comment out chrom to int conversion for now
                 # Chr needs to be a number, format it:
-                #match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chr)
+                #match = re.fullmatch(r"\D*?(\d+)\D*", syn.ref.chrom)
                 #chrom = 1
                 #if not match:
-                #    logger.error("VCF exporting only accepts chr names only containing one number such as Chr12, but not chr names containing more than one number, e.g. Chr12_1! Offending chr name:" + syn.ref.chr)
+                #    logger.error("VCF exporting only accepts chrom names only containing one number such as Chr12, but not chrom names containing more than one number, e.g. Chr12_1! Offending chrom name:" + syn.ref.chrom)
                 #    rec.samples[org].update({'SYN':1, 'START': rng.start, 'END': rng.end})
                 #    continue
                 #else:
                 #    chrom = int(match[1])
-                rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+                rec.samples[org].update({'SYN':1, 'CHR':rng.chrom, 'START': rng.start, 'END': rng.end})
 
                 if syn.cigars_dict:
                     cg = syn.cigars_dict[org]
@@ -544,18 +544,18 @@ cpdef save_msyncont_to_psf(chrom, msyncont, buf, save_cigars=True, emit_header=T
             panco_id = f"MERA{counter}" if mesyn.get_degree() > 1 else f"PRIV{counter}"
 
             if mesyn.ref.org == ref:
-                buf.write('\t'.join([mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), panco_id, mesyn.ref.org, '.', '.', '.', '']))
+                buf.write('\t'.join([mesyn.ref.chrom, str(mesyn.ref.start), str(mesyn.ref.end), panco_id, mesyn.ref.org, '.', '.', '.', '']))
             elif force_ref_pos:
-                buf.write('\t'.join([chrom, coreend, coreend, panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
+                buf.write('\t'.join([chrom, coreend, coreend, panco_id, mesyn.ref.org, mesyn.ref.chrom, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             else:
-                buf.write('\t'.join(['.', '.', '.', panco_id, mesyn.ref.org, mesyn.ref.chr, str(mesyn.ref.start), str(mesyn.ref.end), '']))
+                buf.write('\t'.join(['.', '.', '.', panco_id, mesyn.ref.org, mesyn.ref.chrom, str(mesyn.ref.start), str(mesyn.ref.end), '']))
             # write the record
             write_multisyn(mesyn, buf, msyncont.orgs, save_cigars=save_cigars)
 
         # write coresyn region
         if core:
             counter = counter.increment_c()
-            buf.write('\t'.join([core.ref.chr, str(core.ref.start), str(core.ref.end), f"CORE{counter}", core.ref.org, '.', '.', '.', '']))
+            buf.write('\t'.join([core.ref.chrom, str(core.ref.start), str(core.ref.end), f"CORE{counter}", core.ref.org, '.', '.', '.', '']))
             write_multisyn(core, buf, msyncont.orgs, save_cigars=save_cigars)
             coreend = str(core.ref.end + 1)
 
@@ -714,8 +714,8 @@ cpdef save_msyncont_to_gfa1(chrom, msyncont, buf, tag_orgs_s=set(), tag_orgs_l=s
             endrng = walk[-1].msyn.ranges_dict[org] if org in walk[0].msyn.ranges_dict else walk[0].msyn.ref
             # write fixed part of line
             hap='0' # NOTE could later update this with startrng's hap
-            # NOTE use chr as seqident or use org+chr?
-            line = f"W\t{org}\t{hap}\t{startrng.chr}\t{startrng.start}\t{endrng.end}\t{'>'.join([str(node.index) for node in walk])}"
+            # NOTE use chrom as seqident or use org+chrom?
+            line = f"W\t{org}\t{hap}\t{startrng.chrom}\t{startrng.start}\t{endrng.end}\t{'>'.join([str(node.index) for node in walk])}"
             linecont.append(line)
 
     linecont.append(f"# </chrom:{chrom}>")

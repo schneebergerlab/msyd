@@ -346,7 +346,7 @@ def compile_filter(exp: str):
     Runtime is in n*log(n) with n being len(exp) -- this could be made faster by using a proper parser, but I don't think this step is performance-limiting.
 
     # Ideas for DSL for filtering:
-    # primitives: Range, degree >= number, len, chr, maybe alignment quality?
+    # primitives: Range, degree >= number, len, chrom, maybe alignment quality?
     # have preprocessor turn is multisyn into degree >= number of seqs
     # connections: and, or, xor, not
     """
@@ -421,10 +421,10 @@ def compile_filter(exp: str):
         rng = coords.read_psf_range(match[2])
         return lambda x: x.ref in rng
 
-    # chr filter
+    # chrom filter
     match = re.fullmatch("(on)\s(.*)", exp, flags=re.IGNORECASE)
     if match:
-        return lambda x: x.ref.chr == match[2]
+        return lambda x: x.ref.chrom == match[2]
 
     # find simple cases
     if exp.lower() == 'true':
@@ -521,8 +521,8 @@ cpdef validate_top_sort(msyncont):
 #    """
 #    def filter_fn(x):
 #        ref = x.ref
-#        # check if on same chr
-#        if not rng.chr == ref.chr:
+#        # check if on same chrom
+#        if not rng.chrom == ref.chrom:
 #            return False
 #        # check if contained:
 #        if rng.start < ref.start < rng.end and rng.start < ref.end < rng.end:
@@ -537,14 +537,14 @@ cpdef validate_top_sort(msyncont):
 #    #print(inds)
 #    return df.loc[inds]
 #
-#def filter_multisyn_df_chr(df, chr):
+#def filter_multisyn_df_chr(df, chrom):
 #    """Misc function for filtering a DF produced by find_multisyn for a certain chromosome.
 #    Does essentially the same thing as `filter_multsyn_df`, but only uses chromosome information
 #
 #    :param df: `find_multisyn` `DataFrame` of `Multisyn` objects.
 #    :type df: `DataFrame[Multisyn]`
-#    :param chr: Chromosome to select.
-#    :type chr: `str`
+#    :param chrom: Chromosome to select.
+#    :type chrom: `str`
 #    """
-#    return df.loc[df[0].apply(lambda x: chr == x.ref.chr)]
+#    return df.loc[df[0].apply(lambda x: chrom == x.ref.chrom)]
 

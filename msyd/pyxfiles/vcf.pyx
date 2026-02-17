@@ -109,8 +109,8 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
         #oldrec = None
 
         # write the small variants in the multisyn region
-        for rec in vcfin.fetch(rng.chr, rng.start, rng.end + 1): # pysam is half-inclusive
-            # double check if the chr has been added, was throwing errors for some reason...
+        for rec in vcfin.fetch(rng.chrom, rng.start, rng.end + 1): # pysam is half-inclusive
+            # double check if the chrom has been added, was throwing errors for some reason...
             if rec.chrom not in header_chrs:
                 #logger.info(f"extract_from_syntenic Adding {rec.chrom} to header")
                 header_chrs.add(rec.chrom)
@@ -249,9 +249,9 @@ cpdef add_syn_anns_to_vcf(syns, vcfin: Union[str, os.PathLike], vcfout: Union[st
     syn = next(syniter)[1][0]
 
     for oldrec in oldvcf:
-        if oldrec.chrom < syn.ref.chr:
-            if oldrec.chrom not in set(newvcf.header.contigs): # check if chr needs adding
-                #logger.info(f"add_syn_anns_to_vcf Adding {syn.ref.chr} to header")
+        if oldrec.chrom < syn.ref.chrom:
+            if oldrec.chrom not in set(newvcf.header.contigs): # check if chrom needs adding
+                #logger.info(f"add_syn_anns_to_vcf Adding {syn.ref.chrom} to header")
                 newvcf.header.add_line("##contig=<ID={}>".format(oldrec.chrom))
             copy_record(oldrec, newvcf, pid=syncounter-1)
         elif oldrec.start < syn.ref.start:
@@ -273,7 +273,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     rec.start = rng.start
     rec.pos = rec.start
     rec.stop = rng.end
-    chrom = rng.chr
+    chrom = rng.chrom
 
     if chrom not in set(ovcf.header.contigs):
         #logger.info(f"add_syn_ann Adding {chrom} to header")
@@ -303,7 +303,7 @@ cdef add_syn_ann(syn, ovcf, ref=None, no=None, add_cigar=False, add_identity=Tru
     for org in ovcf.header.samples:
         if org in syn.get_orgs():
             rng = syn.ranges_dict[org]
-            rec.samples[org].update({'SYN':1, 'CHR':rng.chr, 'START': rng.start, 'END': rng.end})
+            rec.samples[org].update({'SYN':1, 'CHR':rng.chrom, 'START': rng.start, 'END': rng.end})
             if syn.cigars_dict:
                 cg = syn.cigars_dict[org]
                 if add_cigar:
@@ -375,7 +375,7 @@ cpdef str merge_vcfs(lf: Union[str, os.PathLike], rf:Union[str, os.PathLike], of
         while True:
             # skip until we are at the same position
             if lann.chrom != rann.chrom:
-                 # check if chr matches, otherwise skip till end
+                 # check if chrom matches, otherwise skip till end
                 if lann.chrom < rann.chrom:
                     if lann.chrom not in set(ovcf.header.contigs):
                         #logger.info(f"merge_vcfs Adding {lann.chrom} to header")

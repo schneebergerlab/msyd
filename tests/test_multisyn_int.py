@@ -64,14 +64,14 @@ def test_multisyn_int():
     for row in df.iterrows():
         rowcnt = 0
         multi = row[1][0]
-        refseq = refgen[multi.ref.chr][multi.ref.start:multi.ref.end]
+        refseq = refgen[multi.ref.chrom][multi.ref.start:multi.ref.end]
         #print(multi)
         for org in multi.get_organisms():
             rng = multi.ranges_dict[org]
             cg = multi.cigars_dict[org]
             #print(org, rng, cg)
             
-            qryseq = gens[rng.org][rng.chr][rng.start:rng.end]
+            qryseq = gens[rng.org][rng.chrom][rng.start:rng.end]
 
             progr = 0
             progq = 0

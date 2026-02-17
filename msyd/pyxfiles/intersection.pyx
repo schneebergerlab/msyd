@@ -177,7 +177,7 @@ cpdef find_overlaps(lmsyncont, rmsyncont, only_core=False, trim=False, allow_pri
                 l = next(lit)
 
         except StopIteration: # nothing more to match
-            if not only_core and l.ref.chr == r.ref.chr: # the loop ended after an overlap call
+            if not only_core and l.ref.chrom == r.ref.chrom: # the loop ended after an overlap call
                 # everything up to cov is covered, and starting is guaranteed to be fully covered
                 ending = l if l.ref.end > r.ref.end else r
                 #print(cov, ending.ref, ending.ref.end - ending.ref.start, {org:cg.get_len(ref=True) for org, cg in ending.cigars_dict.items()})

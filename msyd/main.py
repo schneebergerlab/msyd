@@ -678,7 +678,7 @@ def plot(args):
     def pstolendf(x):
         ret = {k:len(v) for k, v in x.ranges_dict.items()}
         ret['ref'] = len(x.ref)
-        ret['chr'] = x.ref.chr # they are all on the same chromosome, so this doesn't matter
+        ret['chr'] = x.ref.chrom # they are all on the same chromosome, so this doesn't matter
         ret = pd.DataFrame(data=ret, columns=cols, index=[0]).fillna(0)
         return ret
 

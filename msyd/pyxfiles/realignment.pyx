@@ -482,6 +482,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
 
     :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
     """
+    print(chrom, msyncont, seqh)
     # init stuff
     cdef:
         list ret = list()#deque()#pd.DataFrame()
@@ -654,7 +655,7 @@ cdef syri_get_syntenic(reforg, alns):
                 f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
 
         # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-        chromr = list(coords.aChr)[0]  # there should only ever be one chr anyway
+        chromr = list(coords.aChr)[0]  # there should only ever be one chrom anyway
         chromq = list(coords.bChr)[0]
         samechrids = chromr == chromq
         if not samechrids:
@@ -772,7 +773,7 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
 #        cio.freopen(bytes(f"{CWD}/stderr", encoding='utf8'), "w", cio.stderr)
 #
 #    # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-#    chromr = list(coords.aChr)[0] # there should only ever be one chr anyway
+#    chromr = list(coords.aChr)[0] # there should only ever be one chrom anyway
 #    chromq = list(coords.bChr)[0]
 #    samechrids = chromr == chromq
 #    if not samechrids:

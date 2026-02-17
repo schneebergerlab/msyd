@@ -94,11 +94,11 @@ class SeqHandler:
         """
         assert rng.org in self._backing
         fa = self._backing[rng.org]
-        end = min(fa.get_reference_length(rng.chr), rng.end + margin + 1)
+        end = min(fa.get_reference_length(rng.chrom), rng.end + margin + 1)
         
         #logger.info(f"Fetching {rng} with {margin} bp margins. End at {end}.")
 
-        return fa.fetch(region=rng.chr, start=max(0, rng.start-margin), end=end).upper()
+        return fa.fetch(region=rng.chrom, start=max(0, rng.start-margin), end=end).upper()
 
     def get_all_seq(self, msyn: Multisyn):
         """

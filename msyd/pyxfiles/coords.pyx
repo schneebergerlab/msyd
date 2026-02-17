@@ -31,31 +31,31 @@ cpdef set_PANCO_STYLE(str val):
 cdef class Position:
     cdef:
         public str org
-        public str chr
+        public str chrom
         public unsigned long pos
 
-    def __cinit__(self, org:str = None, chr:str = None, pos:int = 0):
-    #def __init__(self, org:str, chr:str, pos:int):
+    def __cinit__(self, org:str = None, chrom:str = None, pos:int = 0):
+    #def __init__(self, org:str, chrom:str, pos:int):
         """
         All args are optional to support pickling; always set them otherwise!
         """
         self.org = org
-        self.chr = chr
+        self.chrom = chrom
         self.pos = pos
 
     def __repr__(self):
-        #return f"Position({self.org}, {self.chr}, {self.pos})"
-        return f"Position({self.org}, {self.chr}, {self.pos})"
+        #return f"Position({self.org}, {self.chrom}, {self.pos})"
+        return f"Position({self.org}, {self.chrom}, {self.pos})"
 
     def to_psf(self):
         """Transform this `Position` into population synteny file format
         """
-        return f"{self.chr}{DELIM}{self.pos}"
+        return f"{self.chrom}{DELIM}{self.pos}"
 
     def to_psf_org(self):
         """Transform this `Position` into population synteny file format, including the org
         """
-        return "{self.org}{DELIM}{self.chr}{DELIM}{self.pos}"
+        return "{self.org}{DELIM}{self.chrom}{DELIM}{self.pos}"
 
     # support pickling, for use with multiprocessing
     def __getstate__(self):
@@ -65,12 +65,12 @@ cdef class Position:
         # kind of ugly, but pickling requires to keep the object
         rng = read_psf_pos(state, org=None)
         self.org = rng.org
-        self.chr = rng.chr
+        self.chrom = rng.chrom
         self.start = rng.pos
 
     def __eq__(l, r):
         assert isinstance(r, Position)
-        return l.org == r.org and l.chr == r.chr and \
+        return l.org == r.org and l.chrom == r.chrom and \
                 l.pos == r.pos
 
     def __lt__(l, r):
@@ -78,15 +78,15 @@ cdef class Position:
         if l.org != r.org:
             logger.error(f"Comparison between different organisms: {l.org} != {r.org}")
             raise ValueError("Comparison between different organisms!")
-        if l.chr < r.chr:
+        if l.chrom < r.chrom:
             return True
-        elif l.chr == r.chr:
+        elif l.chrom == r.chrom:
             return l.pos < r.pos
         else:
             return False
 
     def __hash__(self):
-        return hash(self.org) + hash(self.chr) + hash(self.pos)
+        return hash(self.org) + hash(self.chrom) + hash(self.pos)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 @functools.total_ordering # not sure how performant, TO/DO replace later?
@@ -94,39 +94,39 @@ cdef class Position:
 cdef class Range:
     cdef:
         public str org
-        public str chr
+        public str chrom
         public unsigned long start
         public unsigned long end
 
-    def __cinit__(self, str org = None, str chr = None, int start = 0, int end = 0):
-    #def __init__(self, org:str, chr:str, start:int, end:int):
+    def __cinit__(self, str org = None, str chrom = None, int start = 0, int end = 0):
+    #def __init__(self, org:str, chrom:str, start:int, end:int):
         """
         All args are optional to support pickling; always set them otherwise!
         """
         self.org = org
-        self.chr = chr
+        self.chrom = chrom
         self.start = start # inclusive
         self.end = end # inclusive
 
     def __repr__(self):
-        #return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
-        #return f"Range({self.org}, {self.chr}, {self.start}, {self.end})"
+        #return f"Range({self.org}, {self.chrom}, {self.start}, {self.end})"
+        #return f"Range({self.org}, {self.chrom}, {self.start}, {self.end})"
         return self.to_psf()
 
     def copy(self):
-        return Range(org=self.org, chr=self.chr, start=self.start, end=self.end)
+        return Range(org=self.org, chrom=self.chrom, start=self.start, end=self.end)
 
     def to_psf(self):
         """Transform this `Range` into the form specified by PSF
         """
-        #return f"{self.hap}{DELIM}{self.chr}{DELIM}{self.start}-{self.end}"
-        return f"{self.chr}{DELIM}{self.start}-{self.end}"
+        #return f"{self.hap}{DELIM}{self.chrom}{DELIM}{self.start}-{self.end}"
+        return f"{self.chrom}{DELIM}{self.start}-{self.end}"
 
     def to_psf_org(self):
         """Transform this `Range` into the form specified by PSF, with the sample name being prepended as specified for the realigned reference haplotype
         """
-        #return f"{self.org}{DELIM}{self.hap}{DELIM}{self.chr}{DELIM}{self.start}-{self.end}"
-        return f"{self.org}{DELIM}{self.chr}{DELIM}{self.start}-{self.end}"
+        #return f"{self.org}{DELIM}{self.hap}{DELIM}{self.chrom}{DELIM}{self.start}-{self.end}"
+        return f"{self.org}{DELIM}{self.chrom}{DELIM}{self.start}-{self.end}"
 
     # support pickling, for use with multiprocessing
     def __getstate__(self):
@@ -136,13 +136,13 @@ cdef class Range:
         # kind of ugly, but pickling requires to keep the object
         rng = read_psf_range(state, org=None)
         self.org = rng.org
-        self.chr = rng.chr
+        self.chrom = rng.chrom
         self.start = rng.start
         self.end = rng.end
 
     def __eq__(l, r):
         assert isinstance(r, Range)
-        return l.org == r.org and l.chr == r.chr and \
+        return l.org == r.org and l.chrom == r.chrom and \
                 l.start == r.start & l.start == r.start
 
     # this operator sorts according to the END, not start value,
@@ -155,9 +155,9 @@ cdef class Range:
             logger.error(f"Comparison between different organisms: {l.org} != {r.org}")
             raise ValueError("Comparison between different organisms!")
 
-        if l.chr < r.chr:
+        if l.chrom < r.chrom:
             return True
-        elif l.chr == r.chr:
+        elif l.chrom == r.chrom:
             if l.end < r.end:
                 return True
             elif l.end == r.end:
@@ -168,7 +168,7 @@ cdef class Range:
         return self.end - self.start + 1 # start is inclusive
 
     def __hash__(self):
-        return hash(self.org) + hash(self.chr) + hash(self.start) + hash(self.end)
+        return hash(self.org) + hash(self.chrom) + hash(self.start) + hash(self.end)
 
     def __contains__(self, item):
         #TODO expand to work with variation superclass, how to handle transpositions?
@@ -179,9 +179,9 @@ cdef class Range:
             :rtype: `Bool`
         """
         if isinstance(item, Position):
-            return self.chr == item.chr and self.start <= item.pos <= self.end
+            return self.chrom == item.chrom and self.start <= item.pos <= self.end
         elif isinstance(item, Range):
-            return self.chr == item.chr and self.start <= item.start and item.end <= self.end
+            return self.chrom == item.chrom and self.start <= item.start and item.end <= self.end
         else:
             return False
 
@@ -200,7 +200,7 @@ cdef class Range:
             raise ValueError("ERROR: tried to drop more than Range length!")
         if start < 0 or end < 0:
             raise ValueError("ERROR: tried to drop negative value!")
-        return Range(self.org, self.chr, self.start + start, self.end - end)
+        return Range(self.org, self.chrom, self.start + start, self.end - end)
 
     def is_inverted(self):
         return self.end < self.start

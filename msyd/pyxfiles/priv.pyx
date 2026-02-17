@@ -70,7 +70,7 @@ cdef complement(multisyns, add=False):
         rng = msyn.ref
         if rng.start - cov >= MIN_PRIV_THRESH:
             # ranges are inclusive on both end and start
-            ret.append(Private(Range(rng.org, rng.chr, cov + 1, rng.start - 1)))
+            ret.append(Private(Range(rng.org, rng.chrom, cov + 1, rng.start - 1)))
         cov = rng.end
         
         # if specified, also add the msyn while maintaining sorting

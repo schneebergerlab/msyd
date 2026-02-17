@@ -260,8 +260,8 @@ cdef class Multisyn:
 
         ret = []
         for split in splits:
-            self_rng = Range(self.ref.org, self.ref.chr, self.ref.start + split[0], self.ref.start + split[1])
-            alt_rng = Range(altrng.org, altrng.chr, altrng.start + split[2], altrng.start + split[3])
+            self_rng = Range(self.ref.org, self.ref.chrom, self.ref.start + split[0], self.ref.start + split[1])
+            alt_rng = Range(altrng.org, altrng.chrom, altrng.start + split[2], altrng.start + split[3])
             ret.append(Multisyn(self_rng, {org: alt_rng}, {org: split[4]}))
 
         return ret

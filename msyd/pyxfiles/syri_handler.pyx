@@ -158,7 +158,7 @@ cpdef match_synal(syndf, alndf, ref='a', refname="ref"):
         counter += 1
         try:
             org = synr[1].org
-            if synr[0].chr == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
+            if synr[0].chrom == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
                 cg = cigar.cigar_from_string(alnr['cg'])
                 rng = synr[1]
                 multisyn = Multisyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
@@ -203,7 +203,7 @@ cpdef handle_conflicts(syniter):
     for cur in syniter:
         #logger.debug(f"Prev: {prev}")
         #logger.debug(f"Cur: {cur}")
-        if cur.ref.chr != prev.ref.chr: # there can be no overlap between chrs
+        if cur.ref.chrom != prev.ref.chrom: # there can be no overlap between chrs
             prev = cur
             continue
 
@@ -221,10 +221,10 @@ cpdef handle_conflicts(syniter):
         # when this is called, cur and prev should normally have the same orgs
         # will not catch overlap between non-adjacent regions!
         #assert(set(cur.ranges_dict) == set(prev.ranges_dict))
-        for org in cur.ranges_dict: # should be on the same chr
+        for org in cur.ranges_dict: # should be on the same chrom
             if org not in prev.ranges_dict or cur.ranges_dict[org] is None or prev.ranges_dict[org] is None:
                 continue
-            assert(cur.ranges_dict[org].chr == prev.ranges_dict[org].chr) # prev.ranges_dict[org] is None sometimes?? O.o
+            assert(cur.ranges_dict[org].chrom == prev.ranges_dict[org].chrom) # prev.ranges_dict[org] is None sometimes?? O.o
 
             ov = prev.ranges_dict[org].end - cur.ranges_dict[org].start + 1 # indices are inclusive
             if ov > 0:
