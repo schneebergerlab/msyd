@@ -72,6 +72,21 @@ class SeqHandler:
     def get_len_dict(self, chrom):
         return {org: self._backing[org].get_reference_length(chrom) for org in self._backing}
 
+    def get_fn_dict(self):
+        """
+        Returns this SeqHandler in fasta dict format.
+        Can be passed to from_fasta_dict to rehydrate the SeqHandler.
+        """
+        return {org: self._backing[org].filename for org in self._backing}
+
+    # support pickling, for use with multiprocessing
+    def __getstate__(self):
+        return self.get_fn_dict()
+
+    def __setstate__(self, state):
+        # call constructor and steal its _backing, to ensure consistent call
+        self._backing = self.from_fasta_dict(state)._backing 
+        #{org: pysam.FastaFile(fasta) for org, fasta in state.items()}
 
     def get_range(self, rng: Range, margin=0):
         """
