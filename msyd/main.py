@@ -377,8 +377,8 @@ def call(args):
     logger.info("Read input files")
 
     seqh = None
-    if hasattr(args, "fastas"):
-        logger.info("Parsing FASTA files from {args.fastas.name}")
+    if hasattr(args, "fastas") and args.fastas:
+        logger.info(f"Parsing FASTA files from {args.fastas.name}")
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
     else:
         seqh = SeqHandler.from_fasta_dict(fastas)
@@ -516,9 +516,9 @@ def graph(args):
     syndict = io.read_psf(args.infile)
     print(syndict)
 
-    logger.info("Parsing FASTA files")
     seqh = None
-    if hasattr(args, "fastas"):
+    if hasattr(args, "fastas") and args.fastas:
+        logger.info(f"Parsing FASTA TSV at {args.fastas.name}.")
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
 
     # set panco style
@@ -613,8 +613,8 @@ def realign(args):
     syndict = io.read_psf(args.infile)
 
     seqh = None
-    if hasattr(args, "fastas"):
-        logger.info("Parsing FASTA files from {args.fastas.name}")
+    if hasattr(args, "fastas") and args.fastas:
+        logger.info(f"Parsing FASTA files from {args.fastas.name}")
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
     else:
         seqh = SeqHandler.from_fasta_dict(fastas)
