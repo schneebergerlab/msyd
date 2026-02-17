@@ -76,6 +76,8 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
 
         # iterate through all multisyns found so far
         for org, rng in merasyn.ranges_dict.items():
+            if not org in offsetdict: # no need to process
+                continue
             #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mtrees[org]}")
             l = rng.start - offsetdict[org] # len of the region to be added
             if l < 0:
@@ -137,7 +139,9 @@ cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
         listdict = defaultdict(list) # used to construct the output mappingtrees
     # these need to be reconstructed to take care of handling the separator intervals
 
-    for merasyn in iter(merasyns):
+    print(merasyns)
+    print(type(merasyns))
+    for merasyn in merasyns:
         # only subtract on the ref if explicitly specified;
         # would get deleted anyway unless annotating private regions
         for org, rng in\
@@ -241,6 +245,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
         # shortcut to simply append alignment if there is only one offset
         # as this happens quite often, this should save a lot of time
+        print(reftree, rend, qrytree, qend)
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
@@ -417,7 +422,8 @@ cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendi
     for org in lendict: # prevcore and nextcore may both be None if at start/end
        start = prevcore.get_range(org).end +1 if prevcore else 0
        end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
-       assert end >= start
+       #print(prevcore, nextcore)
+       assert end - start >= -1 # -1 is a gap of 0
 
        if end - start > _MIN_REALIGN_LEN:
            ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
@@ -535,10 +541,11 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
 
     ## Realign iteratively until all synteny is found
-    # counts all sequences that are still above _MIN_REALIGN_LENGTH
-    while len(seqdict) >= 2 and len(used_refs) <= _MAX_REALIGN:
+    while True:
         # fetch sequences
         seqdict = generate_seqdict(seqh, mtrees, chromdict)
+        if not seqdict: # if all remaining are too small
+            break
 
         ## choose a reference
         # uses the sample containing the most non-merasyntenic sequence
@@ -550,13 +557,18 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
 
         # align & call synteny to chosen ref
         alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
-        syns = syri_get_syntenic(ref, alns)
+        synsdict = syri_get_syntenic(ref, alns)
+        print(synsdict)
         # Find merasyn in the realignment syri calls
-        syns = intersection.reduce_find_overlaps(syns, cores=1)#ncores)
+        msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
+        print(msyns)
 
         ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
-        logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {syns}.")
-        mtrees = subtract_mts(mtrees, syns, skip_ref=not annotate_private)
+        logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
+        if msyns: # no need to subtract if no msyn found
+            mtrees = subtract_mts(mtrees, msyns, skip_ref=not annotate_private)
+        else:
+            logger.info("No msyns found in this realignment step.")
         logger.debug(f"New Mappingtrees: {mtrees}")
 
         if annotate_private:
@@ -569,8 +581,13 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         del mtrees[ref]
 
         ## log length of sequences, append to ret
-        added_lens.append(sum([len(x.ref) for x in iter(syns)]))
-        ret.extend(syns)
+        if msyns:
+            added_lens.append(sum([len(x.ref) for x in iter(msyns)]))
+            ret.extend(msyns)
+
+        # counts all sequences that are still above _MIN_REALIGN_LENGTH
+        if len(seqdict) <= 1 or len(used_refs) >= _MAX_REALIGN:
+            break
 
     logger.info(f"Realigned {gap_intervals}. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
     if annotate_private:
@@ -637,9 +654,9 @@ cdef syri_get_syntenic(reforg, alns):
     #TUC = 1000
     #TUP = 0.5
     #invgl = 1000000
-    T = 50
-
-    syns = {}
+    cdef:
+        int T = 50
+        dict syns = {}
 
     #NOTE: for large regions, it might make sense to parallelize the syri call
     # per organism, turning the for loop below into a parallelized map
