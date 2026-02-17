@@ -324,8 +324,11 @@ cdef class Cigar:
 
     cpdef trim_matching(self, only_pos=True, allow_mismatch=True):
         cdef ret = self.c_trim_matching(only_pos=only_pos, allow_mismatch=allow_mismatch)
-        #return qstart, qend, rstart, rend, Cigar(newcg)
-        return ret[0], ret[1], ret[2], ret[3], Cigar(ret[4])
+        #return qstart, qend, rstart, rend[, Cigar(newcg)]
+        if only_pos:
+            return ret[0], ret[1], ret[2], ret[3]
+        else:
+            return ret[0], ret[1], ret[2], ret[3], Cigar(ret[4])
 
 
     cdef c_trim_matching(self, only_pos=True, allow_mismatch=True):
