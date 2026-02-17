@@ -60,14 +60,15 @@ cdef class Multisyn:
         return f"Multisyn({self.ref}, {self.ranges_dict})"#, {self.cigars_dict})"
 
     def __eq__(l, r):
-        if not isinstance(r, Multisyn):
-            return False
+        assert isinstance(r, Multisyn)
         return l.ref == r.ref and l.ranges_dict == r.ranges_dict and l.cigars_dict == r.cigars_dict
         
     # compares two msyns; if they have the same reference accession, compares their position there
     # otherwise checks if ordering l before r is compatible, i.e. if l is ahead of r in any organism
     # if l and r do not share any organism, always returns True
     def __lt__(l, r):
+        assert isinstance(r, Multisyn)
+        #NOTE could support Range/Position?
         if l.ref.org == r.ref.org:
             return l.ref < r.ref
         return not any(l.ranges_dict[org] > r.ranges_dict[org] for org in l.ranges_dict if org in r.ranges_dict)

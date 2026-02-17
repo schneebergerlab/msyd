@@ -69,12 +69,12 @@ cdef class Position:
         self.start = rng.pos
 
     def __eq__(l, r):
-        if not isinstance(r, Position):
-            return False
+        assert isinstance(r, Position)
         return l.org == r.org and l.chr == r.chr and \
                 l.pos == r.pos
 
     def __lt__(l, r):
+        assert isinstance(r, Position)
         if l.org != r.org:
             logger.error(f"Comparison between different organisms: {l.org} != {r.org}")
             raise ValueError("Comparison between different organisms!")
@@ -141,8 +141,7 @@ cdef class Range:
         self.end = rng.end
 
     def __eq__(l, r):
-        if not isinstance(r, Range):
-            return False
+        assert isinstance(r, Range)
         return l.org == r.org and l.chr == r.chr and \
                 l.start == r.start & l.start == r.start
 
@@ -151,6 +150,7 @@ cdef class Range:
     # TO/DO possible refactor: sort by start here, invert in sorting for algorithm
     # shouldn't really matter as the regions are nonoverlapping, but...
     def __lt__(l, r):
+        assert isinstance(r, Range)
         if l.org != r.org:
             logger.error(f"Comparison between different organisms: {l.org} != {r.org}")
             raise ValueError("Comparison between different organisms!")
