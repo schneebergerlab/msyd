@@ -46,6 +46,9 @@ cdef class Node:#(Multisyn):
 
     def add_sequence(self, seqh: SeqHandler):
         #logger.info(f"Adding sequence for {self.msyn}")
+        if not seqh:
+            logger.error("Sequences required but not given in add_sequence!")
+            raise ValueError("Empty SeqHandler")
         self.seq = seqh.get_rep_seq(self.msyn)
 
     def to_gfa1(self, tag_orgs_s=set(), tag_orgs_l=set(), rgfa_tags=True):

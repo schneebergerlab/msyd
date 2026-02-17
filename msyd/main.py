@@ -376,6 +376,13 @@ def call(args):
                                           base=args.incremental)
     logger.info("Read input files")
 
+    seqh = None
+    if args.fastas:
+        logger.info("Parsing FASTA files from {args.fastas.name}")
+        seqh = SeqHandler.from_fasta_tsv(args.fastas)
+    else:
+        seqh = SeqHandler.from_fasta_dict(fastas)
+
     # start logging dropped bases
     intersection.start_log_dropped_bases()
 
@@ -399,8 +406,11 @@ def call(args):
     if args.realign:
         # reset counter
         intersection.start_log_dropped_bases()
+        if not seqh:
+            logger.error("Sequences in FASTA input required for realignment!")
+            raise ValueError("FASTA missing in realignment!")
         # use reference synteny as base to identify all haplotypes
-        chromsyn = realignment.realign(chromsyn, qrynames, fastas,
+        chromsyn = realignment.realign(chromsyn, qrynames, seqh,
                                       MIN_REALIGN_LEN=args.min_realign,
                                       MIN_SYN_ID=args.min_syn_id,
                                       MAX_REALIGN=args.max_realign,
@@ -435,10 +445,8 @@ def call(args):
     io.save_to_psf(chromsyn, args.psf, save_cigars=args.cigars)
 
     if args.gfa:
-        logger.info("Parsing FASTA files")
-        seqh = None
-        if args.fastas:
-            seqh = SeqHandler.from_fasta_tsv(args.fastas)
+        if not seqh:
+            logger.error("No sequence FASTA found in graph step! Making graph with Dummy sequence.")
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
         graph = syngraph.make_graphs_chromcont(chromsyn, seqh=seqh)
         io.save_to_gfa1(graph, args.gfa)
@@ -598,12 +606,24 @@ def realign(args):
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("realign")
 
+    logger.info(f"Realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
 
-    logger.info(f"realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
     syndict = io.read_psf(args.infile)
-    logger.info("Read input file")
-    resyns = realignment.realign(syndict, qrynames, fastas,
+
+    seqh = None
+    if args.fastas:
+        logger.info("Parsing FASTA files from {args.fastas.name}")
+        seqh = SeqHandler.from_fasta_tsv(args.fastas)
+    else:
+        seqh = SeqHandler.from_fasta_dict(fastas)
+
+    if not seqh:
+        logger.error("No sequences provided! Quitting realignment.")
+        raise ValueError("seqh missing in realignment!")
+
+    logger.info("Input read")
+    resyns = realignment.realign(syndict, qrynames, seqh,
                                  MIN_REALIGN_LEN=args.min_realign,
                                  MIN_SYN_ID=args.min_syn_id,
                                  MAX_REALIGN=args.max_realign,

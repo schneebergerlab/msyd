@@ -160,7 +160,8 @@ def parse_input_tsv(fin):
         logger.error(f"Non-unique names in {fin.name}. This will most likely cause issues, proceed with caution!")
 
     fin.close()
-    return (qrynames, syris, alns, vcfs, fastas)
+    # fastas are in dict format as the are processed separately, rest remains as list
+    return (qrynames, syris, alns, vcfs, dict(zip(qrynames, fastas)))
 # END
 
 #############################################
