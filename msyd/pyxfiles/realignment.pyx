@@ -35,6 +35,7 @@ cdef int _MIN_REALIGN_LEN = 100 # min length to realign regions
 cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
+cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.INFO)
@@ -116,7 +117,7 @@ cpdef mt_to_privates(mt, org, chrom):
     """
     cdef list ret = list()
     for entry in mt:
-        if entry.end - entry.start >= priv.MIN_PRIV_THRESH:
+        if len(entry) >= _MIN_PRIV_THRESH: #NOTE could add more filtering, not sure
             ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
 
     return MultisynContainer.from_iterable(ret)
