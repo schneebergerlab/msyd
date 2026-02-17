@@ -456,12 +456,12 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
         global _NULL_CNT
         _NULL_CNT = int(NULL_CNT)
 
-    _process_gaps = partial(process_gaps, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign)
+    _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign)
     return chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
 
 #NOTE cpdef'd to enable using functools.partial.
 #NOTE Consider wrapping with cython to enable re-cdefing this?
-cpdef process_gaps(chrom, msyncont, seqh, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
+cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
     """
     Workhorse function of the realignment functionality.
     Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
