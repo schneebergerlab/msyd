@@ -377,7 +377,7 @@ def call(args):
     logger.info("Read input files")
 
     seqh = None
-    if args.fastas:
+    if hasattr(args, "fastas"):
         logger.info("Parsing FASTA files from {args.fastas.name}")
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
     else:
@@ -518,7 +518,7 @@ def graph(args):
 
     logger.info("Parsing FASTA files")
     seqh = None
-    if args.fastas:
+    if hasattr(args, "fastas"):
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
 
     # set panco style
@@ -602,8 +602,9 @@ def view(args):
 def realign(args):
     import msyd.io as io
     import msyd.realignment as realignment
-
     import msyd.util as util
+    from msyd.seq import SeqHandler
+
     logger = util.CustomFormatter.getlogger("realign")
 
     logger.info(f"Realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
@@ -612,7 +613,7 @@ def realign(args):
     syndict = io.read_psf(args.infile)
 
     seqh = None
-    if args.fastas:
+    if hasattr(args, "fastas"):
         logger.info("Parsing FASTA files from {args.fastas.name}")
         seqh = SeqHandler.from_fasta_tsv(args.fastas)
     else:
