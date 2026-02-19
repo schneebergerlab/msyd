@@ -22,7 +22,7 @@ logger.setLevel(logging.INFO)
 
 # if the distance between two syns is more than this,
 # add a private node in between (or do not annotate the link if add_private is not passed)
-cdef int MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
+cdef int MIN_PRIV_THRESH = 1 #intersection.get_min_syn_thresh()
 
 cdef class Node:#(Multisyn):
     """
