@@ -38,7 +38,7 @@ cdef int _NULL_CNT = 100 # number of separators to use between blocks during ali
 cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
 logger = util.CustomFormatter.getlogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 ### Example
@@ -236,6 +236,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
     # traverse alignments
     alns = deque()
+    logger.debug(f"{list(m)}")
     for h in m:
         rstart: int = h.r_st
         rend: int = h.r_en -1 # use inclusive indices
@@ -646,6 +647,7 @@ cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None
                 alns[org] = None
                 continue
             logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
+            #logger.debug(f"Seq: {seq}\nRefseq: {refseq}")
             alns[org] = align_concatseqs(seq, chrom, mtrees[org], refseq, mp_preset, chrom, refmtree, aligner=aligner)
 
     # filter out alignments only containing inversions
