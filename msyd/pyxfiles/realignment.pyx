@@ -40,6 +40,12 @@ cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.INFO)
 
+
+### Example
+## AAAANNNNNBBBBBBB
+## 4 bp seq, 5 bp spacer, 8 bp seq
+## => [0, 3] -> A, [9, 15] -> B
+
 cpdef listdict_to_mts(lists):
     """
     Transforms a list of alignments for each organism into a dictionary of intervaltrees mapping an offset in the alignment reference to each position in the sample genome.
@@ -50,7 +56,7 @@ cpdef listdict_to_mts(lists):
         tree = IntervalTree()
         for offset, length in lst:
             if length > _MIN_REALIGN_LEN: # filter again for sufficient len
-                tree[posdict[org]:posdict[org] + length] = offset
+                tree[posdict[org]:posdict[org] + length +1] = offset # end is non-inclusive
                 posdict[org] += length + _NULL_CNT # add interval + spacer
 
         #if len(tree) > 0:
@@ -71,7 +77,7 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
         # mark private regions as covered, if they are 
         if merasyn.is_private():
             if merasyn.ref.org != 'ref':
-                offsetdict[merasyn.ref.org] = merasyn.ref.end
+                offsetdict[merasyn.ref.org] = merasyn.ref.end +1
             continue
 
         # iterate through all multisyns found so far
@@ -79,7 +85,7 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
             if not org in offsetdict: # no need to process
                 continue
             #print(f"{offsetdict[org]}, {posdict[org]}, {rng}, {mtrees[org]}")
-            l = rng.start - offsetdict[org] # len of the region to be added
+            l = rng.start - offsetdict[org] # len of the region to be added.
             if l < 0:
                 logger.error(f"improper sorting: {rng.start} < {offsetdict[org]}") # improper sorting – skip
                 continue
@@ -92,12 +98,14 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
                     # check if offset + len matches the current offset; extend prev interval instead
                     # no +1 because the end is not inclusive
                     prev[1] += l
+                elif -10 < prev[0] + prev[1]-offsetdict[org] < 10: 
+                    logger.info(f"Close miss in {prev}, {offsetdict[org]}")
 
             if l > _MIN_REALIGN_LEN: # otherwise add to the tree if it's large enough
-                listdict[org].append( (offsetdict[org], l) )
+                listdict[org].append( (offsetdict[org], l-1) )
 
             # all up to the end of this region has been added
-            offsetdict[org] = rng.end
+            offsetdict[org] = rng.end +1
 
     # see if there's any sequence left to realign after processing the merasyn regions
     for org, offset in offsetdict.items():
