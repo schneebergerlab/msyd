@@ -26,7 +26,7 @@ import msyd.util as util
 import msyd.cigar as cigar
 import msyd.intersection as intersection
 import msyd.priv as priv
-import msyd.io as io
+#import msyd.io
 from msyd.multisyn import Multisyn, Private, MultisynContainer
 from msyd.coords import Range
 
@@ -412,7 +412,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     Function that extracts alignments of sequence that has not been called as merasyntenic yet from a set of alignments, in preparation for the synteny identification part of realignment.
     This Fn assumes the input alignments are all on the same chromosome in the same direction and will report alignments corresponding to any position on the reference – these conditions are ensured by calling get_at_pos on alnsdf first. 
     :args:
-    :alnsdf: Dataframe of alignments (eg produced by io.read_alnsfile).
+    :alnsdf: Dataframe of alignments (eg produced by msyd.io.read_alnsfile).
     :reftree: An Intervaltree with a start coordinate for each region that has not been identified as merasyntenic yet in the chosen reference. Produced for all samples at once by construct_mts.
     :qrytree: An Intervaltree with a start coordinate for each region that has not been identified as merasyntenic yet in the query sequence. Produced for all samples at once by construct_mts.
     :returns: A Dataframe in the same format. If there are multiple non-adjacent non-merasyn segments in the tree, it may have more alignments than in the input, by splitting larger alns per region.

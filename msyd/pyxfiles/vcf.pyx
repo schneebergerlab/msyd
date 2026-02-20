@@ -12,7 +12,7 @@ import pysam
 
 #from msyd.vars import SNV
 import msyd.util as util
-import msyd.io as io
+import msyd.io
 
 logger = util.CustomFormatter.getlogger(__name__)
 
@@ -59,7 +59,7 @@ cpdef void extract_syntenic_from_vcf(syns, inpath:Union[str, os.PathLike], outpa
     # read reference if it hasn't been read already
     if ref and type(ref) != dict:
         logger.info("Reading in Reference Fasta")
-        ref = io.readfasta(ref)
+        ref = msyd.io.readfasta(ref)
     elif not ref:
         logger.warning("No Reference specified, not saving Ref Sequence in VCF!")
 

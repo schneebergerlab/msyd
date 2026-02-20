@@ -11,7 +11,7 @@ import multiprocessing
 
 #from cython.parallel import prange
 
-import msyd.io as io
+import msyd.io
 import msyd.util as util
 from msyd.orgs import OrgContainer
 import msyd.syri_handler as syri_handler
@@ -255,9 +255,9 @@ cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, so
         syndict = {chrom: [syndf.sort_values(syndf.columns[0]) for syndf in syndfs]for chrom, syndfs in syndict}
 
     #alnfilelookup = {
-    #        'sam': io.readSAMBAM,
-    #        'bam': io.readSAMBAM,
-    #        'paf': io.readPAF
+    #        'sam': msyd.io.readSAMBAM,
+    #        'bam': msyd.io.readSAMBAM,
+    #        'paf': msyd.io.readPAF
     #        }
 
     ## non-cigar path
@@ -270,13 +270,13 @@ cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, so
                 for chrom, syns in syndict}, orgs)
 
     #with multiprocessing.Pool(cores) as pool:
-    #    alns = pool.map(lambda aln: io.alnfilelookup[aln.split('.')[-1]](aln), alns)
+    #    alns = pool.map(lambda aln: msyd.io.alnfilelookup[aln.split('.')[-1]](aln), alns)
     #    alns = pool.map(lambda aln: aln[(aln.adir==1) & (aln.bdir==1)], alns) # pre-filter to non-inverted alns
-    alns = [io.alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
+    alns = [msyd.io.alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
     alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # pre-filter to non-inverted alns
         
     # this step is single-threaded; TODO parallelize?
-    alndict = io.collate_by_chrom(alns, chromid=ref+'chr')
+    alndict = msyd.io.collate_by_chrom(alns, chromid=ref+'chr')
 
     for chrom in syndict: #TODO maybe parallelize over chrs instead
         #syndict[chrom] = pool.map(lambda syndf, alndf: match_synal(syndf, alndf, ref=ref), zip(syndict[chrom], alndict[chrom]))

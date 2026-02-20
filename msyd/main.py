@@ -2,7 +2,7 @@
 
 import msyd # to import version
 import msyd.util as util
-import msyd.io as io
+import msyd.io
 import msyd.vcf as vcf
 import msyd.imputation as imputation
 import msyd.multisyn as multisyn
@@ -351,7 +351,7 @@ def main():
 # END
 
 def call(args):
-    import msyd.io as io
+    import msyd.io
     import msyd.imputation as imputation
     import msyd.realignment as realignment
     import msyd.intersection as intersection
@@ -417,7 +417,7 @@ def call(args):
                                       mp_preset=args.mp_preset,
                                       ncores=args.cores,
                                       # read in full pairwise alns if supplied
-                                      pairwise=io.read_alnsfile(args.pairwise) \
+                                      pairwise=msyd.io.read_alnsfile(args.pairwise) \
                                               if args.pairwise else None)
 
         logger.info(f"Dropped {util.siprefix(intersection.get_dropped_bases())} across all organisms during realignment.")
@@ -442,14 +442,14 @@ def call(args):
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
-    io.save_to_psf(chromsyn, args.psf, save_cigars=args.cigars)
+    msyd.io.save_to_psf(chromsyn, args.psf, save_cigars=args.cigars)
 
     if args.gfa:
         if not seqh:
             logger.error("No sequence FASTA found in graph step! Making graph with Dummy sequence.")
         logger.info(f"Exporting graph representation as GFA1 at {args.gfa.name}")
         graph = syngraph.make_graphs_chromcont(chromsyn, seqh=seqh)
-        io.save_to_gfa1(graph, args.gfa)
+        msyd.io.save_to_gfa1(graph, args.gfa)
 
 
     # if specified, merge the VCFs
@@ -460,7 +460,7 @@ def call(args):
         df = None #TODO
         if args.ref:
             logger.info("Reading in Reference")
-            ref = io.readfasta(args.ref.name)
+            ref = msyd.io.readfasta(args.ref.name)
         else:
             logger.warning("No reference specified. Specifying a reference is highly recommended to obtain standards-conforming VCFs!")
 
@@ -492,7 +492,7 @@ def call(args):
     logger.info(f"Finished running msyd call, output saved to {args.psf.name}.")
 
 def merge(args):
-    import msyd.io as io
+    import msyd.io
 
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("merge")
@@ -503,7 +503,7 @@ def merge(args):
     logger.info(f"Finished running msyd merge, output saved to {args.outfile.name}.")
 
 def graph(args):
-    import msyd.io as io
+    import msyd.io
     import msyd.util as util
     import msyd.syngraph as syngraph
     import msyd.coords as coords
@@ -513,7 +513,7 @@ def graph(args):
         logger.warning("No output specified! Output will not be saved.")
 
     logger.info(f"Reading multisynteny from {args.infile.name}")
-    syndict = io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile)
     print(syndict)
 
     seqh = None
@@ -531,30 +531,30 @@ def graph(args):
 
     if args.gfa:
         logger.info(f"exporting to GFA1 output at {args.gfa.name}")
-        io.save_to_gfa1(graphcont, args.gfa, rgfa_tags=args.rgfa_tags, vg_header=args.vg_header, tag_orgs_s=args.tag_orgs_s, tag_orgs_l=args.tag_orgs_l, walks_orgs=args.walks_orgs)
+        msyd.io.save_to_gfa1(graphcont, args.gfa, rgfa_tags=args.rgfa_tags, vg_header=args.vg_header, tag_orgs_s=args.tag_orgs_s, tag_orgs_l=args.tag_orgs_l, walks_orgs=args.walks_orgs)
 
     if args.outfile:
-        io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
+        msyd.io.save_to_psf(syndict, args.psf, save_cigars=args.cigars)
 
 # call the plotsr ordering functionality on a set of organisms described in the .tsv
 def order(args):
-    import msyd.io as io
+    import msyd.io
     import msyd.ordering as ordering
 
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("order")
 
-    syndict = io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile)
     print(ordering.order_hierarchical(pd.concat(syndict.values()),
                                       orgs=None, score_fn=ordering.syn_score))
     logger.info("Finished running msyd order")
 
 def view(args):
-    import msyd.io as io
+    import msyd.io
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("view")
     logger.info(f"reading multisynteny from {args.infile.name}")
-    syndict = io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile)
     if not args.filetype: # determine filetype if not present
         args.filetype = args.outfile.name.split(".")[-1]
         logger.info(f"No output filetype specified - guessing from OUTFILE extension")
@@ -588,19 +588,19 @@ def view(args):
     # save
     logger.info(f"Writing to {args.outfile.name} in {args.filetype} format")
     if args.filetype == 'psf':
-        io.save_to_psf(syndict, args.outfile)
+        msyd.io.save_to_psf(syndict, args.outfile)
     elif args.filetype == 'vcf':
-        io.save_to_vcf(syndict, args.outfile, args.ref.name if args.ref else None)
+        msyd.io.save_to_vcf(syndict, args.outfile, args.ref.name if args.ref else None)
     elif args.filetype == 'psf-nocg' or args.filetype == 'psf-nocigar':
-        io.save_to_psf(syndict, args.outfile, save_cigars=False)
+        msyd.io.save_to_psf(syndict, args.outfile, save_cigars=False)
     else:
         logger.warning(f"Couldn't determine filetype for {args.filetype}, defaulting to PSF")
-        io.save_to_psf(syndict, args.outfile)
+        msyd.io.save_to_psf(syndict, args.outfile)
     logger.info(f"Finished running msyd view, output saved to {args.outfile.name}.")
 
 
 def realign(args):
-    import msyd.io as io
+    import msyd.io
     import msyd.realignment as realignment
     import msyd.util as util
     from msyd.seq import SeqHandler
@@ -610,7 +610,7 @@ def realign(args):
     logger.info(f"Realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
 
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
-    syndict = io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile)
 
     seqh = None
     if hasattr(args, "fastas") and args.fastas:
@@ -629,21 +629,21 @@ def realign(args):
                                  MIN_SYN_ID=args.min_syn_id,
                                  MAX_REALIGN=args.max_realign,
                                  # read in full pairwise alns if supplied
-                                 pairwise= io.read_alnsfile(args.pairwise) \
+                                 pairwise= msyd.io.read_alnsfile(args.pairwise) \
                                          if args.pairwise else None)
     print(util.get_stats(resyns))
 
     logger.info(f"Saving to {args.outfile.name} in PSF format.")
-    io.save_to_psf(resyns, args.outfile, save_cigars=args.cigars)
+    msyd.io.save_to_psf(resyns, args.outfile, save_cigars=args.cigars)
     logger.info(f"Finished running msyd realign, output saved to {args.outfile.name}.")
 
 def stats(args):
-    import msyd.io as io
+    import msyd.io
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("stats")
 
     logger.info(f"Reading from {args.infile.name}.")
-    syndict = io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile)
     #print(util.get_stats(resyns), file=args.outfile)
     if args.agg:
         for chrom, syns in syndict.items():
@@ -672,8 +672,8 @@ def fact(args):
 def plot(args):
     """Deprecated/internal, DO NOT USE
     """
-    import msyd.io as io
-    df = io.read_psf(args.infile)
+    import msyd.io
+    df = msyd.io.read_psf(args.infile)
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 
     def pstolendf(x):
