@@ -147,8 +147,8 @@ cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
         listdict = defaultdict(list) # used to construct the output mappingtrees
     # these need to be reconstructed to take care of handling the separator intervals
 
-    print(merasyns)
-    print(type(merasyns))
+    #print(merasyns)
+    #print(type(merasyns))
     for merasyn in merasyns:
         # only subtract on the ref if explicitly specified;
         # would get deleted anyway unless annotating private regions
@@ -254,7 +254,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
         # shortcut to simply append alignment if there is only one offset
         # as this happens quite often, this should save a lot of time
-        print(reftree, rend, qrytree, qend)
+        #print(reftree, rend, qrytree, qend)
         if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
             roff = rstartov.data
             qoff = qstartov.data
@@ -498,7 +498,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
 
     :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
     """
-    print(chrom, msyncont, seqh)
+    #print(chrom, msyncont, seqh)
     # init stuff
     cdef:
         list ret = list()#deque()#pd.DataFrame()
@@ -567,10 +567,10 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         # align & call synteny to chosen ref
         alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
         synsdict = syri_get_syntenic(ref, alns)
-        print(synsdict)
+        #print(synsdict)
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
-        print(msyns)
+        #print(msyns)
 
         ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
         logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
