@@ -9,7 +9,7 @@ import traceback
 import multiprocessing
 import itertools
 
-from typing import override, List
+from typing import List
 
 from libcpp.vector cimport vector
 
@@ -431,29 +431,29 @@ class Private(Multisyn):
     def __init__(self, rng:Range):
         self.ref = rng
 
-    @override
+    #@override
     def is_private(self):
         return True
 
-    @override
+    #@override
     def get_degree(self):
         return 1
 
-    @override
+    #@override
     def get_organisms(self):
         return {self.ref.org}
 
-    @override
+    #@override
     def __repr__(self):
         return f"Private({self.ref})"
 
-    @override
+    #@override
     def __eq__(l, r):
         if not isinstance(r, Private):
             return False
         return l.ref == r.ref
 
-    @override
+    #@override
     def check(self, allow_private=False):
         if not allow_private:
             return False
