@@ -234,6 +234,9 @@ def main():
         Useful for realigning only a specific region by prefiltering the PSF.
         """)
     realign_parser.set_defaults(func=realign)
+    realign_parser.add_argument("-c", dest="cores",
+                             type=int, default=1,
+                             help="Number of cores to use for parallel computation. This step can use up to four cores per chromosome effectively, more cores may lead to inefficiency. Defaults to 1.")
     realign_parser.add_argument("-i", dest='infile',
                                 required=True, type=argparse.FileType('r'),
                                 help="PSF file to read multisynteny information from.")
@@ -337,7 +340,7 @@ def main():
                               help="How to format the PanCo. Options are dot (default, '<CORE>.<MERA>'), chrdot ('<CHR>:<CORE>.<MERA>') and numeric/no ('<CHR>0<CORE>0<MERA>'. The latter is mostly to provide compatibility with tools expecting numeric identifiers.")
     graph_parser.add_argument("-c", dest="cores",
                              type=int, default=1,
-                             help="Number of cores to use for parallel computation. Recommended to set it to at most 4 times the number of chromoosomes of the organism, larger values may lead to low per-core peformance. Defaults to 1.")
+                             help="Number of cores to use for parallel computation. This step can use up to one core per chromosome effectively, more cores may lead to inefficiency. Defaults to 1.")
 
     args = parser.parse_args()
     if args.func:
@@ -628,6 +631,7 @@ def realign(args):
                                  MIN_REALIGN_LEN=args.min_realign,
                                  MIN_SYN_ID=args.min_syn_id,
                                  MAX_REALIGN=args.max_realign,
+                                 ncores=args.cores,
                                  # read in full pairwise alns if supplied
                                  pairwise= msyd.io.read_alnsfile(args.pairwise) \
                                          if args.pairwise else None)
