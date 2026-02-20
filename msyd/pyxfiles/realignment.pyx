@@ -37,8 +37,24 @@ cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to 
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
+
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.DEBUG)
+
+### Log total added bases
+cdef volatile int ADDED_LEN = -1 # global counter, for logging; this isn't perfectly thread safe but that should be fine as we're just logging
+# setting to -1 disables logging
+cpdef int get_added_len():
+    global ADDED_LEN
+    return ADDED_LEN
+
+cpdef start_log_added_len():
+    global ADDED_LEN
+    ADDED_LEN = 0
+
+cpdef stop_log_added_len():
+    global ADDED_LEN
+    ADDED_LEN = -1
 
 
 ### Example
@@ -472,8 +488,15 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
         global _NULL_CNT
         _NULL_CNT = int(NULL_CNT)
 
+    start_log_added_len()
+
     _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign)
-    return chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
+    ret = chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
+
+    logger.info(f"Realigment done. Added {util.siprefix(get_added_len())} in total.")
+    stop_log_added_len()
+
+    return ret
 
 #NOTE cpdef'd to enable using functools.partial.
 #NOTE Consider wrapping with cython to enable re-cdefing this?
@@ -539,6 +562,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
 # END
 
 cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=1, pairwise=None, annotate_private=False):
+    global ADDED_LEN
     ## construct the mapping, and prepare sequences for realignment
     cdef:
         dict mtrees = construct_mts(merasyns, gap_intervals)
@@ -599,6 +623,10 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
             break
 
     logger.info(f"Realigned {gap_intervals}. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
+    # log globally how much sequence was found during realignment
+    if ADDED_LEN >= 0:
+        ADDED_LEN += sum(added_lens)
+
     if annotate_private:
         logger.info(f"Found {[util.siprefix(a) for a in added_privs]} of private sequence.")
 
