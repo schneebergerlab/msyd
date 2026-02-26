@@ -210,7 +210,7 @@ def tabularize_lens(msyncont):
         logger.error(f"tabularize_lens_byorg called with empty dataframe: {msyncont}")
         raise ValueError("msyncont is empty!")
     maxdegree = max(map(lambda x: x.get_degree(), iter(msyncont)))
-    return [sum(len(x[1][0].ref) for x in iter(msyncont) if x.get_degree() == i+1) for i in range(maxdegree)]
+    return [sum(len(x.ref) for x in iter(msyncont) if x.get_degree() == i+1) for i in range(maxdegree)]
     #return [sum(map(lambda x: len(x.ref), filter(lambda x: x.get_degree() == i + 1, map(lambda x: x[1][0], df.iterrows())))) for i in range(maxdegree)]
 
 def tabularize_lens_byorg(chromcont):
