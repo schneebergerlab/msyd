@@ -258,6 +258,7 @@ def get_map_stats(chromcont, collapse_chrs=True):
         return get_stats(concat_msynconts(chromcont.get_allchrs()))
 
 def concat_msynconts(msynconts):
+    from msyd.multisyn import MultisynContainer
     tot_len = sum(len(x) for x in msynconts)
     out = MultisynContainer()
     out.reserve(tot_len)
