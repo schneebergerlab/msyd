@@ -246,16 +246,24 @@ def lensdict_to_table(lensdict, sep='\t', si=True, header=True):
         )
     return header + '\n' + table
 
-def get_map_stats(dfmap, collapse_chrs=True):
+def get_map_stats(chromcont, collapse_chrs=True):
     """
-    Utility function to print stats for a map of chrom IDs to DFs.
+    Utility function to print stats for a Chromcont object, assuming it contains MultisynConts.
     If `collapse_chrs` is set to `False`, will output the stats separately per chromosome, by default merged stats will be printed.
     """
 
     if not collapse_chrs:
-        return '\n'.join([f"{chrom}:\n{get_stats(df)}" for chrom, df in dfmap.items()])
+        return '\n'.join([f"{chrom}:\n{get_stats(df)}" for chrom, df in chromcont._backing.items()])
     else:
-        return get_stats(pd.concat(dfmap.values()))
+        return get_stats(concat_msynconts(chromcont.get_allchrs()))
+
+def concat_msynconts(msynconts):
+    tot_len = sum(len(x) for x in msynconts)
+    out = MultisynContainer()
+    out.reserve(tot_len)
+    for msyncont in msynconts:
+        out.extend(msyncont.iter())
+    return out
 
 def get_stats(chromcont):
     """
