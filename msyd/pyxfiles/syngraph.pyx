@@ -7,8 +7,6 @@ import functools
 from collections import defaultdict, deque # or use cpp vector/custom?
 from multiprocessing import Pool
 
-#import pandas as pd
-
 from msyd.multisyn import ChromContainer, MultisynContainer, Multisyn, Private
 from msyd.coords import Range, Panco
 from msyd.seq import SeqHandler

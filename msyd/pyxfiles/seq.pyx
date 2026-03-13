@@ -2,7 +2,6 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-import pandas as pd
 import pysam
 
 import io

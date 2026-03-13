@@ -11,9 +11,6 @@ import logging
 from collections import deque, defaultdict
 from multiprocessing import Pool
 
-import pandas as pd
-import numpy as np
-
 import msyd.intersection as intersection
 import msyd.util as util
 from msyd.multisyn import Multisyn, Private

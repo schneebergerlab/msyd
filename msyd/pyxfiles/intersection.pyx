@@ -3,8 +3,6 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-import pandas as pd
-#import numpy as np
 import functools
 from collections import deque
 import multiprocessing
@@ -79,7 +77,7 @@ cdef filter_multisyn(multisyn, drop_small=True, allow_private=False):
     
 cpdef find_overlaps(lmsyncont, rmsyncont, only_core=False, trim=False, allow_private=False):
     """
-    This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new pandas dataframe.
+    This function takes two dataframes containing syntenic regions and outputs the overlap found between each of them as a new MultiSynContainer.
     It runs in O(len(left) + len(right)).
     """
     # for finding fully private regions, only_core has to be passed
@@ -204,8 +202,7 @@ cpdef find_overlaps(lmsyncont, rmsyncont, only_core=False, trim=False, allow_pri
 
     if len(ret) == 0:
         logger.error("find_multisynteny found no overlapping synteny!")
-    return ret # shouldn't need sorting
-#END
+    return ret
 
 cpdef object split_indels(msyncont: MultisynContainer):
     cdef object ret = MultisynContainer(orgs = msyncont.orgs, cap=len(msyncont))
@@ -254,24 +251,6 @@ cpdef prepare_input(qrynames, syris, alns, refname="ref", cores=1, base=None, so
     if sort:
         syndict = {chrom: [syndf.sort_values(syndf.columns[0]) for syndf in syndfs]for chrom, syndfs in syndict}
 
-    #alnfilelookup = {
-    #        'sam': msyd.io.readSAMBAM,
-    #        'bam': msyd.io.readSAMBAM,
-    #        'paf': msyd.io.readPAF
-    #        }
-
-    ## non-cigar path
-    ## this code path shouldn't really be used anymore.
-    if not (SYNAL and alns):
-        logger.warning("No alignments found or `--syn` passed! Assuming all synteny to be exactly identical. This is fast but error-prone and inaccurate.")
-        return ChromContainer({chrom:[pd.DataFrame([Multisyn(ref=row[1][0],
-                        ranges_dict={row[1][1].org:row[1][1]}, cigars_dict = None)
-                        for row in s.iterrows()]) for s in syns]
-                for chrom, syns in syndict}, orgs)
-
-    #with multiprocessing.Pool(cores) as pool:
-    #    alns = pool.map(lambda aln: msyd.io.alnfilelookup[aln.split('.')[-1]](aln), alns)
-    #    alns = pool.map(lambda aln: aln[(aln.adir==1) & (aln.bdir==1)], alns) # pre-filter to non-inverted alns
     alns = [msyd.io.alnfilelookup[aln.split('.')[-1]](aln) for aln in alns]
     alns = [aln[(aln.adir==1) & (aln.bdir==1)] for aln in alns] # pre-filter to non-inverted alns
         
