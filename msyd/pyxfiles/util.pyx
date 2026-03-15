@@ -246,25 +246,17 @@ def lensdict_to_table(lensdict, sep='\t', si=True, header=True):
         )
     return header + '\n' + table
 
-def get_map_stats(chromcont, collapse_chrs=True):
+def get_chromcont_stats(chromcont, collapse_chrs=True):
     """
     Utility function to print stats for a Chromcont object, assuming it contains MultisynConts.
     If `collapse_chrs` is set to `False`, will output the stats separately per chromosome, by default merged stats will be printed.
     """
+    import msyd.multisyn as multisyn
 
     if not collapse_chrs:
         return '\n'.join([f"{chrom}:\n{get_stats(df)}" for chrom, df in chromcont._backing.items()])
     else:
-        return get_stats(concat_msynconts(chromcont.get_allchrs()))
-
-def concat_msynconts(msynconts):
-    from msyd.multisyn import MultisynContainer
-    tot_len = sum(len(x) for x in msynconts)
-    out = MultisynContainer()
-    out.reserve(tot_len)
-    for msyncont in msynconts:
-        out.extend(msyncont.iter())
-    return out
+        return get_stats(multisyn.MultisynContainer.concat_msynconts(chromcont.get_allchrs()))
 
 def get_stats(chromcont):
     """
@@ -278,7 +270,7 @@ def get_stats(chromcont):
     lens = tabularize_lens(chromcont)
     nos = tabularize_nos(chromcont)
     avglens = list(map(lambda x: x[0]/x[1] if x[1] > 0 else 0, zip(lens, nos)))
-    ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Length\tNo of Regions\tAvg. Length\n" + "\n".join([f"{i + 1}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
+    ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Len\tNo.\tAvg. Len\n" + "\n".join([f"{i + 1}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
     return ret
 
 def siprefix(x):

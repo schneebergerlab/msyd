@@ -684,10 +684,26 @@ cdef class MultisynContainer:
         #self._backing.push_back(ms)
         self._backing.append(ms)
 
+    cpdef update_orgs(self):
+        for msyn in self._backing:
+            for org in msyn.get_orgs():
+                self.orgs.add_org(org)
+
     cpdef extend(self, mslist):
         self._backing.extend(mslist)
         #for ms in mslist:
         #   self.append(ms)
+        self.update_orgs()
+
+    @classmethod
+    def concat_msynconts(cls, msynconts):
+        tot_len = sum(len(x) for x in msynconts)
+        out = MultisynContainer(init=None, orgs=OrgContainer())
+        out.reserve(tot_len)
+        for msyncont in msynconts:
+            out.extend(iter(msyncont))
+        return out
+
 
     cpdef reserve(self, cap:int):
         """

@@ -439,7 +439,7 @@ def call(args):
             logger.error("Error printing sample to STDOUT!")
     if args.get_stats:
         try:
-            print(util.get_stats())
+            print(util.get_chromcont_stats(chromsyn))
         except:
             logger.error("Error printing stats to STDOUT!")
 
