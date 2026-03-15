@@ -152,15 +152,14 @@ cpdef match_synal(syndf, alndf, ref='a', refname="ref"):
         counter = 0
 
     while True:
-        print(synr)
-        print(alnr)
         counter += 1
         try:
-            org = synr[1].org
-            if synr[0].chrom == alnr[refchr] and synr[0].start == alnr[refstart] and synr[0].end == alnr[refend]:
+            refrng = synr.iloc[0]
+            if refrng.chrom == alnr[refchr] and refrng.start == alnr[refstart] and refrng.end == alnr[refend]:
                 cg = cigar.cigar_from_string(alnr['cg'])
-                rng = synr[1]
-                multisyn = Multisyn(ref=synr[0], ranges_dict={org:rng}, cigars_dict={org:cg})
+                qryrng = synr.iloc[1]
+                org = qryrng.org
+                multisyn = Multisyn(ref=refrng, ranges_dict={org:qryrng}, cigars_dict={org:cg})
                 #rng.end = rng.start + cg.get_len(ref=False) -1
 
                 ## Correct mismatches between CIGAR and coordinate len
@@ -168,13 +167,13 @@ cpdef match_synal(syndf, alndf, ref='a', refname="ref"):
                 # check on ref
                 if not len(multisyn.ref) == cg.get_len():
                     logger.warning(f"CIGAR len ({cg.get_len()}) not matching coordinate len ({len(multisyn.ref)}) on ref! Adjusting end to match CIGAR len (this might be because of clipping).")
-                    multisyn.ref.end = multisyn.ref.start + cg.get_len() - 1
+                    multisyn.ref.end = multisyn.ref.start + cg.get_len() -1
 
                 # check on org
-                if not len(rng) == cg.get_len(ref=False):
+                if not len(qryrng) == cg.get_len(ref=False):
                     # forcibly ajust end position to match cigar length, as that doesn't always seem to be the case in syri/pysam output for some reason
-                    logger.warning(f"CIGAR len ({cg.get_len(ref=False)}) not matching coordinate len ({len(rng)}) on {org}! Adjusting end to match CIGAR len (this might be because of clipping).")
-                    rng.end = rng.start + cg.get_len(ref=False) -1
+                    logger.warning(f"CIGAR len ({cg.get_len(ref=False)}) not matching coordinate len ({len(qryrng)}) on {org}! Adjusting end to match CIGAR len (this might be because of clipping).")
+                    qryrng.end = qryrng.start + cg.get_len(ref=False) -1
                 
                 ret.append(multisyn)
                 synr = next(syniter)[1]
