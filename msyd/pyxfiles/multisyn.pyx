@@ -498,6 +498,9 @@ cdef class ChromContainer:
         else:
             return self._backing[key]
 
+    def get_allchrs(self):
+        return self._backing.values()
+
     def apply_chroms(self, fn) -> ChromContainer:
         """
         fn: Fn(str, T) -> T, with str being the chromosome name and T being the type stored per Chromosome, typically MultisynContainer.
