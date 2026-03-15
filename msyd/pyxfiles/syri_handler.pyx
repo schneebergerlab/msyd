@@ -39,11 +39,8 @@ cpdef readsyriout(f):
         df = pd.DataFrame(list(syri_regs))[[0, 1, 2, 5, 6, 7, 10]]
     except KeyError:
         raise ImportError("Incomplete input file {}, syri.out file should have 11 columns.".format(f))
-    df[[0, 5, 10]] = df[[0, 5, 10]].astype(str)
-    try:
-        df[[1, 2, 6, 7]] = df[[1, 2, 6, 7]].astype(int)
-    except ValueError:
-        raise ValueError("Non-numerical values used as genome coordinates in {}. Exiting".format(f))
+    df = df.astype({0:'str', 5:'str', 10:'str',
+                    1:'int64', 2:'int64', 6:'int64', 7:'int64', })
     # chr ID map
     chrid = []
     chrid_dict = OrderedDict()
@@ -155,6 +152,8 @@ cpdef match_synal(syndf, alndf, ref='a', refname="ref"):
         counter = 0
 
     while True:
+        print(synr)
+        print(alnr)
         counter += 1
         try:
             org = synr[1].org
