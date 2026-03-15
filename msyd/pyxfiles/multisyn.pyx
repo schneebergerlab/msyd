@@ -497,6 +497,13 @@ cdef class ChromContainer:
             raise ValueError(f"Tried retrieving invalid Chromosome {key}")
         else:
             return self._backing[key]
+    
+    def get_sample(self, n=5):
+        ret = ""
+        for chrom, msyns in self._backing.items():
+            ret += chrom + ":\n"
+            ret += msyns.to_string(n=n, sep="\n\t")
+        return ret
 
     def get_allchrs(self):
         return self._backing.values()
@@ -567,9 +574,9 @@ cdef class MultisynContainer:
     def __repr__(self):
         return self.to_string(10)
 
-    def to_string(self, n: int):
+    def to_string(self, n: int, sep=''):
         #return repr(self._backing[:n])
-        return "".join([repr(msyn) for msyn in iter(self[:n])])
+        return sep.join([repr(msyn) for msyn in iter(self[:n])])
 
     @classmethod
     def from_iterable(cls, iterable):

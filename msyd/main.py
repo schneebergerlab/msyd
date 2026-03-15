@@ -434,14 +434,14 @@ def call(args):
 
     if args.print:
         try:
-            print(chromsyn)#df.head(args.print))
+            print(chromsyn.get_sample())#df.head(args.print))
         except:
             logger.error("Error printing sample to STDOUT!")
     if args.get_stats:
         try:
             print(util.get_stats())
         except:
-            logger.error("Error printing sample to STDOUT!")
+            logger.error("Error printing stats to STDOUT!")
 
     # save output
     logger.info(f"Saving msyd calls to PSF at {args.psf.name}")
