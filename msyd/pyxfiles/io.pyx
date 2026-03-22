@@ -493,14 +493,22 @@ cpdef void save_to_vcf(chromcont: ChromContainer, outf: Union[str, os.PathLike],
         out.write(rec)
     out.close()
 
-cpdef save_to_psf(chromcont, buf, save_cigars=True, force_ref_pos=False, ref="ref"):
+cpdef save_to_psf(chromcont, buf, compress=None, save_cigars=True, force_ref_pos=False, ref="ref"):
     """
     Takes a `ChromContainer` object containing one `MultisynContainer` per chromosome and writes them to buf.
     Preserves the sorting of the DFs, sorts chroms lexicallicaly.
+    If compress is set to None, will automatically try to compress if the filename ends in '.gz'. Compression can be forced/disabled by passing True/False instead.
     Calls to `save_cont_to_psf`.
     """
     if chromcont.is_empty():
         raise ValueError("Empty dfmap provided!")
+    
+    try:
+        if (compress is None and buf.name.endswith(".gz")) or compress:
+            logger.info("Compressing PSF output")
+            buf = gzopen(buf.name, "wt")
+    except:
+        logger.error("Error in compressing PSF! Writing uncompressed output.")
 
     # make sure all orderings are consistent with the current header
     chromcont.orgs.sort()
@@ -640,6 +648,13 @@ cpdef save_to_gfa1(chromcont, buf, rgfa_tags=True, vg_header=True, tag_orgs_s=Tr
     """
     if chromcont.is_empty():
         raise ValueError("Empty dfmap provided!")
+
+    try:
+        if (compress is None and buf.name.endswith(".gz")) or compress:
+            logger.info("Compressing GFA output")
+            buf = gzopen(buf.name, "wt")
+    except:
+        logger.error("Error in compressing GFA! Writing uncompressed output.")
 
     # get list of all orgs to simplify regularization
     # start node contains all orgs
