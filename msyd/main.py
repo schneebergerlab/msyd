@@ -267,6 +267,9 @@ def main():
     realign_parser.add_argument("--minimap-preset", dest="mp_preset",
                                 type=str, default="asm20",
                                 help="minimap2 alignment preset to use. Default 'asm20'.")
+    realign_parser.add_argument("--debug-export",
+                              dest='debug_export', action='store_true', default=False,
+                              help="Debug option to export realigned region to a file in the current directory")
 
 
     stats_parser = subparsers.add_parser("stats",
@@ -634,8 +637,9 @@ def realign(args):
                                  ncores=args.cores,
                                  # read in full pairwise alns if supplied
                                  pairwise= msyd.io.read_alnsfile(args.pairwise) \
-                                         if args.pairwise else None)
-    print(util.get_stats(resyns))
+                                         if args.pairwise else None,
+                                 debug_export=args.debug_export)
+    #print(util.get_stats(resyns))
 
     logger.info(f"Saving to {args.outfile.name} in PSF format.")
     msyd.io.save_to_psf(resyns, args.outfile, save_cigars=args.cigars)

@@ -456,7 +456,7 @@ cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendi
     return ret
 
 
-cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
+cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
     """
     High-level interface to the realignment functionality.
     Takes a dict of DataFrames containing per-chromosome Multisyn annotations.
@@ -490,7 +490,7 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
 
     start_log_added_len()
 
-    _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign)
+    _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign, debug_export=debug_export)
     ret = chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
 
     logger.info(f"Realigment done. Added {util.siprefix(get_added_len())} in total.")
@@ -500,7 +500,7 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
 
 #NOTE cpdef'd to enable using functools.partial.
 #NOTE Consider wrapping with cython to enable re-cdefing this?
-cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False):
+cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
     """
     Workhorse function of the realignment functionality.
     Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
@@ -537,6 +537,36 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
         # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
         if gap_intervals:
             logger.info(f"Realigning gaps {gap_intervals}")
+
+            ## export realignment targets, similar to a single execution of iterate_reprocessing
+            if debug_export:
+                import io
+                import os
+                import msyd.io
+                from msyd.orgs import OrgContainer
+                from msyd.multisyn import ChromContainer
+
+                # compute vals, similar to iterate_reprocessing
+                mtrees = construct_mts(merasyns, gap_intervals)
+                chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
+                seqdict = generate_seqdict(seqh, mtrees, chromdict)
+                ref = max([(len(v), k) for k,v in seqdict.items()])[1]
+
+                # export
+                path = chrom + gap_intervals[ref].to_psf()
+                logger.debug(f"Exporting realignment to {path}")
+                os.makedirs(path, exist_ok=True)
+                for name, seq in seqdict.items():
+                    print(f">{name}\n{seq}", file=open(f"{path}/{name}.fa", 'wt'))
+
+                alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
+                for name, aln in alns.items():
+                    if aln is not None:
+                        aln.to_csv(f"{path}/{name}.aln.tsv", sep='\t')
+                synsdict = syri_get_syntenic(ref, alns)
+                for org, syn in synsdict.items():
+                    msyd.io.save_to_psf(ChromContainer({org:syn}, OrgContainer.from_list(["org"])), open(f"{path}/{name}syri.psf", 'wt'))
+
 
             ## iteratively reprocess with new reference
             realsyns = iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=mp_preset, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
