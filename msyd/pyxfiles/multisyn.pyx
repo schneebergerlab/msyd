@@ -550,7 +550,9 @@ cdef class MultisynContainer:
     This sorting is also used for iterating over the Multisyns during the synteny intersection step.
     """
     cdef:
+        #list _backing # List[Multisyn]
         list _backing # List[Multisyn]
+        #NOTE could consider Multisyn[:] memoryviews, maybe with array module backing?
         public object orgs
     #cdef vector[Multisyn] _backing
 
