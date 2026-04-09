@@ -322,7 +322,7 @@ cdef class Panco:
         """
         chrno = int(self.chrom[-1:])
         #return int(str(chrno) + "0" + str(self.corei) + "0" + str(self.merai))
-        return str(chrno) + "0" + str(self.corei) + "0" + str(self.merai)
+        return str(chrno) + "000" + str(self.corei) + "000" + str(self.merai)
 
     def increment_m(self):
         return Panco(self.chrom, self.corei, self.merai +1)
