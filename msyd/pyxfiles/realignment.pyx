@@ -252,7 +252,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
 
     # traverse alignments
     alns = deque()
-    logger.debug(f"{list(m)}")
+    #logger.debug(f"{list(m)}")
     for h in m:
         rstart: int = h.r_st
         rend: int = h.r_en -1 # use inclusive indices
@@ -558,7 +558,15 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
                     logger.debug(f"Exporting realignment to {path}")
                     os.makedirs(path, exist_ok=True)
                     for name, seq in seqdict.items():
-                        print(f">{name}\n{seq}", file=open(f"{path}/{name}.fa", 'wt'))
+                        print(f">{name}\n{seq}",
+                              file=open(f"{path}/{name}.fa", 'wt'))
+
+                    # export stepwise
+                    for margin in [1000, 10_000, 100_000, 1000_000]:
+                        for name, gap in gap_intervals.items():
+                            print(f">{name}\n{seqh.get_range(gap, margin=margin)}",
+                                file=open(f"{path}/{name}_{margin}.fa", 'wt'))
+                          #Range(name, gap.chrom, gap.start - margin, gap.end + margin)}",
 
                     alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
                     for name, aln in alns.items():
