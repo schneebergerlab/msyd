@@ -253,6 +253,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     # traverse alignments
     alns = deque()
     #logger.debug(f"{list(m)}")
+    list(m)
     for h in m:
         rstart: int = h.r_st
         rend: int = h.r_en -1 # use inclusive indices
