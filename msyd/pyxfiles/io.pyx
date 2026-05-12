@@ -602,7 +602,7 @@ cpdef object read_psf(fin): # -> ChromContainer
 
     for line in fin:
         line = line.strip().split()
-        if line == []: continue
+        if line == [] or line[0] == '#': continue
 
         chrom = line[0]
         reforg = line[4]
