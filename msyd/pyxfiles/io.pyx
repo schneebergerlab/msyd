@@ -592,7 +592,16 @@ cpdef object read_psf(fin): # -> ChromContainer
     Supports the new version of PSF format; for legacy files, use the deprecated version of this function.
     """
     if isinstance(fin, str):
-        fin = open(fin, 'rt')
+        # support compressed input
+        isgzip = False
+        with gzopen(fin, 'rb') as f:
+            try:
+                f.read(1)
+                isgzip = True
+            except BadGzipFile:
+                isgzip = False
+        logger.debug(f"Isgzip: {isgzip}")
+        fin = gzopen(fin, 'rt') if isgzip else open(fin, 'rt')
 
     #CHR  START  END  ANN  REF  CHR  START  END  G1  G2  G3...
     cdef:

@@ -519,7 +519,7 @@ def graph(args):
         logger.warning("No output specified! Output will not be saved.")
 
     logger.info(f"Reading multisynteny from {args.infile.name}")
-    syndict = msyd.io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile.name) # make sure to handle gzip
     print(syndict)
 
     seqh = None
@@ -550,7 +550,7 @@ def order(args):
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("order")
 
-    syndict = msyd.io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile.name)
     print(ordering.order_hierarchical(pd.concat(syndict.values()),
                                       orgs=None, score_fn=ordering.syn_score))
     logger.info("Finished running msyd order")
@@ -560,7 +560,7 @@ def view(args):
     import msyd.util as util
     logger = util.CustomFormatter.getlogger("view")
     logger.info(f"reading multisynteny from {args.infile.name}")
-    syndict = msyd.io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile.name)
     if not args.filetype: # determine filetype if not present
         args.filetype = args.outfile.name.split(".")[-1]
         logger.info(f"No output filetype specified - guessing from OUTFILE extension")
@@ -616,7 +616,7 @@ def realign(args):
     logger.info(f"Realigning from {args.infile.name}, taking genome files from {args.tsvfile.name}")
 
     qrynames, syris, alns, vcfs, fastas = util.parse_input_tsv(args.tsvfile)
-    syndict = msyd.io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile.name)
 
     seqh = None
     if hasattr(args, "fastas") and args.fastas:
@@ -651,7 +651,7 @@ def stats(args):
     logger = util.CustomFormatter.getlogger("stats")
 
     logger.info(f"Reading from {args.infile.name}.")
-    syndict = msyd.io.read_psf(args.infile)
+    syndict = msyd.io.read_psf(args.infile.name)
     #print(util.get_stats(resyns), file=args.outfile)
     if args.agg:
         for chrom, syns in syndict.items():
@@ -681,7 +681,7 @@ def plot(args):
     """Deprecated/internal, DO NOT USE
     """
     import msyd.io
-    df = msyd.io.read_psf(args.infile)
+    df = msyd.io.read_psf(args.infile.name)
     cols = ['ref', 'chr'] + list(util.get_orgs_from_df(df))
 
     def pstolendf(x):
