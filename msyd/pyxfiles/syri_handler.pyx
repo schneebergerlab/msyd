@@ -35,6 +35,12 @@ cpdef readsyriout(f):
                     skipvartype.append(l[10])
                     logger.warning("{} is not a valid annotation for alignments in file {}. Alignments should belong to the following classes {}. Skipping alignment.".format(l[10], f, VARS))
 
+    print(syri_regs)
+    if len(syri_regs) == 0:
+        logger.error("No matching records in syri.out file!")        
+        # better to error
+        raise ValueError("ERROR: No matching records in syri.out file!")        
+        #return pd.DataFrame(), dict()
     try:
         df = pd.DataFrame(list(syri_regs))[[0, 1, 2, 5, 6, 7, 10]]
     except KeyError:
