@@ -34,7 +34,7 @@ from msyd.coords import Range
 cdef int _MIN_REALIGN_LEN = 100 # min length to realign regions
 cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
-#cdef int _MAX_HANGOVER_LEN = 2000 # max len of padding with neighbouring coresyn region to use during alignment
+cdef int _MAX_HANGOVER = 2000 # max len of padding with neighbouring coresyn region to use during alignment
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
@@ -451,13 +451,17 @@ cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendi
     cdef ret = dict()
 
     for org in lendict: # prevcore and nextcore may both be None if at start/end
-       start = prevcore.get_range(org).end +1 if prevcore else 0
-       end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
+        if _MAX_HANGOVER> 0: # add hangovers if instructed
+            start = max(prevcore.get_range(org).end - _MAX_HANGOVER, prevcore.get_range(org).start) if prevcore else 0
+            end = min(nextcore.get_range(org).start + _MAX_HANGOVER, nextcore.get_range(org).end) if nextcore else lendict[org]
+        else:
+            start = prevcore.get_range(org).end +1 if prevcore else 0
+            end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
        #print(prevcore, nextcore)
-       assert end - start >= -1 # -1 is a gap of 0
+        assert end - start >= -1 # -1 is a gap of 0
 
-       if end - start > _MIN_REALIGN_LEN:
-           ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
+        if end - start > _MIN_REALIGN_LEN:
+            ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
 
     return ret
 
@@ -657,6 +661,13 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
         #print(msyns)
+
+        # hangovers were added, remove the left and right coresyn
+        if _MAX_HANGOVER > 0: 
+            assert len(msyns) >= 2
+            assert msyns[0].get_degree() == len(seqdict)
+            assert msyns[-1].get_degree() == len(seqdict)
+            msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
 
         ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
         logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
