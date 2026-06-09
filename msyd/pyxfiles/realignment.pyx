@@ -34,6 +34,7 @@ from msyd.coords import Range
 cdef int _MIN_REALIGN_LEN = 100 # min length to realign regions
 cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
+#cdef int _MAX_HANGOVER_LEN = 2000 # max len of padding with neighbouring coresyn region to use during alignment
 cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
 cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
@@ -257,7 +258,6 @@ cpdef translate_concatalns(matches, qcid, qrytree, rcid, reftree):
     list(matches)
     #NOTE simplify if/when removing spacers
     for h in matches:
-        #TODO subtract hangovers
         rstart: int = h.r_st
         rend: int = h.r_en -1 # use inclusive indices
         qstart: int = h.q_st
@@ -629,19 +629,29 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         ## choose a reference
         # uses the sample containing the most non-merasyntenic sequence
         # if a dict of pairwise alns is passed, will always prefer samples in the dict
+        #NOTE need to change this when moving away from separators
         if pairwise:
             ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
         else:
             ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
         #TODO add hangovers
-        # seqdict = 
+        # instead, implement as additional range at start
+        # filter at the end, remove first/last core msyn at each real step
+        #for org, seq in seqdict.items():
+        #    # get left and right hangover sequence
+        #    # TODO limit by bordering coresyn len
+        #    lhover = seqh.get_range(Range(org, chromdict[org], gap_intervals[org].start - _MAX_HANGOVER_LEN, gap_intervals[org].start -1))
+        #    rhover = seqh.get_range(Range(org, chromdict[org], gap_intervals[org].end + 1, gap_intervals[org].end + _MAX_HANGOVER_LEN))
+        #    seqdict[org] = lhover + seq + rhover
+
+        #    # add to offsets
+        #    llen, rlen = len(lhover), len(rhover)
 
         ## align & call synteny to chosen ref
         # align concatenated sequences
         alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
-        #TODO remove hangovers; or after getting syntenic?
-        #alns = # filter out hangovers ...
+        #TODO keep/readd hangovers here? might help syri too
         synsdict = syri_get_syntenic(ref, alns)
 
         # Find merasyn in the realignment syri calls
