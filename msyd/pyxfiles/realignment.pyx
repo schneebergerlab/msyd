@@ -254,7 +254,9 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     alns = deque()
     #logger.debug(f"{list(m)}")
     list(m)
+    #NOTE simplify if/when removing spacers
     for h in m:
+        #TODO subtract hangovers
         rstart: int = h.r_st
         rend: int = h.r_en -1 # use inclusive indices
         qstart: int = h.q_st
@@ -286,6 +288,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
             alns.append(aln)
             continue
 
+        #NOTE simplify if/when removing spacers
         # multiple offsets in alignment; split for each offset
         for rint in sorted(reftree[rstart:rend]):
             # subset alignment to this reference offset interval
@@ -323,6 +326,7 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     return None if alns.empty else alns
 
 
+#TODO add option for margin
 cpdef generate_seqdict(seqh, mappingtrees, chrdict):
     return {org:('N'*_NULL_CNT).join([
         seqh.get_range(Range(org, chrdict[org], interval.data, interval.data + (interval.end - interval.begin)), margin=0)
@@ -629,10 +633,15 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         else:
             ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
+        #TODO add hangovers
+        # seqdict = 
+
         # align & call synteny to chosen ref
         alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
+        #TODO remove hangovers; or after getting syntenic?
+        #alns = # filter out hangovers ...
         synsdict = syri_get_syntenic(ref, alns)
-        #print(synsdict)
+
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
         #print(msyns)
@@ -795,6 +804,8 @@ cdef syri_get_syntenic(reforg, alns):
 
         # subset to only relevant columns for the realignment
         synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
+
+        # TODO filter out hangovers here?
 
 
         # make into multisyn objects, store in dataframe
