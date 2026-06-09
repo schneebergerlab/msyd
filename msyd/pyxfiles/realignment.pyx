@@ -238,7 +238,7 @@ cdef get_aligner(seq, preset, ns=True):
     aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255)
     return aligner
 
-cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligner=None):
+cpdef aln_concatseqs(seq, refseq, preset, aligner=None):
     """
     Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
     Both sequences should be on the same chromosomes.
@@ -248,14 +248,15 @@ cpdef align_concatseqs(seq, qcid, qrytree, refseq, preset, rcid, reftree, aligne
     if aligner is None:
         aligner = get_aligner(refseq, preset)
 
-    m = aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
+    return aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
 
+cpdef translate_concatalns(matches, qcid, qrytree, rcid, reftree):
     # traverse alignments
     alns = deque()
     #logger.debug(f"{list(m)}")
-    list(m)
+    list(matches)
     #NOTE simplify if/when removing spacers
-    for h in m:
+    for h in matches:
         #TODO subtract hangovers
         rstart: int = h.r_st
         rend: int = h.r_en -1 # use inclusive indices
@@ -636,7 +637,8 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         #TODO add hangovers
         # seqdict = 
 
-        # align & call synteny to chosen ref
+        ## align & call synteny to chosen ref
+        # align concatenated sequences
         alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
         #TODO remove hangovers; or after getting syntenic?
         #alns = # filter out hangovers ...
@@ -726,7 +728,8 @@ cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None
                 continue
             logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
             #logger.debug(f"Seq: {seq}\nRefseq: {refseq}")
-            alns[org] = align_concatseqs(seq, chrom, mtrees[org], refseq, mp_preset, chrom, refmtree, aligner=aligner)
+            alns[org] = translate_concatalns(aln_concatseqs(seq, refseq, mp_preset, aligner=aligner),
+                                             chrom, mtrees[org], chrom, refmtree)
 
     # filter out alignments only containing inversions
     for org in alns:
