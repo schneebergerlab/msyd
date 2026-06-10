@@ -610,9 +610,10 @@ cpdef object read_psf(fin): # -> ChromContainer
         chromdict = dict()#defaultdict(lambda: MultisynContainer(orgs))
 
     for line in fin:
-        line = line.strip().split()
-        # # inidicates a comment, empty lines are ignored
+        line = line.strip()
+        # # indicates a comment, empty lines are ignored
         if line == [] or line[0] == '#': continue
+        line = line.split()
 
         chrom = line[0]
         reforg = line[4]
