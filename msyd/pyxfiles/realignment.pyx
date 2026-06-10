@@ -454,6 +454,7 @@ cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendi
         if _MAX_HANGOVER> 0: # add hangovers if instructed
             start = max(prevcore.get_range(org).end - _MAX_HANGOVER, prevcore.get_range(org).start) if prevcore else 0
             end = min(nextcore.get_range(org).start + _MAX_HANGOVER, nextcore.get_range(org).end) if nextcore else lendict[org]
+            logger.debug(f"Adding Hangovers: {prevcore.get_range(org).end - start if prevcore else 0}, {end - nextcore.get_range(org).start if nextcore else 0}")
         else:
             start = prevcore.get_range(org).end +1 if prevcore else 0
             end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
@@ -639,7 +640,6 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
         else:
             ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
-        #TODO add hangovers
         # instead, implement as additional range at start
         # filter at the end, remove first/last core msyn at each real step
         #for org, seq in seqdict.items():
@@ -654,20 +654,30 @@ cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=
 
         ## align & call synteny to chosen ref
         # align concatenated sequences
+        logger.debug('\n'.join([org + ': ' + seq[:50] + '...' + seq[-50:] for org, seq in seqdict.items()]))
         alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
+        logger.debug(f"{alns}")
         #TODO keep/readd hangovers here? might help syri too
         synsdict = syri_get_syntenic(ref, alns)
+        logger.debug(f"{synsdict}")
 
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
+        logger.debug(f"{synsdict}")
         #print(msyns)
 
         # hangovers were added, remove the left and right coresyn
         if _MAX_HANGOVER > 0: 
-            assert len(msyns) >= 2
-            assert msyns[0].get_degree() == len(seqdict)
-            assert msyns[-1].get_degree() == len(seqdict)
-            msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
+            if msyns and len(msyns) >= 2:
+                msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
+            else:
+                logger.warning("Error in realignment (hangovers added, but unaligned)!")
+                logger.info("This may indicate a highly repetitive region, or incorrect alignment parameters.")
+
+            #assert len(msyns) >= 2
+            #assert msyns[0].get_degree() == len(seqdict)
+            #assert msyns[-1].get_degree() == len(seqdict)
+            #msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
 
         ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
         logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
