@@ -14,7 +14,6 @@ logger = util.CustomFormatter.getlogger(__name__)
 
 ## constants
 
-#TODO try making these Cpp sets
 cdef:
     reffwd = set(['M', 'D', 'N', '=', 'X'])
     qryfwd = set(['M', 'I', 'S', '=', 'X'])
