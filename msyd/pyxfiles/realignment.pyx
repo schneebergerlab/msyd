@@ -75,45 +75,20 @@ cpdef set_aln_params(int gap_open, int gap_extend, object matrix):
 ## 4 bp seq, 5 bp spacer, 8 bp seq
 ## => [0, 3] -> A, [9, 15] -> B
 
-#TODO change to list of privates
-cpdef listdict_to_mts(lists):
+cpdef nonsyns_to_mt(nonsyns):
     """
     Transforms a list of alignments for each organism into a dictionary of intervaltrees mapping an offset in the alignment reference to each position in the sample genome.
     """
-    ret = dict()
-    posdict = defaultdict(int) # stores the current position in each org
-    for org, lst in lists.items():
-        tree = IntervalTree()
-        for offset, length in lst:
-            if length > _MIN_REALIGN_LEN: # filter again for sufficient len
-                tree[posdict[org]:posdict[org] + length +1] = offset # end is non-inclusive
-                posdict[org] += length + _SPACER_LEN # add interval + spacer
+    pos = 0
+    tree = IntervalTree()
+    for rng in lst:
+        if len(rng) > _MIN_REALIGN_LEN: # filter again for sufficient len
+            tree[pos: pos + len(rng)] = rng.start # end is non-inclusive
+            posdict[org] += len(rng) + _SPACER_LEN # add interval + spacer
 
-        #if len(tree) > 0:
-        ret[org] = tree
-            
-    return ret
-#TODO merge
-cpdef mt_to_privates(mt, org, chrom):
-    """
-    Takes a mappingtree, and returns a DataFrame of all intervals left in it as Private objects.
-    This fn is used to extract leftover non-realigning regions to annotate as private.
-    :args:
-    :mt: input mappingtree, typically obtained from subtract_mappingtrees
-    :org: organism mt corresponds to
-    :chrom: chromosome we are working on
-    """
-    cdef list ret = list()
-    for entry in mt:
-        if len(entry) >= _MIN_PRIV_THRESH: #NOTE could add more filtering, not sure
-            ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
+    return tree
 
-    return MultisynContainer.from_iterable(ret)
-
-
-# TODO make MT only for ref sequence after choice
-# doesn't need dict
-cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
+cpdef extract_nonsynsdict(merasyns, gap_intervals):#prevcore, nextcore):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
     Merasyns need to be sorted by position on reference.
@@ -143,26 +118,26 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
             if org in listdict:
                 prev = listdict[org][-1]
                 #print(prev[0] + prev[1], offsetdict[org])
-                if prev[0] + prev[1] == offsetdict[org]: 
+                if prev.end == offsetdict[org]: 
                     # check if offset + len matches the current offset; extend prev interval instead
                     # no +1 because the end is not inclusive
-                    prev[1] += l
-                elif -10 < prev[0] + prev[1]-offsetdict[org] < 10: 
-                    logger.info(f"Close miss in {prev}, {offsetdict[org]}")
+                    prev.end = prev.end + l
+                elif -10 < prev.end - offsetdict[org] < 10: # log to detect off by ones
+                    logger.debug(f"Close miss in {prev}, {offsetdict[org]}")
 
             if l > _MIN_REALIGN_LEN: # otherwise add to the tree if it's large enough
-                listdict[org].append( (offsetdict[org], l-1) )
+                listdict[org].append( Range(org, chrom, offsetdict[org], offsetdict[org] + l - 1) )
 
             # all up to the end of this region has been added
-            offsetdict[org] = rng.end +1
+            offsetdict[org] = rng.end + 1
 
     # see if there's any sequence left to realign after processing the merasyn regions
     for org, offset in offsetdict.items():
         l = gap_intervals[org].end - offset
         if l >= _MIN_REALIGN_LEN:
-            listdict[org].append( (offset, l) )
+            listdict[org].append( Range(org, chrom, offsetdict[org], offsetdict[org] + l ) )
 
-    return listdict_to_mts(listdict)
+    return listdict #listdict_to_mts(listdict)
 # END
 
 
@@ -307,8 +282,9 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
                 #    except:
                 #        logger.warning("Error during debug export!")
 
-            ## iteratively reprocess with new reference
-            realsyns = iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=mp_preset, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
+            ## Find nonsyns, iterate realignment
+            nonsyns_dict = extract_nonsynsdict(merasyns, gap_intervals)
+            realsyns = iterate_reprocessing(nonsyns_dict, seqh, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
 
             # write directly if only storing realigned;
             # otherwise insert into DF respecting sorting
@@ -339,7 +315,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
         list added_privs = list()
         list used_refs = list()
         #dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
-        nonsyns_dict = #TODO, or pass directly as input?
 
     ## Realign iteratively until all synteny is found
     while True:
@@ -350,7 +325,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
         ## choose a reference
         # uses the sample containing the most non-merasyntenic sequence
         # if a dict of pairwise alns is passed, will always prefer samples in the dict
-        #TODO rework with 
         if pairwise:
             ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]) if org in pairwise else (-1)/sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
@@ -358,8 +332,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
 
         ## assemble reference concatseq & mappingtree
-        refseq = #TODO
-        refmt = construct_mt(nonsyns_dict[ref])#TODO
+        ref_concatseq = ('N'*_SPACER_LEN).join([seqh.get_range(rng) for rng in nonsyns_dict[ref]])
+        ref_mt = nonsyns_to_mt(nonsyns_dict[ref])#TODO
 
         ## align orgs
         # align nonsyns to ref concatseq
@@ -368,11 +342,14 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
             #TODO
 
         #TODO update nonsyns_dict here immediately?
-        lalns_dict = {org: aln_nonsyns(refseq, nonsyns_dict[org], alignargs)}
-        logger.debug(f"{list(lalns_dict.items())}")
+        synsdict = dict()
+        for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
+            alns, unalns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns)
 
-        #TODO keep/readd hangovers here? might help syri too
-        synsdict = {org:syri_get_syntenic(ref, alns) for org, alns in lalnsdict.items()}
+            logger.debug(f"{org}, aln: {alns}, unaln: {unalns}")
+            synsdict[org] = syri_get_syntenic(ref, syrify(alns))
+
+        #synsdict = {org:syri_get_syntenic(ref, syrify(alns)) for org, alns in lalnsdict.items()}
         logger.debug(f"{list(synsdict.items)}")
 
         # Find merasyn in the realignment syri calls
@@ -566,11 +543,9 @@ cdef syri_get_syntenic(reforg, alns):
         # subset to only relevant columns for the realignment
         synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
 
-        # TODO filter out hangovers here?
-
-
         # make into multisyn objects, store in dataframe
         buf = list()
+        #NOTE necessary to convert back to cigar?
         for _, syn in synData.iterrows():
             buf.append(Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
 
@@ -964,4 +939,22 @@ cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
 
     return listdict_to_mts(listdict)
 
+
+cpdef listdict_to_mts(lists):
+    """
+    Transforms a list of alignments for each organism into a dictionary of intervaltrees mapping an offset in the alignment reference to each position in the sample genome.
+    """
+    ret = dict()
+    posdict = defaultdict(int) # stores the current position in each org
+    for org, lst in lists.items():
+        tree = IntervalTree()
+        for offset, length in lst:
+            if length > _MIN_REALIGN_LEN: # filter again for sufficient len
+                tree[posdict[org]:posdict[org] + length +1] = offset # end is non-inclusive
+                posdict[org] += length + _SPACER_LEN # add interval + spacer
+
+        #if len(tree) > 0:
+        ret[org] = tree
+            
+    return ret
 
