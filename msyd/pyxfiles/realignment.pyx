@@ -35,7 +35,7 @@ cdef int _MIN_REALIGN_LEN = 100 # min length to realign regions
 cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
 cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
 cdef int _MAX_HANGOVER = 2000 # max len of padding with neighbouring coresyn region to use during alignment
-cdef int _NULL_CNT = 100 # number of separators to use between blocks during alignment
+cdef int _SPACER_LEN = 100 # number of separators to use between blocks during alignment
 cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
 
 
@@ -63,6 +63,7 @@ cpdef stop_log_added_len():
 ## 4 bp seq, 5 bp spacer, 8 bp seq
 ## => [0, 3] -> A, [9, 15] -> B
 
+#TODO change to list of privates
 cpdef listdict_to_mts(lists):
     """
     Transforms a list of alignments for each organism into a dictionary of intervaltrees mapping an offset in the alignment reference to each position in the sample genome.
@@ -74,13 +75,32 @@ cpdef listdict_to_mts(lists):
         for offset, length in lst:
             if length > _MIN_REALIGN_LEN: # filter again for sufficient len
                 tree[posdict[org]:posdict[org] + length +1] = offset # end is non-inclusive
-                posdict[org] += length + _NULL_CNT # add interval + spacer
+                posdict[org] += length + _SPACER_LEN # add interval + spacer
 
         #if len(tree) > 0:
         ret[org] = tree
             
     return ret
+#TODO merge
+cpdef mt_to_privates(mt, org, chrom):
+    """
+    Takes a mappingtree, and returns a DataFrame of all intervals left in it as Private objects.
+    This fn is used to extract leftover non-realigning regions to annotate as private.
+    :args:
+    :mt: input mappingtree, typically obtained from subtract_mappingtrees
+    :org: organism mt corresponds to
+    :chrom: chromosome we are working on
+    """
+    cdef list ret = list()
+    for entry in mt:
+        if len(entry) >= _MIN_PRIV_THRESH: #NOTE could add more filtering, not sure
+            ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
 
+    return MultisynContainer.from_iterable(ret)
+
+
+# TODO make MT only for ref sequence after choice
+# doesn't need dict
 cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
     """
     Makes a dictionary containing an intervaltree with an offset mapping for each org containing enough non-aligned sequence to realign.
@@ -133,210 +153,394 @@ cpdef construct_mts(merasyns, gap_intervals):#prevcore, nextcore):
     return listdict_to_mts(listdict)
 # END
 
-cpdef mt_to_privates(mt, org, chrom):
-    """
-    Takes a mappingtree, and returns a DataFrame of all intervals left in it as Private objects.
-    This fn is used to extract leftover non-realigning regions to annotate as private.
-    :args:
-    :mt: input mappingtree, typically obtained from subtract_mappingtrees
-    :org: organism mt corresponds to
-    :chrom: chromosome we are working on
-    """
-    cdef list ret = list()
-    for entry in mt:
-        if len(entry) >= _MIN_PRIV_THRESH: #NOTE could add more filtering, not sure
-            ret.append(Private(org, chrom, entry.data, entry.data + entry.end - entry.start))
 
-    return MultisynContainer.from_iterable(ret)
+cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendict: dict):
+    """
+    Extracts the length of the gap on each organism.
+    Can handle the start and end case where prev/nextcore are None.
+    Takes the maximal chromosome length info and orgs from lendict, which can be obtained by callingget_len_dict on the sequence handler.
+    """
+    cdef ret = dict()
+
+    for org in lendict: # prevcore and nextcore may both be None if at start/end
+        start = prevcore.get_range(org).end +1 if prevcore else 0
+        end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
+        assert end - start >= -1 # -1 is a gap of 0
+
+        if end - start > _MIN_REALIGN_LEN:
+            ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
+
+    return ret
 
 
-cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
+cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, SPACER_LEN=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
     """
-    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by multisyn objects in `merasyns` subtracted.
-    By default, the reference organism of the merasyn is skipped, as it would be deleted anyway.
-    This can be changed by setting `skip_ref` to `False`.
-    Used to remove merasynteny found during realignment from the mappingtrees, to do further realignment.
-    The initial implementation was just reconstructing the trees at every step, but subtracting is more efficient.
+    High-level interface to the realignment functionality.
+    Takes a dict of DataFrames containing per-chromosome Multisyn annotations.
+    Gaps between core syntenic regions are iteratively realigned to identify non-reference merasynteny.
+
+    :params:
+    :df: DataFrame containing existing Multisyn annotations
+    :qrynames: Names of the non-ref. sequences
+    :fastas: Dictionary mapping the name of a sample to its genome as a pysam FastaFile object
+    :mp_preset: minimap2 alignment preset to use. Default `asm20`.
+    :annotate_private: After a sequence has been used as a reference in realignment and no synteny has been found, we can say that it is structurally private. If this flag is set, it will be annotated as such. Default `True`.
+    :ncores: Number of cores to use during the realignment. Default `1`.
+    :pairwise: Optionally, a dictionary of dictionaries containing pysam AlignmentFile objects for all pairwise alignments. Useful if your sequences have already been all vs all aligned, or you want to use a different aligner than minimap2.
+    :output_only_realign: Flag on whether to also output annotations not obtained through realignment. Default `False`. Mostly intended for debugging.
+
+    :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
     """
-    # core iteration is the same as in construct_mts, except we don't need to store the offsets
+    # export globals if changes to configs are specified
+    if MIN_REALIGN_LEN is not None and MIN_REALIGN_LEN >= 0:
+        global _MIN_REALIGN_LEN
+        _MIN_REALIGN_LEN = int(MIN_REALIGN_LEN)
+    if MIN_SYN_ID is not None and MIN_SYN_ID >= 0:
+        global _MIN_SYN_ID
+        _MIN_SYN_ID = int(MIN_SYN_ID)
+    if MAX_REALIGN is not None and MAX_REALIGN >= 0:
+        global _MAX_REALIGN
+        _MAX_REALIGN = int(MAX_REALIGN)
+    if SPACER_LEN is not None and SPACER_LEN >= 0:
+        global _SPACER_LEN
+        _SPACER_LEN = int(SPACER_LEN)
+
+    start_log_added_len()
+
+    _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign, debug_export=debug_export)
+    ret = chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
+
+    logger.info(f"Realigment done. Added {util.siprefix(get_added_len())} in total.")
+    stop_log_added_len()
+
+    return ret
+
+#NOTE cpdef'd to enable using functools.partial.
+#NOTE Consider wrapping with cython to enable re-cdefing this?
+cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
+    """
+    Workhorse function of the realignment functionality.
+    Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
+    In these gaps, existing merasynteny is masked, and a new reference is chosen.
+    All sequences that have not previously been used as reference are realigned to the new reference, and pairwise synteny is called.
+    On the pairwise synteny to the new reference, the synteny intersection algorithm is run, identifying new merasynteny.
+    This is iterated until either there are no regions without annotated merasynteny annotation left, but at most `MAX_REALIGN` times.
+
+    :params:
+    :df: DataFrame containing existing Multisyn annotations
+    :qrynames: Names of the non-ref. sequences
+    :fastas: Dictionary mapping the name of a sample to its genome as a pysam FastaFile object
+    :mp_preset: minimap2 alignment preset to use. Default `asm20`.
+    :annotate_private: After a sequence has been used as a reference in realignment and no synteny has been found, we can say that it is structurally private. If this flag is set, it will be annotated as such. Default `True`.
+    :ncores: Number of cores to use during the realignment. Default `1`.
+    :pairwise: Optionally, a dictionary of dictionaries containing pysam AlignmentFile objects for all pairwise alignments. Useful if your sequences have already been all vs all aligned, or you want to use a different aligner than minimap2.
+    :output_only_realign: Flag on whether to also output annotations not obtained through realignment. Default `False`. Mostly intended for debugging.
+
+    :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
+    """
+    #print(chrom, msyncont, seqh)
+    # init stuff
     cdef:
-        curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
-        listdict = defaultdict(list) # used to construct the output mappingtrees
-    # these need to be reconstructed to take care of handling the separator intervals
+        list ret = list()#deque()#pd.DataFrame()
+        orgs = msyncont.orgs
+        dict lendict = seqh.get_len_dict(chrom)
 
-    #print(merasyns)
-    #print(type(merasyns))
-    for merasyn in merasyns:
-        # only subtract on the ref if explicitly specified;
-        # would get deleted anyway unless annotating private regions
-        for org, rng in\
-                merasyn.ranges_dict.items() if skip_ref\
-                else [(merasyn.ref.org, merasyn.ref)] + list(merasyn.ranges_dict.items()):
-            if not org in curdict or curdict[org] is None: # skip if there are no more intervals to process for this org
-                continue
-            curint = curdict[org]
-            orglist = listdict[org]
+    # iterate through each gap between coresyn blocks
+    # call the alignment/ functionality and merge   
+    prevcore = None # store a backlink to the previous coresyn
+    for nextcore, merasyns in msyncont.iter_cores_acc():
+        gap_intervals = compute_intervals(chrom, prevcore, nextcore, lendict)
 
-            # skip to first interval overlapping this merasyn
-            # there should be one of these for any alignment
-            while curint.end - curint.begin + curint.data < rng.start:
-                orglist.append( (curint.data, curint.end - curint.begin) )
-                if curint.end + _NULL_CNT + 1 in mappingtrees[org]:
-                    curint = list(mappingtrees[org][curint.end + _NULL_CNT + 1])[0]
-                else: # there is no offset after this
-                    break
-            else: # to skip to next org in big for loop
-                #logger.warning("Skipped out of int iteration loop!")
-                curdict[org] = None
-                continue
+        # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
+        if gap_intervals:
+            logger.info(f"Realigning gaps {gap_intervals}")
 
-            # there shouldn't ever be a merasyn spanning beyond one offset
-            # directly adjacent offsets are compressed, and other alns should be split
-            # emit a warning if this is still the case
-            if rng.end > curint.end - curint.begin + curint.data:
-                logger.debug(f"{rng.end}, {curint.end - curint.begin + curint.data}")
-                logger.warning(f"Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call ({rng.end} vs {curint.end - curint.begin + curint.data}).")
-            
+            ## export realignment targets, similar to a single execution of iterate_reprocessing
+            #if debug_export:
+                #    try:
+                #        import io
+                #        import os
+                #        import msyd.io
+                #        from msyd.orgs import OrgContainer
+                #        from msyd.multisyn import ChromContainer
 
-            # there was no interval overlapping this merasyn anyway, we don't need to subtract anything
-            if curint.data > rng.end:
-                curdict[org] = curint
-                continue
-            
-            ## from here, rng is fully within curint
+                #        # compute vals, similar to iterate_reprocessing
+                #        mtrees = construct_mts(merasyns, gap_intervals)
+                #        chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
+                #        seqdict = generate_seqdict(seqh, mtrees, chromdict)
+                #        ref = max([(len(v), k) for k,v in seqdict.items()])[1]
 
-            # remove overlap from start, add as separate offset if large enough
-            l = rng.start - curint.data
-            if l > _MIN_REALIGN_LEN:
-                orglist.append( (curint.data, l) )
+                #        # export
+                #        path = chrom + gap_intervals[ref].to_psf()
+                #        logger.debug(f"Exporting realignment to {path}")
+                #        os.makedirs(path, exist_ok=True)
+                #        for name, seq in seqdict.items():
+                #            print(f">{name}\n{seq}",
+                #                  file=open(f"{path}/{name}.fa", 'wt'))
 
-            # set curint to what remains after removing this merasyn if large enough
-            l = curint.data + curint.end - curint.begin - rng.end
-            if l > _MIN_REALIGN_LEN:
-                curdict[org] = Interval(curint.end - l, curint.end, rng.end)
-                #orglist.append( (rng.end, l) )
+                #        # export stepwise
+                #        for margin in [1000, 10_000, 100_000, 1000_000]:
+                #            for name, gap in gap_intervals.items():
+                #                print(f">{name}\n{seqh.get_range(gap, margin=margin)}",
+                #                    file=open(f"{path}/{name}_{margin}.fa", 'wt'))
+                #              #Range(name, gap.chrom, gap.start - margin, gap.end + margin)}",
+
+                #        alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
+                #        for name, aln in alns.items():
+                #            if aln is not None:
+                #                aln.to_csv(f"{path}/{name}.aln.tsv", sep='\t')
+                #        synsdict = syri_get_syntenic(ref, alns)
+                #        for org, syn in synsdict.items():
+                #            msyd.io.save_to_psf(ChromContainer({org:syn}, OrgContainer.from_list(["org"])), open(f"{path}/{name}syri.psf", 'wt'))
+                #    except:
+                #        logger.warning("Error during debug export!")
+
+            ## iteratively reprocess with new reference
+            realsyns = iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=mp_preset, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
+
+            # write directly if only storing realigned;
+            # otherwise insert into DF respecting sorting
+            if output_only_realign:
+                ret.extend(sorted(realsyns))
             else:
-                # otherwise skip to next interval
-                if curint.end + _NULL_CNT + 1 in mappingtrees[org]:
-                    curdict[org] = list(mappingtrees[org][curint.end + _NULL_CNT + 1])[0]
-                else:
-                    curdict[org] = None
-                    continue
+                merasyns.extend(realsyns)
 
-    return listdict_to_mts(listdict)
+        # DONE with realignment
 
+        # add multisyns if 
+        if not output_only_realign:
+            if prevcore:
+                ret.append(prevcore)
+            ret.extend(sorted(merasyns))
+        prevcore = nextcore
 
-cdef get_aligner(seq, preset, ns=True):
-    #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
-    # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
-    # https://github.com/lh3/minimap2/issues/155
-    # https://github.com/lh3/minimap2/blob/0cc3cdca27f050fb80a19c90d25ecc6ab0b0907b/python/README.rst?plain=1#L93
-    # values from the manpage, under presets -> asm5
-    #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
-    
-    #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
-    # set --score-N parameter to 10
-    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255)
-    return aligner
+    # Done with all gaps, return as new MultisynContainer
+    return MultisynContainer.from_iterable(ret)
+# END
 
-cpdef aln_concatseqs(seq, refseq, preset, aligner=None):
+cdef iterate_reprocessing(nonsynts_dict, seqh, aln_params=None, ncores=1, pairwise=None, annotate_private=False):
+    global ADDED_LEN
+    ## construct the mapping, and prepare sequences for realignment
+    cdef:
+        list ret = list()
+        list added_lens = list()
+        list added_privs = list()
+        list used_refs = list()
+        #dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
+        nonsynts_dict = #TODO, or pass directly as input?
+
+    ## Realign iteratively until all synteny is found
+    while True:
+        # fetch sequences
+        if not nonsynts_dict: # if all remaining are too small
+            break
+
+        ## choose a reference
+        # uses the sample containing the most non-merasyntenic sequence
+        # if a dict of pairwise alns is passed, will always prefer samples in the dict
+        #TODO rework with 
+        if pairwise:
+            ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
+            ref = max([(sum([len(nonsynt) for nonsynt in nonsynts]) if org in pairwise else (-1)/sum([len(nonsynt) for nonsynt in nonsynts]), org) for org, nonsynts in nonsynts_dict.items()])[1]
+        else:
+            ref = max([(sum([len(nonsynt) for nonsynt in nonsynts]), org) for org, nonsynts in nonsynts_dict.items()])[1]
+
+        ## assemble reference concatseq & mappingtree
+        refseq = #TODO
+        refmt = construct_mt(nonsynts_dict[ref])#TODO
+
+        ## align orgs
+        # align nonsynts to ref concatseq
+        if pairwise:
+            raise NotImplemented("pairwise aln support is not available currently.")
+            #TODO
+
+        #TODO update nonsyns_dict here immediately?
+        lalns_dict = {org: aln_nonsyns(refseq, nonsyns_dict[org], alignargs)}
+        logger.debug(f"{list(lalns_dict.items())}")
+
+        #TODO keep/readd hangovers here? might help syri too
+        synsdict = {org:syri_get_syntenic(ref, alns) for org, alns in lalnsdict.items()}
+        logger.debug(f"{list(synsdict.items)}")
+
+        # Find merasyn in the realignment syri calls
+        msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
+        logger.debug(f"{msyns}")
+        #print(msyns)
+
+        # hangovers were added, remove the left and right coresyn
+        #if _MAX_HANGOVER > 0: 
+        #    if msyns and len(msyns) >= 2:
+        #        msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
+        #    else:
+        #        logger.warning("Error in realignment (hangovers added, but unaligned)!")
+        #        logger.info("This may indicate a highly repetitive region, or incorrect alignment parameters.")
+
+        #    #assert len(msyns) >= 2
+        #    #assert msyns[0].get_degree() == len(seqdict)
+        #    #assert msyns[-1].get_degree() == len(seqdict)
+        #    #msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
+
+        ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
+        logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
+        if msyns: # no need to subtract if no msyn found
+            mtrees = subtract_mts(mtrees, msyns, skip_ref=not annotate_private)
+        else:
+            logger.info("No msyns found in this realignment step.")
+        logger.debug(f"New Mappingtrees: {mtrees}")
+
+        if annotate_private:
+            # after aligning all against ref, we can call the remainder as private to ref
+            privs = mt_to_privates(mtrees[ref], ref, chromdict[ref])
+            added_privs.append(sum([len(x.ref) for x in iter(privs)]))
+            ret.extend(privs)
+        # no more to discover on ref
+        used_refs.append(ref)
+        del mtrees[ref]
+
+        ## log length of sequences, append to ret
+        if msyns:
+            added_lens.append(sum([len(x.ref) for x in iter(msyns)]))
+            ret.extend(msyns)
+
+        # counts all sequences that are still above _MIN_REALIGN_LENGTH
+        if len(seqdict) <= 1 or len(used_refs) >= _MAX_REALIGN:
+            break
+
+    logger.info(f"Realigned {gap_intervals}. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
+    # log globally how much sequence was found during realignment
+    if ADDED_LEN >= 0:
+        ADDED_LEN += sum(added_lens)
+
+    if annotate_private:
+        logger.info(f"Found {[util.siprefix(a) for a in added_privs]} of private sequence.")
+
+    return ret
+
+#    ## get alignments to reference construct alignment index from the reference
+#    # if we have pairwise alns, fetch & prepare them
+#    if pairwise and ref in pairwise:
+#        logger.debug(f"Fetching {refrng} from existing alignments.")
+#        
+#        refalnsdict = pairwise[ref]
+#        # get all the alns overlapping this region; syri should do the rest
+#        # regions not in seqdict will be ignored
+#        alns = {org: get_nonsyn_alns(
+#                        get_at_pos(refalnsdict[org], refrng, gap_intervals[org]), # pre-process alignments to restrict to this realn region
+#                        refmtree, mtrees[org])
+#                for org in seqdict if not org == ref}
+#       return alns
+
+cpdef aln_nonsyns(refconcat, refmt, nonsyns, aln_args):
     """
-    Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
-    Both sequences should be on the same chromosomes.
-    Splits alignments that span multiple offsets into one alignment per offset
+    Aligns a list of nonsyntenic ranges to a concatenated reference sequence.
+    Re-maps the positions to reference/organism space.
+    :returns: a DF containing the alns
     """
-    # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
-    if aligner is None:
-        aligner = get_aligner(refseq, preset)
+    #NOTE allow multiple alns per nonsynt region?
+    # maybe initially no, add later?
+    cdef:
+        list ret = list()
 
-    return aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
+    for nonsyn in nonsyns:
+        ## get sequence
 
-cpdef translate_concatalns(matches, qcid, qrytree, rcid, reftree):
-    # traverse alignments
-    alns = deque()
-    #logger.debug(f"{list(m)}")
-    list(matches)
-    logger.debug("Raw alns:")
-    logger.debug(f"{list(matches)}")
-    #NOTE simplify if/when removing spacers
-    for h in matches:
-        rstart: int = h.r_st
-        rend: int = h.r_en -1 # use inclusive indices
-        qstart: int = h.q_st
-        qend: int = h.q_en -1 # use inclusive indices
-        cg = cigar.cigar_from_bam(h.cigar)
+        ## aln to ref concatseq
+        
+        ## map to appropriate pos
+        pass
+    return ret
 
-        if rstart > rend:
-            # shouldn't ever occur, TODO maybe handle anyway?
-            logger.error(f"Inverted on Reference: {h}")
+cpdef parasail_aln(ref, query, aln_args):
+    pass
+    #TODO
+
+
+cdef syri_get_syntenic(reforg, alns):
+    # Synteny call parameters
+    # all except T are unused
+    #BRT = 20
+    #TUC = 1000
+    #TUP = 0.5
+    #invgl = 1000000
+    cdef:
+        int T = 50
+        dict syns = {}
+
+    #NOTE: for large regions, it might make sense to parallelize the syri call
+    # per organism, turning the for loop below into a parallelized map
+    # probably only worth it with no_gil, though
+    for org in alns:
+        if alns[org] is None: continue
+        coords = alns[org]
+        # check Chrs
+        try:
+            assert coords.aChr.nunique() == 1
+            assert coords.bChr.nunique() == 1
+        except AssertionError:
+            logger.error(
+                f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+
+        # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
+        chromr = list(coords.aChr)[0]  # there should only ever be one chrom anyway
+        chromq = list(coords.bChr)[0]
+        samechrids = chromr == chromq
+        if not samechrids:
+            coords.bChr.replace(chromq, chromr, inplace=True)
+        chromo = chromr
+
+        coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
+        syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
+                      coordsData.bEnd.values, T)
+        # clean up graph
+        blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
+        for block in blocks:
+            i = 0
+            while i < len(block.children):
+                block.children = list(set(block.children) - set(blocks[block.children[i]].children))
+                i += 1
+            block.children.sort()
+            for child in block.children:
+                blocks[child].addParent(block.id)
+            scores = [blocks[parent].score for parent in block.parents]
+            if len(scores) > 0:
+                block.bestParent(block.parents[scores.index(max(scores))], max(scores))
+
+        # get path through the graph
+        synPath = getSynPath(blocks)
+        synData = coordsData.iloc[synPath].copy()
+
+        if not samechrids:
+            synData.bChr.replace(chromr, chromq, inplace=True)
+
+        synData.columns = list(map(str.lower, synData.columns))
+
+        # return early if there is no large-scale synteny
+        MIN_SYN_THRESH = intersection.get_min_syn_thresh()
+        if synData.empty or\
+                (synData['aend'] - synData['astart']).sum() < MIN_SYN_THRESH or\
+                (synData['bend'] - synData['bstart']).sum() < MIN_SYN_THRESH:
+            logger.warning(f"No synteny found in realignment syri call!")
             continue
 
-        rstartov = list(reftree[rstart])[0]
-        qstartov = list(qrytree[qstart])[0]
+        # subset to only relevant columns for the realignment
+        synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
 
-        # shortcut to simply append alignment if there is only one offset
-        # as this happens quite often, this should save a lot of time
-        #print(reftree, rend, qrytree, qend)
-        if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
-            roff = rstartov.data
-            qoff = qstartov.data
-            aln = [rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart +1, qend - qstart +1, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()]
-
-            # check to make sure alns match cigar length
-            if aln[4] != cg.get_len(ref=True):
-                    logger.error(f"[simple case] Aln length {aln[4]} not matching cigar length on ref {cg.get_len(ref=True)}! Occurred in {aln}")
-            if aln[5] != cg.get_len(ref=False):
-                    logger.error(f"[simple case] Aln length {aln[5]} not matching cigar length on qry {cg.get_len(ref=False)}! Occurred in {aln}")
-
-            alns.append(aln)
-            continue
-
-        #NOTE simplify if/when removing spacers
-        # multiple offsets in alignment; split for each offset
-        for rint in sorted(reftree[rstart:rend]):
-            # subset alignment to this reference offset interval
-            qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
-            qendel, rcg = rcg.get_removed(max(rend - rint.end, 0), start=False)
-            for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
-                # subset to the query offset, respecting the subsetting done so far
-                rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
-                rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
-
-                aln = [rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
-                           qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
-                           min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
-                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()]
-
-                # check to make sure alns match cigar length
-                if aln[4] != qcg.get_len(ref=True):
-                    logger.error(f"Aln length {aln[4]} not matching cigar length on ref {qcg.get_len(ref=True)}! Occurred in {aln}")
-                if aln[5] != qcg.get_len(ref=False):
-                    logger.error(f"Aln length {aln[5]} not matching cigar length on qry {qcg.get_len(ref=False)}! Occurred in {aln}")
-                alns.append(aln)
+        # TODO filter out hangovers here?
 
 
-    alns = pd.DataFrame(alns)
-    if alns.empty:
-        return None
+        # make into multisyn objects, store in dataframe
+        buf = list()
+        for _, syn in synData.iterrows():
+            buf.append(Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
 
-    alns = alns.loc[alns[6] > _MIN_SYN_ID] # filter for specified aln identity
-    # count inverted alns as well
-    #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
-    #alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
-    #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
-    alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
-    alns.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    return None if alns.empty else alns
+        syns[org] = MultisynContainer.from_iterable(buf)
+    # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
-
-#TODO add option for margin
-cpdef generate_seqdict(seqh, mappingtrees, chrdict):
-    return {org:('N'*_NULL_CNT).join([
-        seqh.get_range(Range(org, chrdict[org], interval.data, interval.data + (interval.end - interval.begin)), margin=0)
-        for interval in sorted(mappingtrees[org])])
-        for org in mappingtrees}
-
-
+    return syns
+#############################
+#### Use all vs all alns ####
+#############################
 cpdef get_at_pos(alns, rrng, qrng):
     """
     Function that takes a Dataframe of alignments, and extracts the part of each alignment overlapping with the specified regions.
@@ -443,456 +647,6 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
         return None
     return syrify(pd.concat(ret))
 
-
-cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendict: dict):
-    """
-    Extracts the length of the gap on each organism.
-    Can handle the start and end case where prev/nextcore are None.
-    Takes the maximal chromosome length info and orgs from lendict, which can be obtained by callingget_len_dict on the sequence handler.
-    """
-    cdef ret = dict()
-
-    for org in lendict: # prevcore and nextcore may both be None if at start/end
-        if _MAX_HANGOVER> 0: # add hangovers if instructed
-            start = max(prevcore.get_range(org).end - _MAX_HANGOVER, prevcore.get_range(org).start) if prevcore else 0
-            end = min(nextcore.get_range(org).start + _MAX_HANGOVER, nextcore.get_range(org).end) if nextcore else lendict[org]
-            logger.debug(f"Adding Hangovers: {prevcore.get_range(org).end - start if prevcore else 0}, {end - nextcore.get_range(org).start if nextcore else 0}")
-        else:
-            start = prevcore.get_range(org).end +1 if prevcore else 0
-            end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
-       #print(prevcore, nextcore)
-        assert end - start >= -1 # -1 is a gap of 0
-
-        if end - start > _MIN_REALIGN_LEN:
-            ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
-
-    return ret
-
-
-cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, NULL_CNT=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
-    """
-    High-level interface to the realignment functionality.
-    Takes a dict of DataFrames containing per-chromosome Multisyn annotations.
-    Gaps between core syntenic regions are iteratively realigned to identify non-reference merasynteny.
-
-    :params:
-    :df: DataFrame containing existing Multisyn annotations
-    :qrynames: Names of the non-ref. sequences
-    :fastas: Dictionary mapping the name of a sample to its genome as a pysam FastaFile object
-    :mp_preset: minimap2 alignment preset to use. Default `asm20`.
-    :annotate_private: After a sequence has been used as a reference in realignment and no synteny has been found, we can say that it is structurally private. If this flag is set, it will be annotated as such. Default `True`.
-    :ncores: Number of cores to use during the realignment. Default `1`.
-    :pairwise: Optionally, a dictionary of dictionaries containing pysam AlignmentFile objects for all pairwise alignments. Useful if your sequences have already been all vs all aligned, or you want to use a different aligner than minimap2.
-    :output_only_realign: Flag on whether to also output annotations not obtained through realignment. Default `False`. Mostly intended for debugging.
-
-    :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
-    """
-    # export globals if changes to configs are specified
-    if MIN_REALIGN_LEN is not None and MIN_REALIGN_LEN >= 0:
-        global _MIN_REALIGN_LEN
-        _MIN_REALIGN_LEN = int(MIN_REALIGN_LEN)
-    if MIN_SYN_ID is not None and MIN_SYN_ID >= 0:
-        global _MIN_SYN_ID
-        _MIN_SYN_ID = int(MIN_SYN_ID)
-    if MAX_REALIGN is not None and MAX_REALIGN >= 0:
-        global _MAX_REALIGN
-        _MAX_REALIGN = int(MAX_REALIGN)
-    if NULL_CNT is not None and NULL_CNT >= 0:
-        global _NULL_CNT
-        _NULL_CNT = int(NULL_CNT)
-
-    start_log_added_len()
-
-    _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign, debug_export=debug_export)
-    ret = chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
-
-    logger.info(f"Realigment done. Added {util.siprefix(get_added_len())} in total.")
-    stop_log_added_len()
-
-    return ret
-
-#NOTE cpdef'd to enable using functools.partial.
-#NOTE Consider wrapping with cython to enable re-cdefing this?
-cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
-    """
-    Workhorse function of the realignment functionality.
-    Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
-    In these gaps, existing merasynteny is masked, and a new reference is chosen.
-    All sequences that have not previously been used as reference are realigned to the new reference, and pairwise synteny is called.
-    On the pairwise synteny to the new reference, the synteny intersection algorithm is run, identifying new merasynteny.
-    This is iterated until either there are no regions without annotated merasynteny annotation left, but at most `MAX_REALIGN` times.
-
-    :params:
-    :df: DataFrame containing existing Multisyn annotations
-    :qrynames: Names of the non-ref. sequences
-    :fastas: Dictionary mapping the name of a sample to its genome as a pysam FastaFile object
-    :mp_preset: minimap2 alignment preset to use. Default `asm20`.
-    :annotate_private: After a sequence has been used as a reference in realignment and no synteny has been found, we can say that it is structurally private. If this flag is set, it will be annotated as such. Default `True`.
-    :ncores: Number of cores to use during the realignment. Default `1`.
-    :pairwise: Optionally, a dictionary of dictionaries containing pysam AlignmentFile objects for all pairwise alignments. Useful if your sequences have already been all vs all aligned, or you want to use a different aligner than minimap2.
-    :output_only_realign: Flag on whether to also output annotations not obtained through realignment. Default `False`. Mostly intended for debugging.
-
-    :returns: A DataFrame of Multisyn objects corresponding to the annotations after realignment.
-    """
-    #print(chrom, msyncont, seqh)
-    # init stuff
-    cdef:
-        list ret = list()#deque()#pd.DataFrame()
-        orgs = msyncont.orgs
-        dict lendict = seqh.get_len_dict(chrom)
-
-    # iterate through each gap between coresyn blocks
-    # call the alignment/ functionality and merge   
-    prevcore = None # store a backlink to the previous coresyn
-    for nextcore, merasyns in msyncont.iter_cores_acc():
-        gap_intervals = compute_intervals(chrom, prevcore, nextcore, lendict)
-
-        # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
-        if gap_intervals:
-            logger.info(f"Realigning gaps {gap_intervals}")
-
-            ## export realignment targets, similar to a single execution of iterate_reprocessing
-            if debug_export:
-                try:
-                    import io
-                    import os
-                    import msyd.io
-                    from msyd.orgs import OrgContainer
-                    from msyd.multisyn import ChromContainer
-
-                    # compute vals, similar to iterate_reprocessing
-                    mtrees = construct_mts(merasyns, gap_intervals)
-                    chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
-                    seqdict = generate_seqdict(seqh, mtrees, chromdict)
-                    ref = max([(len(v), k) for k,v in seqdict.items()])[1]
-
-                    # export
-                    path = chrom + gap_intervals[ref].to_psf()
-                    logger.debug(f"Exporting realignment to {path}")
-                    os.makedirs(path, exist_ok=True)
-                    for name, seq in seqdict.items():
-                        print(f">{name}\n{seq}",
-                              file=open(f"{path}/{name}.fa", 'wt'))
-
-                    # export stepwise
-                    for margin in [1000, 10_000, 100_000, 1000_000]:
-                        for name, gap in gap_intervals.items():
-                            print(f">{name}\n{seqh.get_range(gap, margin=margin)}",
-                                file=open(f"{path}/{name}_{margin}.fa", 'wt'))
-                          #Range(name, gap.chrom, gap.start - margin, gap.end + margin)}",
-
-                    alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
-                    for name, aln in alns.items():
-                        if aln is not None:
-                            aln.to_csv(f"{path}/{name}.aln.tsv", sep='\t')
-                    synsdict = syri_get_syntenic(ref, alns)
-                    for org, syn in synsdict.items():
-                        msyd.io.save_to_psf(ChromContainer({org:syn}, OrgContainer.from_list(["org"])), open(f"{path}/{name}syri.psf", 'wt'))
-                except:
-                    logger.warning("Error during debug export!")
-
-            ## iteratively reprocess with new reference
-            realsyns = iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=mp_preset, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
-
-            # write directly if only storing realigned;
-            # otherwise insert into DF respecting sorting
-            if output_only_realign:
-                ret.extend(sorted(realsyns))
-            else:
-                merasyns.extend(realsyns)
-
-        # DONE with realignment
-
-        # add multisyns if 
-        if not output_only_realign:
-            if prevcore:
-                ret.append(prevcore)
-            ret.extend(sorted(merasyns))
-        prevcore = nextcore
-
-    # Done with all gaps, return as new MultisynContainer
-    return MultisynContainer.from_iterable(ret)
-# END
-
-cdef iterate_reprocessing(gap_intervals, merasyns, seqh, mp_preset=None, ncores=1, pairwise=None, annotate_private=False):
-    global ADDED_LEN
-    ## construct the mapping, and prepare sequences for realignment
-    cdef:
-        dict mtrees = construct_mts(merasyns, gap_intervals)
-        dict seqdict = None
-        list ret = list()
-        list added_lens = list()
-        list added_privs = list()
-        list used_refs = list()
-        dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
-
-    ## Realign iteratively until all synteny is found
-    while True:
-        # fetch sequences
-        seqdict = generate_seqdict(seqh, mtrees, chromdict)
-        if not seqdict: # if all remaining are too small
-            break
-
-        ## choose a reference
-        # uses the sample containing the most non-merasyntenic sequence
-        # if a dict of pairwise alns is passed, will always prefer samples in the dict
-        #NOTE need to change this when moving away from separators
-        if pairwise:
-            ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
-        else:
-            ref = max([(len(v), k) for k,v in seqdict.items()])[1]
-
-        # instead, implement as additional range at start
-        # filter at the end, remove first/last core msyn at each real step
-        #for org, seq in seqdict.items():
-        #    # get left and right hangover sequence
-        #    # TODO limit by bordering coresyn len
-        #    lhover = seqh.get_range(Range(org, chromdict[org], gap_intervals[org].start - _MAX_HANGOVER_LEN, gap_intervals[org].start -1))
-        #    rhover = seqh.get_range(Range(org, chromdict[org], gap_intervals[org].end + 1, gap_intervals[org].end + _MAX_HANGOVER_LEN))
-        #    seqdict[org] = lhover + seq + rhover
-
-        #    # add to offsets
-        #    llen, rlen = len(lhover), len(rhover)
-
-        ## align & call synteny to chosen ref
-        # align concatenated sequences
-        logger.debug('\n'.join([org + ': ' + seq[:50] + '...' + seq[-50:] for org, seq in seqdict.items()]))
-        alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
-        logger.debug(f"{alns}")
-        #TODO keep/readd hangovers here? might help syri too
-        synsdict = syri_get_syntenic(ref, alns)
-        logger.debug(f"{synsdict}")
-
-        # Find merasyn in the realignment syri calls
-        msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
-        logger.debug(f"{synsdict}")
-        #print(msyns)
-
-        # hangovers were added, remove the left and right coresyn
-        if _MAX_HANGOVER > 0: 
-            if msyns and len(msyns) >= 2:
-                msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
-            else:
-                logger.warning("Error in realignment (hangovers added, but unaligned)!")
-                logger.info("This may indicate a highly repetitive region, or incorrect alignment parameters.")
-
-            #assert len(msyns) >= 2
-            #assert msyns[0].get_degree() == len(seqdict)
-            #assert msyns[-1].get_degree() == len(seqdict)
-            #msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
-
-        ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
-        logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
-        if msyns: # no need to subtract if no msyn found
-            mtrees = subtract_mts(mtrees, msyns, skip_ref=not annotate_private)
-        else:
-            logger.info("No msyns found in this realignment step.")
-        logger.debug(f"New Mappingtrees: {mtrees}")
-
-        if annotate_private:
-            # after aligning all against ref, we can call the remainder as private to ref
-            privs = mt_to_privates(mtrees[ref], ref, chromdict[ref])
-            added_privs.append(sum([len(x.ref) for x in iter(privs)]))
-            ret.extend(privs)
-        # no more to discover on ref
-        used_refs.append(ref)
-        del mtrees[ref]
-
-        ## log length of sequences, append to ret
-        if msyns:
-            added_lens.append(sum([len(x.ref) for x in iter(msyns)]))
-            ret.extend(msyns)
-
-        # counts all sequences that are still above _MIN_REALIGN_LENGTH
-        if len(seqdict) <= 1 or len(used_refs) >= _MAX_REALIGN:
-            break
-
-    logger.info(f"Realigned {gap_intervals}. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
-    # log globally how much sequence was found during realignment
-    if ADDED_LEN >= 0:
-        ADDED_LEN += sum(added_lens)
-
-    if annotate_private:
-        logger.info(f"Found {[util.siprefix(a) for a in added_privs]} of private sequence.")
-
-    return ret
-
-#NOTE unfortunately, mappy doesn't seem to expose any multithreading.
-# Could manually parallelize by organism?
-cdef get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=None, pairwise=None):
-    cdef:
-        refmtree = mtrees[ref]
-        refseq = seqdict[ref]
-        refrng = gap_intervals[ref]
-        chrom = refrng.chrom
-
-    ## get alignments to reference construct alignment index from the reference
-    # if we have pairwise alns, fetch & prepare them
-    if pairwise and ref in pairwise:
-        logger.debug(f"Fetching {refrng} from existing alignments.")
-        
-        refalnsdict = pairwise[ref]
-        # get all the alns overlapping this region; syri should do the rest
-        # regions not in seqdict will be ignored
-        alns = {org: get_nonsyn_alns(
-                        get_at_pos(refalnsdict[org], refrng, gap_intervals[org]), # pre-process alignments to restrict to this realn region
-                        refmtree, mtrees[org])
-                for org in seqdict if not org == ref}
-    else:
-        # otherwise realign ourselves
-        logger.debug(f"Starting Alignment of {refrng}")
-
-        ## parallelization commented out due to python issues
-        # Launching a pool in a pool causes python to crash, disabled parallelization here for now
-        #if False: #ncores > 1 and len(refseq) > 50000:
-        #    logger.debug(f"Starting parallel Alignment to {ref} between {refstart} and {refend} (len {util.siprefix(refend - refstart)})")
-        #    alignargs = [[seqdict[org], chrom, mtrees[org]] for org in seqdict.keys() if not org == ref]
-        #    with Pool(processes=ncores) as pool:
-        #        alns = pool.starmap(partial(align_concatseqs, refseq=refseq, preset=mp_preset, rcid=chrom, reftree=reftree, aligner=None), alignargs)
-        #    alns = dict(zip(list(seqdict.keys()), alns))
-        #else:
-        aligner = get_aligner(seq=refseq, preset=mp_preset)
-        alns = dict()
-        for org, seq in seqdict.items():
-            if org == ref:
-                continue
-            if seq == '': # skip empty sequences
-                alns[org] = None
-                continue
-            logger.debug(f"Processing alignments for {org} to {ref}. Seq len {len(seq)}.")
-            #logger.debug(f"Seq: {seq}\nRefseq: {refseq}")
-            alns[org] = translate_concatalns(aln_concatseqs(seq, refseq, mp_preset, aligner=aligner),
-                                             chrom, mtrees[org], chrom, refmtree)
-
-    # filter out alignments only containing inversions
-    for org in alns:
-        if alns[org] is not None and all(alns[org].bDir == -1):
-            logger.warning(f"{gap_intervals[org]} only contains inverted alignments: \n{alns[org]}")
-            alns[org] = None
-    return alns
-
-cdef syri_get_syntenic(reforg, alns):
-    # Synteny call parameters
-    # all except T are unused
-    #BRT = 20
-    #TUC = 1000
-    #TUP = 0.5
-    #invgl = 1000000
-    cdef:
-        int T = 50
-        dict syns = {}
-
-    #NOTE: for large regions, it might make sense to parallelize the syri call
-    # per organism, turning the for loop below into a parallelized map
-    # probably only worth it with no_gil, though
-    for org in alns:
-        if alns[org] is None: continue
-        coords = alns[org]
-        # check Chrs
-        try:
-            assert coords.aChr.nunique() == 1
-            assert coords.bChr.nunique() == 1
-        except AssertionError:
-            logger.error(
-                f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
-
-        # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-        chromr = list(coords.aChr)[0]  # there should only ever be one chrom anyway
-        chromq = list(coords.bChr)[0]
-        samechrids = chromr == chromq
-        if not samechrids:
-            coords.bChr.replace(chromq, chromr, inplace=True)
-        chromo = chromr
-
-        coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
-        syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
-                      coordsData.bEnd.values, T)
-        # clean up graph
-        blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
-        for block in blocks:
-            i = 0
-            while i < len(block.children):
-                block.children = list(set(block.children) - set(blocks[block.children[i]].children))
-                i += 1
-            block.children.sort()
-            for child in block.children:
-                blocks[child].addParent(block.id)
-            scores = [blocks[parent].score for parent in block.parents]
-            if len(scores) > 0:
-                block.bestParent(block.parents[scores.index(max(scores))], max(scores))
-
-        # get path through the graph
-        synPath = getSynPath(blocks)
-        synData = coordsData.iloc[synPath].copy()
-
-        if not samechrids:
-            synData.bChr.replace(chromr, chromq, inplace=True)
-
-        synData.columns = list(map(str.lower, synData.columns))
-
-        # return early if there is no large-scale synteny
-        MIN_SYN_THRESH = intersection.get_min_syn_thresh()
-        if synData.empty or\
-                (synData['aend'] - synData['astart']).sum() < MIN_SYN_THRESH or\
-                (synData['bend'] - synData['bstart']).sum() < MIN_SYN_THRESH:
-            logger.warning(f"No synteny found in realignment syri call!")
-            continue
-
-        # subset to only relevant columns for the realignment
-        synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
-
-        # TODO filter out hangovers here?
-
-
-        # make into multisyn objects, store in dataframe
-        buf = list()
-        for _, syn in synData.iterrows():
-            buf.append(Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
-
-        syns[org] = MultisynContainer.from_iterable(buf)
-    # skip regions that were skipped or could not be aligned, or only contain inverted alignments
-
-    return syns
-
-##################################### DEPRECATED ##################################################
-
-cdef subset_ref_offset(rstart, rend, qstart, qend, cg, interval):
-    """DEPRECATED
-    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the reference with the offset incorporated
-    """
-    start = max(interval.start, rstart)
-    # drop from the alignment everything before the current interval
-    qstartdelta, curcg = cg.get_removed(start - rstart)
-
-    # drop everything after the current interval
-    end = min(interval.end, rend)
-    qenddelta, retcg = curcg.get_removed(rend - end, start=False)
-
-    # transform coordinates with the offset/alignment information, return
-    offset = interval.data
-    return (start + offset, end + offset, qstart + qstartdelta, qend - qenddelta, retcg)
-
-cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
-    """DEPRECATED
-    Takes an alignment and an interval from the intervaltree, returns the part of the alignment that is in the interval on the query with the offset incorporated
-    """
-    start = max(interval.start, qstart)
-    # drop from the alignment everything before the current interval
-    rstartdelta, curcg = cg.get_removed(start - qstart, ref=False)
-
-    end = min(interval.end, qend)
-    # drop everything after the current interval
-    renddelta, retcg = curcg.get_removed(end - interval.end, start=False, ref=False)
-
-    # transform coordinates with the offset/alignment information, return
-    offset = interval.data
-    return (rstart + rstartdelta, rend + renddelta, start + offset, end + offset, retcg)
-
-#
-#cimport libc.stdio as cio
-#cimport posix.unistd as unistd
-#
-
 ## DEPRECATED
 #cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
 #    """DEPRECATED"""
@@ -984,3 +738,190 @@ cdef subset_qry_offset(rstart, rend, qstart, qend, cg, interval):
 #    return o
 ## END
 #
+#cdef get_aligner(seq, preset, ns=True):
+#    #aligner = mp.Aligner(seq=refseq, preset=preset, scoring=[1, 19, 39, 81, 3, 1, 10])
+#    # using values from https://github.com/lh3/minimap2/blob/9b0ff2418c298f5b5d0df12b137896e5c3fb0ef4/options.c#L134
+#    # https://github.com/lh3/minimap2/issues/155
+#    # https://github.com/lh3/minimap2/blob/0cc3cdca27f050fb80a19c90d25ecc6ab0b0907b/python/README.rst?plain=1#L93
+#    # values from the manpage, under presets -> asm5
+#    #-k19 -w19 -U50,500 --rmq -r100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50
+#    
+#    #aligner = mp.Aligner(seq=seq, preset=preset, scoring=[1, 19, 39, 81, 39, 81, 100]) if ns else mp.Aligner(seq=seq, preset=preset)
+#    # set --score-N parameter to 10
+#    aligner = mp.Aligner(seq=seq, preset=preset, sc_ambi=10, max_chain_skip=255)
+#    return aligner
+#
+#cpdef aln_concatseqs(seq, refseq, preset, aligner=None):
+#    """
+#    Function to align the concatenated sequences as they are and then remap the positions to the positions in the actual genome.
+#    Both sequences should be on the same chromosomes.
+#    Splits alignments that span multiple offsets into one alignment per offset
+#    """
+#    # Parse aligner from parent function when not using multiprocessing.Pool. When using Pool, define aligner here
+#    if aligner is None:
+#        aligner = get_aligner(refseq, preset)
+#
+#    return aligner.map(seq, extra_flags=0x4000000) # this is the --eqx flag, causing X/= to be added instead of M tags to the CIGAR string
+#
+#cpdef translate_concatalns(matches, qcid, qrytree, rcid, reftree):
+#    # traverse alignments
+#    alns = deque()
+#    #logger.debug(f"{list(m)}")
+#    list(matches)
+#    logger.debug("Raw alns:")
+#    logger.debug(f"{list(matches)}")
+#    #NOTE simplify if/when removing spacers
+#    for h in matches:
+#        rstart: int = h.r_st
+#        rend: int = h.r_en -1 # use inclusive indices
+#        qstart: int = h.q_st
+#        qend: int = h.q_en -1 # use inclusive indices
+#        cg = cigar.cigar_from_bam(h.cigar)
+#
+#        if rstart > rend:
+#            # shouldn't ever occur, TODO maybe handle anyway?
+#            logger.error(f"Inverted on Reference: {h}")
+#            continue
+#
+#        rstartov = list(reftree[rstart])[0]
+#        qstartov = list(qrytree[qstart])[0]
+#
+#        # shortcut to simply append alignment if there is only one offset
+#        # as this happens quite often, this should save a lot of time
+#        #print(reftree, rend, qrytree, qend)
+#        if rstartov == list(reftree[rend-1])[0] and qstartov == list(qrytree[qend-1])[0]:
+#            roff = rstartov.data
+#            qoff = qstartov.data
+#            aln = [rstart + roff, rend + roff, qstart + qoff, qend + qoff, rend - rstart +1, qend - qstart +1, cg.get_identity()*100, 1 if rstart < rend else -1, h.strand, rcid, qcid, cg.to_string()]
+#
+#            # check to make sure alns match cigar length
+#            if aln[4] != cg.get_len(ref=True):
+#                    logger.error(f"[simple case] Aln length {aln[4]} not matching cigar length on ref {cg.get_len(ref=True)}! Occurred in {aln}")
+#            if aln[5] != cg.get_len(ref=False):
+#                    logger.error(f"[simple case] Aln length {aln[5]} not matching cigar length on qry {cg.get_len(ref=False)}! Occurred in {aln}")
+#
+#            alns.append(aln)
+#            continue
+#
+#        #NOTE simplify if/when removing spacers
+#        # multiple offsets in alignment; split for each offset
+#        for rint in sorted(reftree[rstart:rend]):
+#            # subset alignment to this reference offset interval
+#            qstdel, rcg = cg.get_removed(max(rint.begin - rstart, 0))
+#            qendel, rcg = rcg.get_removed(max(rend - rint.end, 0), start=False)
+#            for qint in sorted(qrytree[qstart + qstdel:qend - qendel]):
+#                # subset to the query offset, respecting the subsetting done so far
+#                rstdel, qcg = rcg.get_removed(max(qint.begin - qstdel - qstart, 0), ref=False)
+#                rendel, qcg = qcg.get_removed(max(qend - qint.end - qendel, 0), ref=False, start=False)
+#
+#                aln = [rint.data + rstdel, rint.data + min(rend, rint.end) - rendel - max(rint.begin - rstart, 0),
+#                           qint.data + max(qstart, qint.begin), qint.data + min(qend, qint.end),
+#                           min(rend, rint.end) - rendel - rstdel - max(rint.begin - rstart, 0), min(qend, qint.end) - max(qstart, qint.begin),
+#                           qcg.get_identity()*100, 1 if rstart < rend else -1, 1 if qstart < qend else -1, rcid, qcid, qcg.to_string()]
+#
+#                # check to make sure alns match cigar length
+#                if aln[4] != qcg.get_len(ref=True):
+#                    logger.error(f"Aln length {aln[4]} not matching cigar length on ref {qcg.get_len(ref=True)}! Occurred in {aln}")
+#                if aln[5] != qcg.get_len(ref=False):
+#                    logger.error(f"Aln length {aln[5]} not matching cigar length on qry {qcg.get_len(ref=False)}! Occurred in {aln}")
+#                alns.append(aln)
+#
+#
+#    alns = pd.DataFrame(alns)
+#    if alns.empty:
+#        return None
+#
+#    alns = alns.loc[alns[6] > _MIN_SYN_ID] # filter for specified aln identity
+#    # count inverted alns as well
+#    #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] + alns.loc[alns[8] == -1, 3]
+#    #alns.loc[alns[8] == -1, 3] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
+#    #alns.loc[alns[8] == -1, 2] = alns.loc[alns[8] == -1, 2] - alns.loc[alns[8] == -1, 3]
+#    alns.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+#    alns.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+#    return None if alns.empty else alns
+#
+#
+#
+#cpdef generate_seqdict(seqh, mappingtrees, chrdict):
+#    return {org:('N'*_SPACER_LEN).join([
+#        seqh.get_range(Range(org, chrdict[org], interval.data, interval.data + (interval.end - interval.begin)), margin=0)
+#        for interval in sorted(mappingtrees[org])])
+#        for org in mappingtrees}
+#
+#
+cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
+    """
+    Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by multisyn objects in `merasyns` subtracted.
+    By default, the reference organism of the merasyn is skipped, as it would be deleted anyway.
+    This can be changed by setting `skip_ref` to `False`.
+    Used to remove merasynteny found during realignment from the mappingtrees, to do further realignment.
+    The initial implementation was just reconstructing the trees at every step, but subtracting is more efficient.
+    """
+    # core iteration is the same as in construct_mts, except we don't need to store the offsets
+    cdef:
+        curdict = {org:list(mappingtrees[org][0])[0] for org in mappingtrees if len(mappingtrees[org]) > 0} # stores the current interval in each org
+        listdict = defaultdict(list) # used to construct the output mappingtrees
+    # these need to be reconstructed to take care of handling the separator intervals
+
+    #print(merasyns)
+    #print(type(merasyns))
+    for merasyn in merasyns:
+        # only subtract on the ref if explicitly specified;
+        # would get deleted anyway unless annotating private regions
+        for org, rng in\
+                merasyn.ranges_dict.items() if skip_ref\
+                else [(merasyn.ref.org, merasyn.ref)] + list(merasyn.ranges_dict.items()):
+            if not org in curdict or curdict[org] is None: # skip if there are no more intervals to process for this org
+                continue
+            curint = curdict[org]
+            orglist = listdict[org]
+
+            # skip to first interval overlapping this merasyn
+            # there should be one of these for any alignment
+            while curint.end - curint.begin + curint.data < rng.start:
+                orglist.append( (curint.data, curint.end - curint.begin) )
+                if curint.end + _SPACER_LEN + 1 in mappingtrees[org]:
+                    curint = list(mappingtrees[org][curint.end + _SPACER_LEN + 1])[0]
+                else: # there is no offset after this
+                    break
+            else: # to skip to next org in big for loop
+                #logger.warning("Skipped out of int iteration loop!")
+                curdict[org] = None
+                continue
+
+            # there shouldn't ever be a merasyn spanning beyond one offset
+            # directly adjacent offsets are compressed, and other alns should be split
+            # emit a warning if this is still the case
+            if rng.end > curint.end - curint.begin + curint.data:
+                logger.debug(f"{rng.end}, {curint.end - curint.begin + curint.data}")
+                logger.warning(f"Synteny in a spacer detected! An alignment went into the separator. Most likely, something went wrong during the alignment call ({rng.end} vs {curint.end - curint.begin + curint.data}).")
+            
+
+            # there was no interval overlapping this merasyn anyway, we don't need to subtract anything
+            if curint.data > rng.end:
+                curdict[org] = curint
+                continue
+            
+            ## from here, rng is fully within curint
+
+            # remove overlap from start, add as separate offset if large enough
+            l = rng.start - curint.data
+            if l > _MIN_REALIGN_LEN:
+                orglist.append( (curint.data, l) )
+
+            # set curint to what remains after removing this merasyn if large enough
+            l = curint.data + curint.end - curint.begin - rng.end
+            if l > _MIN_REALIGN_LEN:
+                curdict[org] = Interval(curint.end - l, curint.end, rng.end)
+                #orglist.append( (rng.end, l) )
+            else:
+                # otherwise skip to next interval
+                if curint.end + _SPACER_LEN + 1 in mappingtrees[org]:
+                    curdict[org] = list(mappingtrees[org][curint.end + _SPACER_LEN + 1])[0]
+                else:
+                    curdict[org] = None
+                    continue
+
+    return listdict_to_mts(listdict)
+
+
