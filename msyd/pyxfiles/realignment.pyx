@@ -5,7 +5,7 @@
 # cython: language_level = 3
 
 import pandas as pd
-import mappy as mp
+import parasail
 import logging
 from collections import deque, defaultdict
 from functools import partial
@@ -31,13 +31,20 @@ from msyd.multisyn import Multisyn, Private, MultisynContainer
 from msyd.coords import Range
 
 
-cdef int _MIN_REALIGN_LEN = 100 # min length to realign regions
-cdef int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
-cdef int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
-cdef int _MAX_HANGOVER = 2000 # max len of padding with neighbouring coresyn region to use during alignment
-cdef int _SPACER_LEN = 100 # number of separators to use between blocks during alignment
-cdef int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
+cdef:
+    int _MIN_REALIGN_LEN = 100 # min length to realign regions
+    int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
+    int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
+    int _MAX_HANGOVER = 2000 # max len of padding with neighbouring coresyn region to use during alignment
+    int _SPACER_LEN = 100 # number of separators to use between blocks during alignment
+    int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
+    int _GAP_OPEN = 6
+    int _GAP_EXTEND = 2
+    object _MATRIX = parasail.matrix_create("ACGTN", 2, -1)
 
+# force Ns to never align
+_MATRIX[4, :] = -100
+_MATRIXm[:, 4] = -100
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -57,6 +64,11 @@ cpdef stop_log_added_len():
     global ADDED_LEN
     ADDED_LEN = -1
 
+cpdef set_aln_params(int gap_open, int gap_extend, object matrix):
+    global _GAP_OPEN, _GAP_EXTEND, _MATRIX
+    _GAP_OPEN = gap_open
+    _GAP_EXTEND = gap_extend
+    _MATRIX = _matrix
 
 ### Example
 ## AAAANNNNNBBBBBBB
@@ -318,7 +330,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
     return MultisynContainer.from_iterable(ret)
 # END
 
-cdef iterate_reprocessing(nonsynts_dict, seqh, aln_params=None, ncores=1, pairwise=None, annotate_private=False):
+cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwise=None, annotate_private=False):
     global ADDED_LEN
     ## construct the mapping, and prepare sequences for realignment
     cdef:
@@ -327,12 +339,12 @@ cdef iterate_reprocessing(nonsynts_dict, seqh, aln_params=None, ncores=1, pairwi
         list added_privs = list()
         list used_refs = list()
         #dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
-        nonsynts_dict = #TODO, or pass directly as input?
+        nonsyns_dict = #TODO, or pass directly as input?
 
     ## Realign iteratively until all synteny is found
     while True:
         # fetch sequences
-        if not nonsynts_dict: # if all remaining are too small
+        if not nonsyns_dict: # if all remaining are too small
             break
 
         ## choose a reference
@@ -341,16 +353,16 @@ cdef iterate_reprocessing(nonsynts_dict, seqh, aln_params=None, ncores=1, pairwi
         #TODO rework with 
         if pairwise:
             ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
-            ref = max([(sum([len(nonsynt) for nonsynt in nonsynts]) if org in pairwise else (-1)/sum([len(nonsynt) for nonsynt in nonsynts]), org) for org, nonsynts in nonsynts_dict.items()])[1]
+            ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]) if org in pairwise else (-1)/sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
         else:
-            ref = max([(sum([len(nonsynt) for nonsynt in nonsynts]), org) for org, nonsynts in nonsynts_dict.items()])[1]
+            ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
 
         ## assemble reference concatseq & mappingtree
         refseq = #TODO
-        refmt = construct_mt(nonsynts_dict[ref])#TODO
+        refmt = construct_mt(nonsyns_dict[ref])#TODO
 
         ## align orgs
-        # align nonsynts to ref concatseq
+        # align nonsyns to ref concatseq
         if pairwise:
             raise NotImplemented("pairwise aln support is not available currently.")
             #TODO
@@ -431,30 +443,58 @@ cdef iterate_reprocessing(nonsynts_dict, seqh, aln_params=None, ncores=1, pairwi
 #                for org in seqdict if not org == ref}
 #       return alns
 
-cpdef aln_nonsyns(refconcat, refmt, nonsyns, aln_args):
+cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh):
     """
     Aligns a list of nonsyntenic ranges to a concatenated reference sequence.
     Re-maps the positions to reference/organism space.
     :returns: a DF containing the alns
     """
-    #NOTE allow multiple alns per nonsynt region?
+    #NOTE allow multiple alns per nonsyn region?
     # maybe initially no, add later?
     cdef:
-        list ret = list()
+        list alns = list()
+        list unaligned = list()
 
     for nonsyn in nonsyns:
         ## get sequence
+        seq = seqh.get_range(nonsyn)
 
         ## aln to ref concatseq
+        # do a semiglobal alignment to allow matching the right ID on ref
+        return parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
+
+        if aln.score < 0: # no alignment found
+            unaligned.append(nonsyn)
+            continue
+
+        cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
+        iden = cg.get_identity()
+        if iden < _MIN_SYN_ID: # no w/ high identity found
+            #NOTE do full local alignment? split region?
+            unaligned.append(nonsyn)
+            continue
         
-        ## map to appropriate pos
-        pass
-    return ret
+        ## decode aln, map to appropriate pos
 
-cpdef parasail_aln(ref, query, aln_args):
-    pass
-    #TODO
+        # shouldn't be necessary for a semiglobal aln,
+        # still cleaner though in case of switching to full local
+        aln_qury = Range(nonsyn.org, nonsyn.chrom,
+                         nonsyn.start + aln.cigar.beg_query,
+                         nonsyn.start + aln.end_query)
 
+        # remap reference pos
+        startint = refmt[aln.cigar.beg_ref][0]
+        endint = refmt[aln.beg_ref][0]
+        aln_ref = Range(reforg, refchrom,
+                        startint.data + aln.cigar.beg_ref - startint.start,
+                        endint.data + aln.end_ref - endint.start)
+
+        # add aln
+        alns.append((aln_ref, aln_qury, cg))
+
+        #TODO additional local aln step?
+        # probably best to test if necessary first
+    return alns, unaligned
 
 cdef syri_get_syntenic(reforg, alns):
     # Synteny call parameters
