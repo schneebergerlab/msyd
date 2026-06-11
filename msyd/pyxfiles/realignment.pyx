@@ -256,6 +256,8 @@ cpdef translate_concatalns(matches, qcid, qrytree, rcid, reftree):
     alns = deque()
     #logger.debug(f"{list(m)}")
     list(matches)
+    logger.debug("Raw alns:")
+    logger.debug(f"{list(matches)}")
     #NOTE simplify if/when removing spacers
     for h in matches:
         rstart: int = h.r_st
