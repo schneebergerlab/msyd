@@ -44,7 +44,7 @@ cdef:
 
 # force Ns to never align
 _MATRIX[4, :] = -100
-_MATRIXm[:, 4] = -100
+_MATRIX[:, 4] = -100
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -68,7 +68,7 @@ cpdef set_aln_params(int gap_open, int gap_extend, object matrix):
     global _GAP_OPEN, _GAP_EXTEND, _MATRIX
     _GAP_OPEN = gap_open
     _GAP_EXTEND = gap_extend
-    _MATRIX = _matrix
+    _MATRIX = matrix
 
 ### Example
 ## AAAANNNNNBBBBBBB
@@ -81,10 +81,10 @@ cpdef nonsyns_to_mt(nonsyns):
     """
     pos = 0
     tree = IntervalTree()
-    for rng in lst:
+    for rng in nonsyns:
         if len(rng) > _MIN_REALIGN_LEN: # filter again for sufficient len
             tree[pos: pos + len(rng)] = rng.start # end is non-inclusive
-            posdict[org] += len(rng) + _SPACER_LEN # add interval + spacer
+            pos += len(rng) + _SPACER_LEN # add interval + spacer
 
     return tree
 
@@ -126,7 +126,7 @@ cpdef extract_nonsynsdict(merasyns, gap_intervals):#prevcore, nextcore):
                     logger.debug(f"Close miss in {prev}, {offsetdict[org]}")
 
             if l > _MIN_REALIGN_LEN: # otherwise add to the tree if it's large enough
-                listdict[org].append( Range(org, chrom, offsetdict[org], offsetdict[org] + l - 1) )
+                listdict[org].append( Range(org, gap_intervals[org].chrom, offsetdict[org], offsetdict[org] + l - 1) )
 
             # all up to the end of this region has been added
             offsetdict[org] = rng.end + 1
@@ -135,7 +135,7 @@ cpdef extract_nonsynsdict(merasyns, gap_intervals):#prevcore, nextcore):
     for org, offset in offsetdict.items():
         l = gap_intervals[org].end - offset
         if l >= _MIN_REALIGN_LEN:
-            listdict[org].append( Range(org, chrom, offsetdict[org], offsetdict[org] + l ) )
+            listdict[org].append( Range(org, gap_intervals[org].chrom, offsetdict[org], offsetdict[org] + l ) )
 
     return listdict #listdict_to_mts(listdict)
 # END
@@ -204,7 +204,7 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
 
 #NOTE cpdef'd to enable using functools.partial.
 #NOTE Consider wrapping with cython to enable re-cdefing this?
-cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
+cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, alnparams=None, ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
     """
     Workhorse function of the realignment functionality.
     Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.
@@ -231,6 +231,10 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
         list ret = list()#deque()#pd.DataFrame()
         orgs = msyncont.orgs
         dict lendict = seqh.get_len_dict(chrom)
+
+    if alnparams:
+        #alnparams* apparently not working
+        set_aln_params(alnparams[0], alnparams[1], alnparams[2])
 
     # iterate through each gap between coresyn blocks
     # call the alignment/ functionality and merge   
@@ -306,7 +310,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, m
     return MultisynContainer.from_iterable(ret)
 # END
 
-cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwise=None, annotate_private=False):
+cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_private=False):
     global ADDED_LEN
     ## construct the mapping, and prepare sequences for realignment
     cdef:
@@ -344,7 +348,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
         #TODO update nonsyns_dict here immediately?
         synsdict = dict()
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
-            alns, unalns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns)
+            alns, unalns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh)
 
             logger.debug(f"{org}, aln: {alns}, unaln: {unalns}")
             synsdict[org] = syri_get_syntenic(ref, syrify(alns))
@@ -380,7 +384,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
 
         if annotate_private:
             # after aligning all against ref, we can call the remainder as private to ref
-            privs = mt_to_privates(mtrees[ref], ref, chromdict[ref])
+            #privs = mt_to_privates(mtrees[ref], ref, chromdict[ref])
+            #TODO do private
             added_privs.append(sum([len(x.ref) for x in iter(privs)]))
             ret.extend(privs)
         # no more to discover on ref
@@ -393,10 +398,10 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, aln_params=None, ncores=1, pairwis
             ret.extend(msyns)
 
         # counts all sequences that are still above _MIN_REALIGN_LENGTH
-        if len(seqdict) <= 1 or len(used_refs) >= _MAX_REALIGN:
+        if len(nonsyns_dict) <= 1 or len(used_refs) >= _MAX_REALIGN:
             break
 
-    logger.info(f"Realigned {gap_intervals}. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
+    logger.info(f"Realigned gap_intervals. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
     # log globally how much sequence was found during realignment
     if ADDED_LEN >= 0:
         ADDED_LEN += sum(added_lens)
