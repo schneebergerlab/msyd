@@ -318,7 +318,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         list added_lens = list()
         list added_privs = list()
         list used_refs = list()
-        #dict chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
 
     ## Realign iteratively until all synteny is found
     while True:
@@ -327,10 +326,9 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             break
 
         ## choose a reference
-        # uses the sample containing the most non-merasyntenic sequence
-        # if a dict of pairwise alns is passed, will always prefer samples in the dict
+        # uses the sample containing the most non-synteny
+        # if pairwise is passed, prefer samples in the dict
         if pairwise:
-            #ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]) if org in pairwise else (-1)/sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
         else:
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
@@ -352,15 +350,14 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
             logger.debug(f"{org}, aln: {alns}, unaln: {unalns}")
             syns_dict[org] = syri_get_syntenic(ref, syrify(alns))
-            nonsyns_dict[org] = unalns #TODO this does not account for alns dropped in the synteny finding process
+            nonsyns_dict[org] = unalns
+            #TODO this does not account for alns dropped in the synteny finding process
 
-        #synsdict = {org:syri_get_syntenic(ref, syrify(alns)) for org, alns in lalnsdict.items()}
         logger.debug(f"{list(syns_dict.items)}")
 
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
         logger.debug(f"{msyns}")
-        #print(msyns)
         # recompute nonsyn regions, account for new multisynteny
         #TODO this can be done efficiently by subtracting from the old nonsyndict
         #nonsyndict = extract_nonsynsdict(msyns, gap_intervals)
