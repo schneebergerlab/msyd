@@ -437,6 +437,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh):
         list alns = list()
         list unaligned = list()
 
+    #NOTE could parallelise on this level as well?
     for nonsyn in nonsyns:
         ## get sequence
         seq = seqh.get_range(nonsyn)
