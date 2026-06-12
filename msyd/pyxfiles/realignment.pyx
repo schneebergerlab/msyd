@@ -330,7 +330,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # uses the sample containing the most non-merasyntenic sequence
         # if a dict of pairwise alns is passed, will always prefer samples in the dict
         if pairwise:
-            ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
+            #ref = max([(len(v) if k in pairwise else (-1)/len(v), k) for k,v in seqdict.items()])[1]
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]) if org in pairwise else (-1)/sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
         else:
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
@@ -352,6 +352,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
             logger.debug(f"{org}, aln: {alns}, unaln: {unalns}")
             synsdict[org] = syri_get_syntenic(ref, syrify(alns))
+            nonsynsdict[org] = unalns #TODO this does not account for alns dropped in the synteny finding process
 
         #synsdict = {org:syri_get_syntenic(ref, syrify(alns)) for org, alns in lalnsdict.items()}
         logger.debug(f"{list(synsdict.items)}")
@@ -360,37 +361,32 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
         logger.debug(f"{msyns}")
         #print(msyns)
+        # recompute nonsyn regions, account for new multisynteny
+        #TODO this can be done efficiently by subtracting from the old nonsyndict
+        #nonsyndict = extract_nonsynsdict(msyns, gap_intervals)
 
+        """
         # hangovers were added, remove the left and right coresyn
-        #if _MAX_HANGOVER > 0: 
-        #    if msyns and len(msyns) >= 2:
-        #        msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
-        #    else:
-        #        logger.warning("Error in realignment (hangovers added, but unaligned)!")
-        #        logger.info("This may indicate a highly repetitive region, or incorrect alignment parameters.")
+        if _MAX_HANGOVER > 0: 
+            if msyns and len(msyns) >= 2:
+                msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
+            else:
+                logger.warning("Error in realignment (hangovers added, but unaligned)!")
+                logger.info("This may indicate a highly repetitive region, or incorrect alignment parameters.")
 
-        #    #assert len(msyns) >= 2
-        #    #assert msyns[0].get_degree() == len(seqdict)
-        #    #assert msyns[-1].get_degree() == len(seqdict)
-        #    #msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
-
-        ## recalculate mappingtrees from current merasyns to remove newly found merasynteny
-        logger.debug(f"Old Mappingtrees: {mtrees}.\n Subtracting {msyns}.")
-        if msyns: # no need to subtract if no msyn found
-            mtrees = subtract_mts(mtrees, msyns, skip_ref=not annotate_private)
-        else:
-            logger.info("No msyns found in this realignment step.")
-        logger.debug(f"New Mappingtrees: {mtrees}")
+            #assert len(msyns) >= 2
+            #assert msyns[0].get_degree() == len(seqdict)
+            #assert msyns[-1].get_degree() == len(seqdict)
+            #msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
+        """
 
         if annotate_private:
             # after aligning all against ref, we can call the remainder as private to ref
-            #privs = mt_to_privates(mtrees[ref], ref, chromdict[ref])
-            #TODO do private
-            added_privs.append(sum([len(x.ref) for x in iter(privs)]))
-            ret.extend(privs)
+            added_privs.append(sum([len(x) for x in nonsynsdict[ref]]))
+            ret.extend([Private(rng) for rng in nonsynsdict[ref]])
         # no more to discover on ref
         used_refs.append(ref)
-        del mtrees[ref]
+        del nonsynsdict[ref]
 
         ## log length of sequences, append to ret
         if msyns:
