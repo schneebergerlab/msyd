@@ -346,19 +346,19 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             #TODO
 
         #TODO update nonsyns_dict here immediately?
-        synsdict = dict()
+        syns_dict = dict()
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
             alns, unalns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh)
 
             logger.debug(f"{org}, aln: {alns}, unaln: {unalns}")
-            synsdict[org] = syri_get_syntenic(ref, syrify(alns))
-            nonsynsdict[org] = unalns #TODO this does not account for alns dropped in the synteny finding process
+            syns_dict[org] = syri_get_syntenic(ref, syrify(alns))
+            nonsyns_dict[org] = unalns #TODO this does not account for alns dropped in the synteny finding process
 
         #synsdict = {org:syri_get_syntenic(ref, syrify(alns)) for org, alns in lalnsdict.items()}
-        logger.debug(f"{list(synsdict.items)}")
+        logger.debug(f"{list(syns_dict.items)}")
 
         # Find merasyn in the realignment syri calls
-        msyns = intersection.reduce_find_overlaps(synsdict.values(), cores=1)#ncores)
+        msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
         logger.debug(f"{msyns}")
         #print(msyns)
         # recompute nonsyn regions, account for new multisynteny
@@ -382,11 +382,11 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
         if annotate_private:
             # after aligning all against ref, we can call the remainder as private to ref
-            added_privs.append(sum([len(x) for x in nonsynsdict[ref]]))
-            ret.extend([Private(rng) for rng in nonsynsdict[ref]])
+            added_privs.append(sum([len(x) for x in nonsyns_dict[ref]]))
+            ret.extend([Private(rng) for rng in nonsyns_dict[ref]])
         # no more to discover on ref
         used_refs.append(ref)
-        del nonsynsdict[ref]
+        del nonsyns_dict[ref]
 
         ## log length of sequences, append to ret
         if msyns:
