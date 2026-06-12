@@ -429,6 +429,9 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh):
     """
     #NOTE allow multiple alns per nonsyn region?
     # maybe initially no, add later?
+    #NOTE could switch over to avoid refconcat as well
+    # => lower RAM requirements, probably faster
+    # => report all alns, let syri choose
     cdef:
         list alns = list()
         list unaligned = list()
