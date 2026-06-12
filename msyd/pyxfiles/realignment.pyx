@@ -195,7 +195,7 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
 
     start_log_added_len()
 
-    _process_gaps = partial(process_gaps, seqh=seqh, mp_preset=mp_preset, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign, debug_export=debug_export)
+    _process_gaps = partial(process_gaps, seqh=seqh, annotate_private=annotate_private, pairwise=pairwise, output_only_realign=output_only_realign, debug_export=debug_export)
     ret = chrcont.apply_chroms_par(_process_gaps, ncores=ncores)
 
     logger.info(f"Realigment done. Added {util.siprefix(get_added_len())} in total.")
@@ -325,6 +325,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # fetch sequences
         if not nonsyns_dict: # if all remaining are too small
             break
+        logger.debug(f"{nonsyns_dict}")
+        logger.debug(f"{list(nonsyns_dict.items())}")
 
         ## choose a reference
         # uses the sample containing the most non-synteny
@@ -347,11 +349,13 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         #TODO update nonsyns_dict here immediately?
         syns_dict = dict()
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
-            alns, unalns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh)
+            alns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh, ref, nonsyns_dict[ref][0].chrom)
+            #alns = ret[0]
+            #unalns = ret[1]
 
-            logger.debug(f"{org}, aln: {alns}, unaln: {unalns}")
+            logger.debug(f"{org}, aln: {alns}")#, unaln: {unalns}")
             syns_dict[org] = syri_get_syntenic(ref, syrify(alns))
-            nonsyns_dict[org] = unalns
+            #nonsyns_dict[org] = unalns
             #TODO this does not account for alns dropped in the synteny finding process
 
         logger.debug(f"{list(syns_dict.items)}")
@@ -419,7 +423,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 #                for org in seqdict if not org == ref}
 #       return alns
 
-cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh):
+cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str refchrom, str reforg):
     """
     Aligns a list of nonsyntenic ranges to a concatenated reference sequence.
     Re-maps the positions to reference/organism space.
@@ -441,7 +445,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh):
 
         ## aln to ref concatseq
         # do a semiglobal alignment to allow matching the right ID on ref
-        return parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
+        aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
 
         if aln.score < 0: # no alignment found
             unaligned.append(nonsyn)
@@ -474,7 +478,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh):
 
         #TODO additional local aln step?
         # probably best to test if necessary first
-    return alns, unaligned
+    return alns#, unaligned
 
 cdef syri_get_syntenic(reforg, alns):
     # Synteny call parameters
@@ -556,6 +560,8 @@ cdef syri_get_syntenic(reforg, alns):
     # skip regions that were skipped or could not be aligned, or only contain inverted alignments
 
     return syns
+
+
 #############################
 #### Use all vs all alns ####
 #############################
