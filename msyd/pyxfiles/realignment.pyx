@@ -43,8 +43,9 @@ cdef:
     object _MATRIX = parasail.matrix_create("ACGTN", 2, -1)
 
 # force Ns to never align
-_MATRIX[4, :] = -100
-_MATRIX[:, 4] = -100
+for i in range(5): # slice indexing does not work for matrices
+    _MATRIX[4, i] = -100
+    _MATRIX[i, 4] = -100
 
 logger = util.CustomFormatter.getlogger(__name__)
 logger.setLevel(logging.DEBUG)
