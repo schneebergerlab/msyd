@@ -614,7 +614,19 @@ cpdef get_at_pos(alns, rrng, qrng):
 
     return pd.DataFrame(ret, columns = ["astart", "aend", "bstart", "bend", "alen", "blen", "iden", "adir", "bdir", "achr", "bchr", 'cg'])
 
-cdef syrify(alnsdf):
+cdef syrify(alns):
+    """
+    Helper fn to format alignment dfs into the format SyRI uses.
+    """
+    if not alns: # keep empty stuff empty
+        return None
+    alnsdf = pd.concat([[refrng.start, refrng.end, qryrng.start, qryrng.end, len(refrng), len(qryrng), cg.get_identity(), 1, 1, refrng.chrom, qryrng.chrom, cg] for refrng, qryrng, cg in alns])
+    #alnsdf = pd.concat([[aln[0].start, aln[0].end, aln[1].start, aln[1].end, len(aln[0]), len(aln[1]), aln[2].get_identity(), 1, 1, aln[0].chrom, aln[1].chrom, aln[2]] for aln in alns])
+    alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
+    alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    return alnsdf
+
+cdef syrify_df(alnsdf):
     """
     Helper fn to format alignment dfs into the format SyRI uses.
     """
@@ -669,7 +681,7 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
     if len(ret) == 0 or all([r is None for r in ret]):
         logger.warning("No alignments found in this region! This could be a repetitive region, or the alignments could be truncated!")
         return None
-    return syrify(pd.concat(ret))
+    return syrify_df(pd.concat(ret))
 
 ## DEPRECATED
 #cpdef getsyriout(coords, PR='', CWD='.', N=1, TD=500000, TDOLP=0.8, K=False, redir_stderr=False):
