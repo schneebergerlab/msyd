@@ -355,14 +355,18 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             logger.debug(f"{org}, aln: {alns}")#, unaln: {unalns}")
             if not alns:
                 continue
-            syns_dict[org] = syri_get_syntenic(ref, syrify(alns))
+            syns = syri_get_syntenic(ref, syrify(alns))
+            if syns: # do not add empty ones
+                syns_dict[org] = syns
             #nonsyns_dict[org] = unalns
             #TODO this does not account for alns dropped in the synteny finding process
 
         logger.debug(f"Synsdict: {list(syns_dict.items())}")
 
         # Find merasyn in the realignment syri calls
-        msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
+        msyns = None
+        if syns_dict:
+            msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
         logger.debug(f"Msyns: {msyns}")
         # recompute nonsyn regions, account for new multisynteny
         #TODO this can be done efficiently by subtracting from the old nonsyndict
@@ -536,7 +540,7 @@ cdef syri_get_syntenic(reforg, alns):
         if len(scores) > 0:
             block.bestParent(block.parents[scores.index(max(scores))], max(scores))
             
-    if syndf.empty or not blocks:
+    if (not syndf) or (not blocks):
         logger.info(f"All alignments filtered out!")
         # all alns filtered out
         return None
@@ -628,11 +632,12 @@ cdef syrify(alns):
     """
     if not alns: # keep empty stuff empty
         return None
-    alnsdf = pd.DataFrame([[refrng.start, refrng.end, qryrng.start, qryrng.end, len(refrng), len(qryrng), cg.get_identity(), 1, 1, refrng.chrom, qryrng.chrom, cg] for refrng, qryrng, cg in alns])
+    alnsdf = pd.DataFrame([[refrng.start, refrng.end, qryrng.start, qryrng.end, len(refrng), len(qryrng), cg.get_identity()*100, 1, 1, refrng.chrom, qryrng.chrom, cg] for refrng, qryrng, cg in alns])
     #alnsdf = pd.concat([[aln[0].start, aln[0].end, aln[1].start, aln[1].end, len(aln[0]), len(aln[1]), aln[2].get_identity(), 1, 1, aln[0].chrom, aln[1].chrom, aln[2]] for aln in alns])
     alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
     logger.debug(f"Alnsdf: {alnsdf}")
+    print(alnsdf.loc[0])
     return alnsdf
 
 cdef syrify_df(alnsdf):
