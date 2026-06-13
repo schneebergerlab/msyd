@@ -325,8 +325,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # fetch sequences
         if not nonsyns_dict: # if all remaining are too small
             break
-        logger.debug(f"{nonsyns_dict}")
-        logger.debug(f"{list(nonsyns_dict.items())}")
+        logger.debug(f"Nonsyns: {list(nonsyns_dict.items())}")
 
         ## choose a reference
         # uses the sample containing the most non-synteny
@@ -360,11 +359,11 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             #nonsyns_dict[org] = unalns
             #TODO this does not account for alns dropped in the synteny finding process
 
-        logger.debug(f"{list(syns_dict.items())}")
+        logger.debug(f"Synsdict: {list(syns_dict.items())}")
 
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
-        logger.debug(f"{msyns}")
+        logger.debug(f"Msyns: {msyns}")
         # recompute nonsyn regions, account for new multisynteny
         #TODO this can be done efficiently by subtracting from the old nonsyndict
         #nonsyndict = extract_nonsynsdict(msyns, gap_intervals)
@@ -446,18 +445,25 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
     for nonsyn in nonsyns:
         ## get sequence
         seq = seqh.get_range(nonsyn)
+        #logger.debug(f"{seq[:100]}, {refconcat[:100]}")
 
         ## aln to ref concatseq
         # do a semiglobal alignment to allow matching the right ID on ref
-        aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
+        aln = None
+        try:
+            aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
+        except:
+            unaligned.append(nonsyn)
+            continue
 
-        if not aln or  aln.score <= 0: # no alignment found
+        #logger.debug(f"{aln}")
+        if not aln or aln.score <= 0: # no alignment found
             unaligned.append(nonsyn)
             continue
 
         cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
-        iden = cg.get_identity()
-        if iden < _MIN_SYN_ID: # no w/ high identity found
+        iden = cg.get_identity() # floating point no
+        if iden*100 < _MIN_SYN_ID: # no w/ high identity found
             #NOTE do full local alignment? split region?
             unaligned.append(nonsyn)
             continue
@@ -471,14 +477,16 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
                          nonsyn.start + aln.end_query)
 
         # remap reference pos
-        startint = refmt[aln.cigar.beg_ref][0]
-        endint = refmt[aln.beg_ref][0]
+        startint = list(refmt[aln.cigar.beg_ref])[0]
+        endint = list(refmt[aln.end_ref])[0]
         aln_ref = Range(reforg, refchrom,
-                        startint.data + aln.cigar.beg_ref - startint.start,
-                        endint.data + aln.end_ref - endint.start)
+                        startint.data + aln.cigar.beg_ref - startint.begin,
+                        endint.data + aln.end_ref - endint.begin)
 
         # add aln
+        logger.debug(f"{aln_ref}, {aln_qury}, {cg}")
         alns.append((aln_ref, aln_qury, cg))
+
 
         #TODO additional local aln step?
         # probably best to test if necessary first
