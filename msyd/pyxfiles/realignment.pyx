@@ -503,75 +503,71 @@ cdef syri_get_syntenic(reforg, alns):
         int T = 50
         dict syns = {}
 
-    #NOTE: for large regions, it might make sense to parallelize the syri call
-    # per organism, turning the for loop below into a parallelized map
-    # probably only worth it with no_gil, though
-    for org in alns:
-        if alns[org] is None: continue
-        coords = alns[org]
-        # check Chrs
-        try:
-            assert coords.aChr.nunique() == 1
-            assert coords.bChr.nunique() == 1
-        except AssertionError:
-            logger.error(
-                f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {coords.aChr}. Qry chromosomes: {coords.bChr}")
+    # check Chrs
+    if not alns.aChr.nunique() == 1 and alns.bChr.nunique() == 1:
+        logger.error(
+            f"Incorrect coords. More than one chromosome parsed. Ref chromosomes: {alns.aChr}. Qry chromosomes: {alns.bChr}")
+        return None
 
-        # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
-        chromr = list(coords.aChr)[0]  # there should only ever be one chrom anyway
-        chromq = list(coords.bChr)[0]
-        samechrids = chromr == chromq
-        if not samechrids:
-            coords.bChr.replace(chromq, chromr, inplace=True)
-        chromo = chromr
+    # NOTE: syri requires that the coords table have same chromosome IDs for homologous chromosomes. When, the coords have different chromosome IDs, then manipulate the chroms IDs here
+    chromr = list(alns.aChr)[0]  # there should only ever be one chrom anyway
+    chromq = list(alns.bChr)[0]
+    samechrids = chromr == chromq
+    if not samechrids:
+        alns.bChr.replace(chromq, chromr, inplace=True)
+    chromo = chromr
+    logger.debug(f"alns: {alns}")
 
-        coordsData = coords[(coords.aChr == chromo) & (coords.bChr == chromo) & (coords.bDir == 1)]
-        syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
-                      coordsData.bEnd.values, T)
-        # clean up graph
-        blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
-        for block in blocks:
-            i = 0
-            while i < len(block.children):
-                block.children = list(set(block.children) - set(blocks[block.children[i]].children))
-                i += 1
-            block.children.sort()
-            for child in block.children:
-                blocks[child].addParent(block.id)
-            scores = [blocks[parent].score for parent in block.parents]
-            if len(scores) > 0:
-                block.bestParent(block.parents[scores.index(max(scores))], max(scores))
+    coordsData = alns[(alns.aChr == chromo) & (alns.bChr == chromo) & (alns.bDir == 1)]
+    syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
+                  coordsData.bEnd.values, T)
 
-        # get path through the graph
-        synPath = getSynPath(blocks)
-        synData = coordsData.iloc[synPath].copy()
+    # clean up graph
+    blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
+    for block in blocks:
+        i = 0
+        while i < len(block.children):
+            block.children = list(set(block.children) - set(blocks[block.children[i]].children))
+            i += 1
+        block.children.sort()
+        for child in block.children:
+            blocks[child].addParent(block.id)
+        scores = [blocks[parent].score for parent in block.parents]
+        if len(scores) > 0:
+            block.bestParent(block.parents[scores.index(max(scores))], max(scores))
+            
+    if syndf.empty or not blocks:
+        logger.info(f"All alignments filtered out!")
+        # all alns filtered out
+        return None
 
-        if not samechrids:
-            synData.bChr.replace(chromr, chromq, inplace=True)
+    # get path through the graph
+    synPath = getSynPath(blocks)
+    synData = coordsData.iloc[synPath].copy()
 
-        synData.columns = list(map(str.lower, synData.columns))
+    if not samechrids:
+        synData.bChr.replace(chromr, chromq, inplace=True)
 
-        # return early if there is no large-scale synteny
-        MIN_SYN_THRESH = intersection.get_min_syn_thresh()
-        if synData.empty or\
-                (synData['aend'] - synData['astart']).sum() < MIN_SYN_THRESH or\
-                (synData['bend'] - synData['bstart']).sum() < MIN_SYN_THRESH:
-            logger.warning(f"No synteny found in realignment syri call!")
-            continue
+    synData.columns = list(map(str.lower, synData.columns))
 
-        # subset to only relevant columns for the realignment
-        synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
+    # return early if there is no large-scale synteny
+    MIN_SYN_THRESH = intersection.get_min_syn_thresh()
+    if synData.empty or\
+            (synData['aend'] - synData['astart']).sum() < MIN_SYN_THRESH or\
+            (synData['bend'] - synData['bstart']).sum() < MIN_SYN_THRESH:
+        logger.warning(f"No synteny found in realignment syri call!")
+        return None
 
-        # make into multisyn objects, store in dataframe
-        buf = list()
-        #NOTE necessary to convert back to cigar?
-        for _, syn in synData.iterrows():
-            buf.append(Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']), ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])}, cigars_dict={org:cigar.cigar_from_string(syn['cigar'])}))
+    # subset to only relevant columns for the realignment
+    synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
 
-        syns[org] = MultisynContainer.from_iterable(buf)
-    # skip regions that were skipped or could not be aligned, or only contain inverted alignments
-
-    return syns
+    # make into multisyn objects, store in dataframe
+    #NOTE necessary to convert back to cigar?
+    return MultisynContainer.from_iterable(
+            [Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']),
+                     ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])},
+                     cigars_dict={org:cigar.cigar_from_string(syn['cigar'])})
+           for _, syn in synData.iterrows()])
 
 
 #############################
