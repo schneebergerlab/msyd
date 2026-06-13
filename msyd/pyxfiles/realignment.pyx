@@ -632,10 +632,11 @@ cdef syrify(alns):
     """
     if not alns: # keep empty stuff empty
         return None
-    alnsdf = pd.concat([[refrng.start, refrng.end, qryrng.start, qryrng.end, len(refrng), len(qryrng), cg.get_identity(), 1, 1, refrng.chrom, qryrng.chrom, cg] for refrng, qryrng, cg in alns])
+    alnsdf = pd.DataFrame([[refrng.start, refrng.end, qryrng.start, qryrng.end, len(refrng), len(qryrng), cg.get_identity(), 1, 1, refrng.chrom, qryrng.chrom, cg] for refrng, qryrng, cg in alns])
     #alnsdf = pd.concat([[aln[0].start, aln[0].end, aln[1].start, aln[1].end, len(aln[0]), len(aln[1]), aln[2].get_identity(), 1, 1, aln[0].chrom, aln[1].chrom, aln[2]] for aln in alns])
     alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
+    logger.debug(f"Alnsdf: {alnsdf}")
     return alnsdf
 
 cdef syrify_df(alnsdf):
