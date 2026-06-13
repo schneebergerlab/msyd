@@ -354,11 +354,13 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             #unalns = ret[1]
 
             logger.debug(f"{org}, aln: {alns}")#, unaln: {unalns}")
+            if not alns:
+                continue
             syns_dict[org] = syri_get_syntenic(ref, syrify(alns))
             #nonsyns_dict[org] = unalns
             #TODO this does not account for alns dropped in the synteny finding process
 
-        logger.debug(f"{list(syns_dict.items)}")
+        logger.debug(f"{list(syns_dict.items())}")
 
         # Find merasyn in the realignment syri calls
         msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
@@ -366,6 +368,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # recompute nonsyn regions, account for new multisynteny
         #TODO this can be done efficiently by subtracting from the old nonsyndict
         #nonsyndict = extract_nonsynsdict(msyns, gap_intervals)
+        annotate_private = False
 
         """
         # hangovers were added, remove the left and right coresyn
@@ -407,6 +410,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
     if annotate_private:
         logger.info(f"Found {[util.siprefix(a) for a in added_privs]} of private sequence.")
 
+    logger.debug(f"{ret}")
     return ret
 
 #    ## get alignments to reference construct alignment index from the reference
@@ -447,7 +451,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         # do a semiglobal alignment to allow matching the right ID on ref
         aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
 
-        if aln.score < 0: # no alignment found
+        if not aln or  aln.score <= 0: # no alignment found
             unaligned.append(nonsyn)
             continue
 
