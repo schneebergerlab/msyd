@@ -141,8 +141,47 @@ cpdef extract_nonsynsdict(merasyns, gap_intervals):#prevcore, nextcore):
     return listdict #listdict_to_mts(listdict)
 # END
 
+cpdef subtract_nonsynsdict(nonsyns_dict, merasyns):
+    # merasyns has to be sorted
+    cdef:
+        cur_index = defaultdict(int)
+        cur_pos = defaultdict(int)
+        ret = defaultdict(list)
 
-cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendict: dict):
+    # subtract merasyns
+    for msyn in iter(merasyns):
+        for org, rng in msyn.iter_orgs_ranges():
+            # skip until msyn is covered
+            org_ind = cur_index[org]
+            org_nonsyns = nonsyns_dict[org]
+            while org_ind < len(org_nonsyns):# and org_nonsyns[org_ind].end < rng.end:
+                org_rng = org_nonsyns[org_ind]
+                if org_rng.end < rng.start: # fully before, nonoverlapping
+                    if org_rng.end > cur_pos[org]: # skip if fully within curpos
+                        ret_rng = Range(org_rng.org, org_rng.chrom, max(org_rng.start, cur_pos[org]), org_rng.end)
+                        if len(ret_rng) > _MIN_REALIGN_LEN:
+                            ret[org].append(ret_rng)
+                # left overlap
+                elif org_rng.start < rng.start: # left overlap
+                    leftov = Range(org_rng.org, org_rng.chrom, max(cur_pos[org], org_rng.start), rng.start - 1)
+                    if len(leftov) > _MIN_REALIGN_LEN:
+                        ret[org].append(leftov)
+                    cur_pos[org] = rng.end + 1 # 
+                #elif org_rng.start > rng.start and org_rng.end < rng.end: # fully contained, do not add
+                #    pass
+                # break if the merasyn ends, otherwise increment index
+                if org_rng.end > rng.end:
+                    break
+                else:
+                    orgind += 1
+            # if ended due to lack of index, no further region to add
+            # update counter
+            cur_index[org] = org_ind
+            cur_pos[org] = rng.end + 1
+    return ret
+
+
+cdef compute_gaps(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendict: dict):
     """
     Extracts the length of the gap on each organism.
     Can handle the start and end case where prev/nextcore are None.
@@ -241,7 +280,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
     # call the alignment/ functionality and merge   
     prevcore = None # store a backlink to the previous coresyn
     for nextcore, merasyns in msyncont.iter_cores_acc():
-        gap_intervals = compute_intervals(chrom, prevcore, nextcore, lendict)
+        gap_intervals = compute_gaps(chrom, prevcore, nextcore, lendict)
         logger.info(f"Found gap {gap_intervals}")
         # debugging, skip large segments
         gap_intervals = {org:gap for org, gap in gap_intervals.items() if _MIN_REALIGN_LEN <= len(gap) <= 20000}
@@ -313,7 +352,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             raise NotImplemented("pairwise aln support is not available currently.")
             #TODO
 
-        #TODO update nonsyns_dict here immediately?
         syns_dict = dict()
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
             alns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh, ref, nonsyns_dict[ref][0].chrom)
@@ -326,9 +364,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             syns = syri_get_syntenic(ref, syrify(alns))
             if syns: # do not add empty ones
                 syns_dict[org] = syns
-                #TODO implement subtract_syns
-                #nonsyns_dict[org] = subtract_syns(nonsyns, syns)
-
         logger.debug(f"Synsdict: {list(syns_dict.items())}")
 
         # Find merasyn in the realignment syri calls
@@ -336,10 +371,10 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         if syns_dict:
             msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
         logger.debug(f"Msyns: {msyns}")
+
         # recompute nonsyn regions, account for new multisynteny
         #TODO this can be done efficiently by subtracting from the old nonsyndict
-        #nonsyndict = extract_nonsynsdict(msyns, gap_intervals)
-        annotate_private = False
+        nonsyndict = subtract_nonsynsdict(nonsyns_dict, msyns)
 
         """
         # hangovers were added, remove the left and right coresyn
@@ -381,7 +416,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
     if annotate_private:
         logger.info(f"Found {[util.siprefix(a) for a in added_privs]} of private sequence.")
 
-    logger.debug(f"{ret}")
     return ret
 
 #    ## get alignments to reference construct alignment index from the reference
@@ -871,6 +905,8 @@ cpdef get_nonsyn_alns(alnsdf, reftree, qrytree):
 #        for org in mappingtrees}
 #
 #
+
+
 cpdef subtract_mts(mappingtrees, merasyns, skip_ref=True):
     """
     Takes a dict containing an `Intervaltree` with offsets for each organism to be realigned (as produced by `construct_mts`), and returns new mappingtrees with regions covered by multisyn objects in `merasyns` subtracted.
