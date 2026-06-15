@@ -464,6 +464,8 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         ## aln to ref concatseq
         # do a semiglobal alignment to allow matching the right ID on ref
         aln = None
+        #NOTE refactor out into separate fn, impl dispatch to minimap2 for larg regions?
+        # fn should return two ranges + cigar directly
         try:
             aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
             #logger.debug(f"{aln}")
