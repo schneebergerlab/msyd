@@ -288,6 +288,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
             logger.info(f"Realigning gap {gap_intervals}")
 
             ##NOTE implement deduplication here
+            # make a dict of representative seqs + offset from gap_intervals?
 
             ## Find nonsyns, iterate realignment
             nonsyns_dict = extract_nonsynsdict(merasyns, gap_intervals)
@@ -362,8 +363,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             syns = syri_get_syntenic(ref, syrify(alns))
             if syns: # do not add empty ones
                 syns_dict[org] = syns
-            #nonsyns_dict[org] = unalns
-            #TODO this does not account for alns dropped in the synteny finding process
+                #TODO implement subtract_syns
+                #nonsyns_dict[org] = subtract_syns(nonsyns, syns)
 
         logger.debug(f"Synsdict: {list(syns_dict.items())}")
 
