@@ -456,19 +456,21 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         aln = None
         try:
             aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
-        except:
-            unaligned.append(nonsyn)
-            continue
+            #logger.debug(f"{aln}")
+            if not aln or aln.score <= 0: # no alignment found
+                unaligned.append(nonsyn)
+                continue
 
-        #logger.debug(f"{aln}")
-        if not aln or aln.score <= 0: # no alignment found
-            unaligned.append(nonsyn)
-            continue
-
-        cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
-        iden = cg.get_identity() # floating point no
-        if iden*100 < _MIN_SYN_ID: # no w/ high identity found
-            #NOTE do full local alignment? split region?
+            cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
+            iden = cg.get_identity() # floating point no
+            if iden*100 < _MIN_SYN_ID: # no w/ high identity found
+                #NOTE do full local alignment? split region?
+                unaligned.append(nonsyn)
+                continue
+        except ValueError as ve:
+            logger.warning(f"Error during parasail call: {ve}")
+            #TODO this isn't skipping?
+            # try catch entire block?
             unaligned.append(nonsyn)
             continue
         
