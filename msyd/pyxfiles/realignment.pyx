@@ -286,6 +286,11 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
                 #        logger.warning("Error during debug export!")
 
             logger.info(f"Realigning gap {gap_intervals}")
+            # debugging, do not realign above 100kbp
+            for org, gap in gap_intervals.items():
+                if len(gap) > 50_000:
+                    logger.warning(f"Skipping {gap} on {org} (too long)!")
+                    del gap_intervals[org]
 
             ##NOTE implement deduplication here
             # make a dict of representative seqs + offset from gap_intervals?
