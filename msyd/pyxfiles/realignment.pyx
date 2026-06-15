@@ -155,8 +155,8 @@ cdef compute_intervals(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendi
         end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
         assert end - start >= -1 # -1 is a gap of 0
 
-        if end - start > _MIN_REALIGN_LEN:
-            ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
+        #if end - start > _MIN_REALIGN_LEN:
+        ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
 
     return ret
 
@@ -242,56 +242,14 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
     prevcore = None # store a backlink to the previous coresyn
     for nextcore, merasyns in msyncont.iter_cores_acc():
         gap_intervals = compute_intervals(chrom, prevcore, nextcore, lendict)
+        logger.info(f"Found gap {gap_intervals}")
+        # debugging, skip large segments
+        gap_intervals = {org:gap for org, gap in gap_intervals.items() if _MIN_REALIGN_LEN <= len(gap) <= 20000}
+        #logger.warning(f"Skipping {gap} on {org} (too long)!")
 
         # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
         if gap_intervals:
-            ## export realignment targets, similar to a single execution of iterate_reprocessing
-            #if debug_export:
-                #    try:
-                #        import io
-                #        import os
-                #        import msyd.io
-                #        from msyd.orgs import OrgContainer
-                #        from msyd.multisyn import ChromContainer
-
-                #        # compute vals, similar to iterate_reprocessing
-                #        mtrees = construct_mts(merasyns, gap_intervals)
-                #        chromdict = {org: gap_intervals[org].chrom for org in gap_intervals}
-                #        seqdict = generate_seqdict(seqh, mtrees, chromdict)
-                #        ref = max([(len(v), k) for k,v in seqdict.items()])[1]
-
-                #        # export
-                #        path = chrom + gap_intervals[ref].to_psf()
-                #        logger.debug(f"Exporting realignment to {path}")
-                #        os.makedirs(path, exist_ok=True)
-                #        for name, seq in seqdict.items():
-                #            print(f">{name}\n{seq}",
-                #                  file=open(f"{path}/{name}.fa", 'wt'))
-
-                #        # export stepwise
-                #        for margin in [1000, 10_000, 100_000, 1000_000]:
-                #            for name, gap in gap_intervals.items():
-                #                print(f">{name}\n{seqh.get_range(gap, margin=margin)}",
-                #                    file=open(f"{path}/{name}_{margin}.fa", 'wt'))
-                #              #Range(name, gap.chrom, gap.start - margin, gap.end + margin)}",
-
-                #        alns = get_alns(ref, gap_intervals, mtrees, seqdict, mp_preset=mp_preset, pairwise=pairwise)
-                #        for name, aln in alns.items():
-                #            if aln is not None:
-                #                aln.to_csv(f"{path}/{name}.aln.tsv", sep='\t')
-                #        synsdict = syri_get_syntenic(ref, alns)
-                #        for org, syn in synsdict.items():
-                #            msyd.io.save_to_psf(ChromContainer({org:syn}, OrgContainer.from_list(["org"])), open(f"{path}/{name}syri.psf", 'wt'))
-                #    except:
-                #        logger.warning("Error during debug export!")
-
-            logger.info(f"Realigning gap {gap_intervals}")
-            # debugging, do not realign above 100kbp
-            for org, gap in gap_intervals.items():
-                if len(gap) > 50_000:
-                    logger.warning(f"Skipping {gap} on {org} (too long)!")
-                    del gap_intervals[org]
-
+            logger.info(f"Realigning after filtering: {gap_intervals}")
             ##NOTE implement deduplication here
             # make a dict of representative seqs + offset from gap_intervals?
 
