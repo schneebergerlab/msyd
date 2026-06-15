@@ -245,8 +245,6 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
 
         # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
         if gap_intervals:
-            logger.info(f"Realigning gaps {gap_intervals}")
-
             ## export realignment targets, similar to a single execution of iterate_reprocessing
             #if debug_export:
                 #    try:
@@ -287,9 +285,15 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
                 #    except:
                 #        logger.warning("Error during debug export!")
 
+            logger.info(f"Realigning gap {gap_intervals}")
+
+            ##NOTE implement deduplication here
+
             ## Find nonsyns, iterate realignment
             nonsyns_dict = extract_nonsynsdict(merasyns, gap_intervals)
             realsyns = iterate_reprocessing(nonsyns_dict, seqh, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
+
+            ##NOTE reduplicate afterwards
 
             # write directly if only storing realigned;
             # otherwise insert into DF respecting sorting
