@@ -612,7 +612,7 @@ cpdef object read_psf(fin): # -> ChromContainer
     for line in fin:
         line = line.strip()
         # # indicates a comment, empty lines are ignored
-        if line == [] or line[0] == '#': continue
+        if (not line) or line[0] == '#': continue
         line = line.split()
 
         chrom = line[0]
