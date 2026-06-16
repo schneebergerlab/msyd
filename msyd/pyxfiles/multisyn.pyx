@@ -73,14 +73,9 @@ cdef class Multisyn:
             return l.ref < r.ref
         elif (not l.ranges_dict) and (not r.ranges_dict): # one or both is private, and not on the same ref
             return True
-        # one private, one multisyn
-        elif (not l.ranges_dict): #left is private
-            return l.ref < r.ranges_dict[l.ref.org] if l.ref.org in r.ranges_dict else True # compatible if non-overlapping
-        elif (not r.ranges_dict):
-            return r.ref.rng > l.ranges_dict[r.ref.org] if r.ref.org in l.ranges_dict else True # compatible if non-overlapping
 
-        return not any(l.ranges_dict[org] > r.ranges_dict[org]\
-                       for org in l.ranges_dict if org in r.ranges_dict)
+        return not any(l.get_range(org) > r.get_range(org)\
+                       for org in l.get_organisms() if org in r)
                        # make privates work
                        #for org in (l.ranges_dict if l.ranges_dict else {})\
                        #if org in (r.ranges_dict if r.ranges_dict else {}))
