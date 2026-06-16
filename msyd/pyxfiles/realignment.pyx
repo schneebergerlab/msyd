@@ -307,6 +307,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
 
         # DONE with realignment
 
+        logger.debug(f"{merasyns}")
         # add multisyns if 
         if not output_only_realign:
             if prevcore:
@@ -374,7 +375,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
         # recompute nonsyn regions, account for new multisynteny
         #TODO this can be done efficiently by subtracting from the old nonsyndict
-        nonsyndict = subtract_nonsynsdict(nonsyns_dict, msyns)
+        if msyns:
+            nonsyndict = subtract_nonsynsdict(nonsyns_dict, msyns)
 
         """
         # hangovers were added, remove the left and right coresyn

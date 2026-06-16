@@ -71,7 +71,19 @@ cdef class Multisyn:
         #NOTE could support Range/Position?
         if l.ref.org == r.ref.org:
             return l.ref < r.ref
-        return not any(l.ranges_dict[org] > r.ranges_dict[org] for org in l.ranges_dict if org in r.ranges_dict)
+        elif (not l.ranges_dict) and (not r.ranges_dict): # one or both is private, and not on the same ref
+            return True
+        # one private, one multisyn
+        elif (not l.ranges_dict): #left is private
+            return l.ref < r.ranges_dict[l.ref.org] if l.ref.org in r.ranges_dict else True # compatible if non-overlapping
+        elif (not r.ranges_dict):
+            return r.ref.rng > l.ranges_dict[r.ref.org] if r.ref.org in l.ranges_dict else True # compatible if non-overlapping
+
+        return not any(l.ranges_dict[org] > r.ranges_dict[org]\
+                       for org in l.ranges_dict if org in r.ranges_dict)
+                       # make privates work
+                       #for org in (l.ranges_dict if l.ranges_dict else {})\
+                       #if org in (r.ranges_dict if r.ranges_dict else {}))
         #return True # in case there is no overlap in the ranges_dict
 
     # compares two msyns; if they have the same reference accession, compares their position there
