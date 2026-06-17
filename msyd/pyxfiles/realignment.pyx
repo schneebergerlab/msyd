@@ -307,7 +307,6 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
 
         # DONE with realignment
 
-        logger.debug(f"{merasyns}")
         # add multisyns if 
         if not output_only_realign:
             if prevcore:
@@ -333,7 +332,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # fetch sequences
         if not nonsyns_dict: # if all remaining are too small
             break
-        logger.debug(f"Nonsyns: {list(nonsyns_dict.items())}")
 
         ## choose a reference
         # uses the sample containing the most non-synteny
@@ -342,6 +340,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]) if org in pairwise else (-1)/sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
         else:
             ref = max([(sum([len(nonsyn) for nonsyn in nonsyns]), org) for org, nonsyns in nonsyns_dict.items()])[1]
+
+        logger.info(f"Choosing {ref} as reference for realignment")
 
         ## assemble reference concatseq & mappingtree
         ref_concatseq = ('N'*_SPACER_LEN).join([seqh.get_range(rng) for rng in nonsyns_dict[ref]])
@@ -515,6 +515,8 @@ cdef syri_get_syntenic(reforg, alns):
         int T = 50
         dict syns = {}
 
+    print(alns.loc[0])
+
     # check Chrs
     if not alns.aChr.nunique() == 1 and alns.bChr.nunique() == 1:
         logger.error(
@@ -534,8 +536,11 @@ cdef syri_get_syntenic(reforg, alns):
     syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
                   coordsData.bEnd.values, T)
 
+    print("syndf:", syndf)
+
     # clean up graph
     blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
+    print("blocks:", blocks)
     for block in blocks:
         i = 0
         while i < len(block.children):
@@ -550,6 +555,7 @@ cdef syri_get_syntenic(reforg, alns):
             
     if (not syndf) or (not blocks):
         logger.info(f"All alignments filtered out!")
+        x = 1/0
         # all alns filtered out
         return None
 
@@ -644,8 +650,7 @@ cdef syrify(alns):
     #alnsdf = pd.concat([[aln[0].start, aln[0].end, aln[1].start, aln[1].end, len(aln[0]), len(aln[1]), aln[2].get_identity(), 1, 1, aln[0].chrom, aln[1].chrom, aln[2]] for aln in alns])
     alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    logger.debug(f"Alnsdf: {alnsdf}")
-    print(alnsdf.loc[0])
+    logger.debug(f"Alnsdf has {len(alnsdf)} entries")
     return alnsdf
 
 cdef syrify_df(alnsdf):
