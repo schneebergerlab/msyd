@@ -355,14 +355,14 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
         syns_dict = dict()
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
-            alns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh, ref, nonsyns_dict[ref][0].chrom)
+            alns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh, nonsyns_dict[ref][0].chrom, ref)
             #alns = ret[0]
             #unalns = ret[1]
 
             logger.debug(f"{org}, aln: {alns}")#, unaln: {unalns}")
             if not alns:
                 continue
-            syns = syri_get_syntenic(ref, syrify(alns))
+            syns = syri_get_syntenic(ref, org, syrify(alns))
             if syns: # do not add empty ones
                 syns_dict[org] = syns
         logger.debug(f"Synsdict: {list(syns_dict.items())}")
@@ -504,7 +504,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         # probably best to test if necessary first
     return alns#, unaligned
 
-cdef syri_get_syntenic(reforg, alns):
+cdef syri_get_syntenic(reforg, qryorg, alns):
     # Synteny call parameters
     # all except T are unused
     #BRT = 20
@@ -537,6 +537,8 @@ cdef syri_get_syntenic(reforg, alns):
                   coordsData.bEnd.values, T)
 
     print("syndf:", syndf)
+    if coordsData.empty:
+        return None
 
     # clean up graph
     blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
@@ -583,8 +585,8 @@ cdef syri_get_syntenic(reforg, alns):
     #NOTE necessary to convert back to cigar?
     return MultisynContainer.from_iterable(
             [Multisyn(ref=Range(reforg, syn['achr'], syn['astart'], syn['aend']),
-                     ranges_dict={org:Range(org, syn['bchr'], syn['bstart'], syn['bend'])},
-                     cigars_dict={org:cigar.cigar_from_string(syn['cigar'])})
+                     ranges_dict={qryorg:Range(qryorg, syn['bchr'], syn['bstart'], syn['bend'])},
+                     cigars_dict={qryorg:syn['cigar']})
            for _, syn in synData.iterrows()])
 
 
