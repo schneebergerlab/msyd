@@ -18,6 +18,7 @@ dependencies = [
 	"cython",
 	"intervaltree",
 	"mappy",
+	"parasail",
 	"numpy", 
 	"pandas",
 	"pysam >= 0.21",

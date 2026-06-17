@@ -1,6 +1,7 @@
 cython
 intervaltree
 mappy >= 2.27
+parasail
 numpy
 pandas
 pysam >= 0.21

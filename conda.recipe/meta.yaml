@@ -30,6 +30,8 @@ requirements:
     - scipy
     - psutil
     - pysam
+    - mappy
+    - parasail
 
 test:
   commands:
