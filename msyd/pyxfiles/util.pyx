@@ -270,7 +270,7 @@ def get_stats(chromcont):
     lens = tabularize_lens(chromcont)
     nos = tabularize_nos(chromcont)
     avglens = list(map(lambda x: x[0]/x[1] if x[1] > 0 else 0, zip(lens, nos)))
-    ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Len\tNo.\tAvg. Len\n" + "\n".join([f"{i + 1}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
+    ret = f"Total syn length: {siprefix(tot_len)}\nDeg.\tTot. Len\tNo.\tAvg. Len\n" + "\n".join([f"{i + 1 if i > 0 else 'PRIV'}\t{siprefix(lens[i])}\t{nos[i]}\t{siprefix(avglens[i])}" for i, _ in enumerate(lens)])
     return ret
 
 def siprefix(x):
