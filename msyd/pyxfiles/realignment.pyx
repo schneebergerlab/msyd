@@ -286,7 +286,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
         gap_intervals = compute_gaps(chrom, prevcore, nextcore, lendict)
         logger.info(f"Found gap {gap_intervals}")
         # debugging, skip large segments
-        gap_intervals = {org:gap for org, gap in gap_intervals.items() if _MIN_REALIGN_LEN <= len(gap) <= 20000}
+        gap_intervals = {org:gap for org, gap in gap_intervals.items() if _MIN_REALIGN_LEN <= len(gap)} #<= 20000}
         #logger.warning(f"Skipping {gap} on {org} (too long)!")
 
         # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
