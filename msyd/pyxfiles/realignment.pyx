@@ -466,13 +466,15 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         #NOTE refactor out into separate fn, impl dispatch to minimap2 for larg regions?
         # fn should return two ranges + cigar directly
         try:
-            aln = parasail.sg_dx_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
+            # sg_dx # how to handle starting/ending D/Is?
+            aln = parasail.sw_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
             #logger.debug(f"{aln}")
             if not aln or aln.score <= 0: # no alignment found
                 unaligned.append(nonsyn)
                 continue
 
             cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
+            (qstart, qend, rstart, rend, cg) = cg.trim_matching(only_pos=False)
             iden = cg.get_identity() # floating point no
             if iden*100 < _MIN_SYN_ID: # no w/ high identity found
                 #NOTE do full local alignment? split region?
@@ -490,15 +492,17 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         # shouldn't be necessary for a semiglobal aln,
         # still cleaner though in case of switching to full local
         aln_qury = Range(nonsyn.org, nonsyn.chrom,
-                         nonsyn.start + aln.cigar.beg_query,
-                         nonsyn.start + aln.end_query)
+                         nonsyn.start + qstart,#aln.cigar.beg_query,
+                         nonsyn.start + qend)#aln.end_query)
 
         # remap reference pos
         startint = list(refmt[aln.cigar.beg_ref])[0]
         endint = list(refmt[aln.end_ref])[0]
         aln_ref = Range(reforg, refchrom,
-                        startint.data + aln.cigar.beg_ref - startint.begin,
-                        endint.data + aln.end_ref - endint.begin)
+                        #startint.data + aln.cigar.beg_ref - startint.begin,
+                        startint.data + rstart - startint.begin,
+                        endint.data + rend - endint.begin)
+                        #endint.data + aln.end_ref - endint.begin)
 
         # add aln
         logger.debug(f"{aln_ref}, {aln_qury}, {cg}")
@@ -546,7 +550,6 @@ cdef syri_get_syntenic(reforg, qryorg, alns):
 
     # clean up graph
     blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
-    print("blocks:", list(blocks))
     for block in blocks:
         i = 0
         while i < len(block.children):
