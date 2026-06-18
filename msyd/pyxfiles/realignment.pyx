@@ -358,6 +358,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
         syns_dict = dict()
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
+            if org == ref:
+                continue
             alns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh, nonsyns_dict[ref][0].chrom, ref)
             #alns = ret[0]
             #unalns = ret[1]
