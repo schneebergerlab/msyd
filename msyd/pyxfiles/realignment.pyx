@@ -148,6 +148,8 @@ cpdef subtract_nonsynsdict(nonsyns_dict, merasyns):
         cur_pos = defaultdict(int)
         ret = defaultdict(list)
 
+    print("Nonsyns prior to removal:", nonsyns_dict.items())
+    print("Removing meras:", merasyns)
     # subtract merasyns
     for msyn in iter(merasyns):
         for org, rng in msyn.iter_orgs_ranges():
@@ -173,11 +175,12 @@ cpdef subtract_nonsynsdict(nonsyns_dict, merasyns):
                 if org_rng.end > rng.end:
                     break
                 else:
-                    orgind += 1
+                    org_ind += 1
             # if ended due to lack of index, no further region to add
             # update counter
             cur_index[org] = org_ind
             cur_pos[org] = rng.end + 1
+    print("after removal:", ret.items())
     return ret
 
 
@@ -515,8 +518,6 @@ cdef syri_get_syntenic(reforg, qryorg, alns):
         int T = 50
         dict syns = {}
 
-    print(alns.loc[0])
-
     # check Chrs
     if not alns.aChr.nunique() == 1 and alns.bChr.nunique() == 1:
         logger.error(
@@ -537,12 +538,13 @@ cdef syri_get_syntenic(reforg, qryorg, alns):
                   coordsData.bEnd.values, T)
 
     print("syndf:", syndf)
+    print("coordsData:", coordsData)
     if coordsData.empty:
         return None
 
     # clean up graph
     blocks = [alignmentBlock(i, syndf[i], coordsData.iloc[i]) for i in syndf.keys()]
-    print("blocks:", blocks)
+    print("blocks:", list(blocks))
     for block in blocks:
         i = 0
         while i < len(block.children):
@@ -557,7 +559,7 @@ cdef syri_get_syntenic(reforg, qryorg, alns):
             
     if (not syndf) or (not blocks):
         logger.info(f"All alignments filtered out!")
-        x = 1/0
+        raise ValueError("All alns filtered out!")
         # all alns filtered out
         return None
 
