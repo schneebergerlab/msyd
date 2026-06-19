@@ -30,7 +30,7 @@ import msyd.priv as priv
 from msyd.multisyn import Multisyn, Private, MultisynContainer
 from msyd.coords import Range
 
-import sys.getsizeof
+import sys
 
 cdef:
     int _MIN_REALIGN_LEN = 100 # min length to realign regions
@@ -286,8 +286,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
         gap_intervals = compute_gaps(chrom, prevcore, nextcore, lendict)
         logger.info(f"Found gap {gap_intervals}")
         # debugging, skip large segments
-        gap_intervals = {org:gap for org, gap in gap_intervals.items() if _MIN_REALIGN_LEN <= len(gap)} #<= 20000}
-        #logger.warning(f"Skipping {gap} on {org} (too long)!")
+        gap_intervals = {org:gap for org, gap in gap_intervals.items() if _MIN_REALIGN_LEN <= len(gap)}
 
         # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
         if gap_intervals:
@@ -474,8 +473,8 @@ def aln_parasail(object rrng, str rseq, object qrng, str qseq):
         qendoff = aln.end_query - trimqend
         print(f"Offsets: R {rstartoff}, {rendoff}; Q {qstartoff}, {qendoff}")
 
-        logger.debug(f"Aln found: {rrng.drop(rstartoff, rendoff)}, {qrng.drop(qstartoff, qendoff)}, {cg}")
-        return [(rrng.drop(rstartoff, rendoff), qrng.drop(qstartoff, qendoff), cg)]
+        logger.debug(f"Aln found: {rrng.drop(trimrstart, trimrend)}, {qrng.drop(trimqstart, trimqend)}, {cg}")
+        return [(rrng.drop(trimrstart, trimrend), qrng.drop(trimqstart, trimqend), cg)]
 
         #TODO additional local aln step?
         # probably best to test if necessary first
