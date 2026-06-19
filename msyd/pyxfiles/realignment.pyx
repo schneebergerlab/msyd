@@ -30,7 +30,6 @@ import msyd.priv as priv
 from msyd.multisyn import Multisyn, Private, MultisynContainer
 from msyd.coords import Range
 
-import sys
 
 cdef:
     int _MIN_REALIGN_LEN = 100 # min length to realign regions
@@ -455,7 +454,6 @@ def aln_parasail(object rrng, str rseq, object qrng, str qseq):
         #TODO refactor out
         # sg_dx # how to handle starting/ending D/Is?
         aln = parasail.sw_trace_striped_32(qseq, rseq, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
-        print("size:", sys.getsizeof(aln))
         if not aln or aln.score <= 0: # no alignment found
             return []
 
