@@ -346,10 +346,6 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
         logger.info(f"Choosing {ref} as reference for realignment")
 
-        ## assemble reference concatseq & mappingtree
-        ref_concatseq = ('N'*_SPACER_LEN).join([seqh.get_range(rng) for rng in nonsyns_dict[ref]])
-        ref_mt = nonsyns_to_mt(nonsyns_dict[ref])#TODO
-
         ## align orgs
         # align nonsyns to ref concatseq
         if pairwise:
@@ -379,24 +375,8 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         logger.debug(f"Msyns: {msyns}")
 
         # recompute nonsyn regions, account for new multisynteny
-        #TODO this can be done efficiently by subtracting from the old nonsyndict
         if msyns:
             nonsyndict = subtract_nonsynsdict(nonsyns_dict, msyns)
-
-        """
-        # hangovers were added, remove the left and right coresyn
-        if _MAX_HANGOVER > 0: 
-            if msyns and len(msyns) >= 2:
-                msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
-            else:
-                logger.warning("Error in realignment (hangovers added, but unaligned)!")
-                logger.info("This may indicate a highly repetitive region, or incorrect alignment parameters.")
-
-            #assert len(msyns) >= 2
-            #assert msyns[0].get_degree() == len(seqdict)
-            #assert msyns[-1].get_degree() == len(seqdict)
-            #msyns = MultisynContainer(init=msyns._backing[1:-1], orgs=msyns.orgs)
-        """
 
         if annotate_private:
             # after aligning all against ref, we can call the remainder as private to ref
