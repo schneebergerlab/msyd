@@ -466,13 +466,17 @@ def aln_parasail(object rrng, str rseq, object qrng, str qseq):
         # compute offsets
         print(f"Aln positions:\n R: {aln.cigar.beg_ref}-{aln.end_ref}, Q: {aln.cigar.beg_query}-{aln.end_query}\nTrimmed R {trimrstart}, {trimrend} Q {trimqstart}, {trimqend}")
         rstartoff = aln.cigar.beg_ref + trimrstart
-        rendoff = aln.end_ref - trimrend
+        rendoff = len(rrng) - aln.end_ref - trimrend -1
         qstartoff = aln.cigar.beg_query + trimqstart
-        qendoff = aln.end_query - trimqend
+        qendoff = len(qrng) - aln.end_query - trimqend -1
         print(f"Offsets: R {rstartoff}, {rendoff}; Q {qstartoff}, {qendoff}")
 
-        logger.debug(f"Aln found: {rrng.drop(trimrstart, trimrend)}, {qrng.drop(trimqstart, trimqend)}, {cg}")
-        return [(rrng.drop(trimrstart, trimrend), qrng.drop(trimqstart, trimqend), cg)]
+        rrng = rrng.drop(rstartoff, rendoff)
+        qrng = qrng.drop(qstartoff, qendoff)
+        logger.debug(f"Aln found: {rrng}, {qrng}, {cg}")
+        assert len(rrng) == cg.get_len(ref=True)
+        assert len(qrng) == cg.get_len(ref=False)
+        return [(rrng, qrng, cg)]
 
         #TODO additional local aln step?
         # probably best to test if necessary first
