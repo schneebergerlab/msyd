@@ -593,6 +593,10 @@ cdef syri_get_syntenic(reforg, qryorg, alns):
     # subset to only relevant columns for the realignment
     synData = synData[['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend', 'cigar']]
 
+    for _, syn in synData.iterrows():
+        print("emitting msyn:")
+        print(reforg, syn['achr'], syn['astart'], syn['aend'])
+        print(qryorg, syn['bchr'], syn['bstart'], syn['bend'])
     # make into multisyn objects, store in dataframe
     #NOTE necessary to convert back to cigar?
     return MultisynContainer.from_iterable(
