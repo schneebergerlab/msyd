@@ -23,7 +23,6 @@ logger = util.CustomFormatter.getlogger(__name__)
 
 # decorator to auto-implement __gt__ etc. from __lt__ and __eq__
 #@functools.total_ordering
-#cdef
 cdef class Multisyn:
     cdef:
         public object ref
@@ -81,14 +80,16 @@ cdef class Multisyn:
                        #if org in (r.ranges_dict if r.ranges_dict else {}))
         #return True # in case there is no overlap in the ranges_dict
 
-    # compares two msyns; if they have the same reference accession, compares their position there
-    # otherwise checks if ordering l after r is compatible, i.e. if l is before r in any organism
-    # if l and r do not share any organism, always returns True
     def __gt__(l, r):
+        assert isinstance(r, Multisyn)
+        #NOTE could support Range/Position?
         if l.ref.org == r.ref.org:
             return l.ref > r.ref
-        return not any(l.ranges_dict[org] < r.ranges_dict[org] for org in l.ranges_dict if org in r.ranges_dict)
-        #return True # in case there is no overlap in the ranges_dict
+        elif (not l.ranges_dict) and (not r.ranges_dict): # one or both is private, and not on the same ref
+            return True
+
+        return not any(l.get_range(org) < r.get_range(org)\
+                       for org in l.get_organisms() if org in r)
 
     def __hash__(self):
         return hash(self.ref)# + hash(self.ranges_dict) + hash(self.cigars_dict) # caused problems with deque; self.ref is guaranteed to be unique in any case
