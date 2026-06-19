@@ -35,7 +35,7 @@ cdef:
     int _MIN_REALIGN_LEN = 100 # min length to realign regions
     int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
     int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
-    int _MAX_PARASAIL_SIZE = 100_000_000 # max size of matrix to use for exact alignment; should correspond to RAM usage
+    int _MAX_PARASAIL_SIZE = 30_000_000_000 # max size of matrix to use for exact alignment; should correspond to RAM usage
     int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
     int _GAP_OPEN = 6
     int _GAP_EXTEND = 2
@@ -440,8 +440,7 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
         for qnonsyn in qnonsyns:
             if len(rnonsyn) * len(qnonsyn) <= _MAX_PARASAIL_SIZE: # should be required RAM
                 alns.extend(
-                        aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn))
-                        )
+                        aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
             else:
                 #alns.extend(aln_minimap
                 # do minimap dispatch
