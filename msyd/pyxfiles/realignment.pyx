@@ -466,9 +466,9 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         #NOTE refactor out into separate fn, impl dispatch to minimap2 for larg regions?
         # fn should return two ranges + cigar directly
         try:
+            #TODO refactor out
             # sg_dx # how to handle starting/ending D/Is?
             aln = parasail.sw_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
-            #logger.debug(f"{aln}")
             if not aln or aln.score <= 0: # no alignment found
                 unaligned.append(nonsyn)
                 continue
@@ -480,6 +480,11 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
                 #NOTE do full local alignment? split region?
                 unaligned.append(nonsyn)
                 continue
+            alnrend = aln.end_ref
+            alnqend = aln.end_query
+            alnrbegin = aln.cigar.beg_ref
+            alnqbegin = aln.cigar.beg_query
+            print(f"Aln positions:\n R: {alnrbegin}-{alnrend}, Q: {alnqbegin}-{alnqend}\nTrimmed R {rstart}, {rend} Q {qstart}, {qend}")
         except ValueError as ve:
             logger.warning(f"Error during parasail call: {ve}")
             #TODO this isn't skipping?
@@ -493,7 +498,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         # still cleaner though in case of switching to full local
         aln_qury = Range(nonsyn.org, nonsyn.chrom,
                          nonsyn.start + qstart,#aln.cigar.beg_query,
-                         nonsyn.start + qend)#aln.end_query)
+                         nonsyn.start + alnqend)#aln.end_query)
 
         # remap reference pos
         startint = list(refmt[aln.cigar.beg_ref])[0]
@@ -501,7 +506,7 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
         aln_ref = Range(reforg, refchrom,
                         #startint.data + aln.cigar.beg_ref - startint.begin,
                         startint.data + rstart - startint.begin,
-                        endint.data + rend - endint.begin)
+                        endint.data + alnrend - endint.begin)
                         #endint.data + aln.end_ref - endint.begin)
 
         # add aln
