@@ -30,13 +30,13 @@ import msyd.priv as priv
 from msyd.multisyn import Multisyn, Private, MultisynContainer
 from msyd.coords import Range
 
+import sys.getsizeof
 
 cdef:
     int _MIN_REALIGN_LEN = 100 # min length to realign regions
     int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
     int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
-    int _MAX_HANGOVER = 2000 # max len of padding with neighbouring coresyn region to use during alignment
-    int _SPACER_LEN = 100 # number of separators to use between blocks during alignment
+    int _MAX_PARASAIL_SIZE = 100_000_000 # max size of matrix to use for exact alignment; should correspond to RAM usage
     int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
     int _GAP_OPEN = 6
     int _GAP_EXTEND = 2
@@ -360,7 +360,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         for org, nonsyns in nonsyns_dict.items(): #NOTE parallelize?
             if org == ref:
                 continue
-            alns = aln_nonsyns(ref_concatseq, ref_mt, nonsyns, seqh, nonsyns_dict[ref][0].chrom, ref)
+            alns = aln_nonsyns(nonsyns_dict[ref], nonsyns, seqh)
             #alns = ret[0]
             #unalns = ret[1]
 
@@ -439,7 +439,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 #                for org in seqdict if not org == ref}
 #       return alns
 
-cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str refchrom, str reforg):
+cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
     """
     Aligns a list of nonsyntenic ranges to a concatenated reference sequence.
     Re-maps the positions to reference/organism space.
@@ -452,72 +452,60 @@ cpdef aln_nonsyns(str refconcat, object refmt, list nonsyns, object seqh, str re
     # => report all alns, let syri choose
     cdef:
         list alns = list()
-        list unaligned = list()
 
     #NOTE could parallelise on this level as well?
-    for nonsyn in nonsyns:
+    for rnonsyn in rnonsyns:
         ## get sequence
-        seq = seqh.get_range(nonsyn)
-        #logger.debug(f"{seq[:100]}, {refconcat[:100]}")
+        rseq = seqh.get_range(rnonsyn)
+        # aln = minimap2.Aligner(...) # if implementing minimap2 dispatch could be faster
+        for qnonsyn in qnonsyns:
+            if len(rnonsyn) * len(qnonsyn) <= _MAX_PARASAIL_SIZE: # should be required RAM
+                alns.extend(
+                        aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn))
+                        )
+            else:
+                #alns.extend(aln_minimap
+                # do minimap dispatch
+                pass
+    return alns
 
-        ## aln to ref concatseq
-        # do a semiglobal alignment to allow matching the right ID on ref
-        aln = None
-        #NOTE refactor out into separate fn, impl dispatch to minimap2 for larg regions?
-        # fn should return two ranges + cigar directly
-        try:
-            #TODO refactor out
-            # sg_dx # how to handle starting/ending D/Is?
-            aln = parasail.sw_trace_striped_32(seq, refconcat, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
-            if not aln or aln.score <= 0: # no alignment found
-                unaligned.append(nonsyn)
-                continue
+def aln_parasail(object rrng, str rseq, object qrng, str qseq):
+    cdef:
+        list ret = []
+    try:
+        #TODO refactor out
+        # sg_dx # how to handle starting/ending D/Is?
+        aln = parasail.sw_trace_striped_32(qseq, rseq, _GAP_OPEN, _GAP_EXTEND, _MATRIX)
+        print("size:", sys.getsizeof(aln))
+        if not aln or aln.score <= 0: # no alignment found
+            return []
 
-            cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
-            (qstart, qend, rstart, rend, cg) = cg.trim_matching(only_pos=False)
-            iden = cg.get_identity() # floating point no
-            if iden*100 < _MIN_SYN_ID: # no w/ high identity found
-                #NOTE do full local alignment? split region?
-                unaligned.append(nonsyn)
-                continue
-            alnrend = aln.end_ref
-            alnqend = aln.end_query
-            alnrbegin = aln.cigar.beg_ref
-            alnqbegin = aln.cigar.beg_query
-            print(f"Aln positions:\n R: {alnrbegin}-{alnrend}, Q: {alnqbegin}-{alnqend}\nTrimmed R {rstart}, {rend} Q {qstart}, {qend}")
-        except ValueError as ve:
-            logger.warning(f"Error during parasail call: {ve}")
-            #TODO this isn't skipping?
-            # try catch entire block?
-            unaligned.append(nonsyn)
-            continue
-        
-        ## decode aln, map to appropriate pos
+        cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
+        (trimqstart, trimqend, trimrstart, trimrend, cg) = cg.trim_matching(only_pos=False)
+        iden = cg.get_identity() # floating point no
+        if iden*100 < _MIN_SYN_ID: # no w/ high identity found
+            #NOTE do full local alignment? split region?
+            return []
+        # compute offsets
+        print(f"Aln positions:\n R: {aln.cigar.beg_ref}-{aln.end_ref}, Q: {aln.cigar.beg_query}-{aln.end_query}\nTrimmed R {trimrstart}, {trimrend} Q {trimqstart}, {trimqend}")
+        rstartoff = aln.cigar.beg_ref + trimrstart
+        rendoff = aln.end_ref - trimrend
+        qstartoff = aln.cigar.beg_query + trimqstart
+        qendoff = aln.end_query - trimqend
+        print(f"Offsets: R {rstartoff}, {rendoff}; Q {qstartoff}, {qendoff}")
 
-        # shouldn't be necessary for a semiglobal aln,
-        # still cleaner though in case of switching to full local
-        aln_qury = Range(nonsyn.org, nonsyn.chrom,
-                         nonsyn.start + qstart,#aln.cigar.beg_query,
-                         nonsyn.start + alnqend)#aln.end_query)
-
-        # remap reference pos
-        startint = list(refmt[aln.cigar.beg_ref])[0]
-        endint = list(refmt[aln.end_ref])[0]
-        aln_ref = Range(reforg, refchrom,
-                        #startint.data + aln.cigar.beg_ref - startint.begin,
-                        startint.data + rstart - startint.begin,
-                        endint.data + alnrend - endint.begin)
-                        #endint.data + aln.end_ref - endint.begin)
-
-        # add aln
-        logger.debug(f"{aln_ref}, {aln_qury}, {cg}")
-        alns.append((aln_ref, aln_qury, cg))
-
+        logger.debug(f"Aln found: {rrng.drop(rstartoff, rendoff)}, {qrng.drop(qstartoff, qendoff)}, {cg}")
+        return [(rrng.drop(rstartoff, rendoff), qrng.drop(qstartoff, qendoff), cg)]
 
         #TODO additional local aln step?
         # probably best to test if necessary first
-    return alns#, unaligned
 
+    except ValueError as ve:
+        logger.warning(f"Error during parasail call: {ve}")
+        #TODO this isn't skipping?
+        # try catch entire block?
+        return []
+        
 cdef syri_get_syntenic(reforg, qryorg, alns):
     # Synteny call parameters
     # all except T are unused
