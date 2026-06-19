@@ -312,7 +312,8 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
         if not output_only_realign:
             if prevcore:
                 ret.append(prevcore)
-            ret.extend(sorted(merasyns))
+            if merasyns:
+                ret.extend(sorted(merasyns))
         prevcore = nextcore
 
     # Done with all gaps, return as new MultisynContainer
