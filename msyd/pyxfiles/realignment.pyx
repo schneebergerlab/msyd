@@ -289,7 +289,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
 
         # Realign the gap, if it has a region larger than _MIN_REALIGN_LENGTH
         if gap_intervals:
-            logger.info(f"Realigning after filtering: {gap_intervals}")
+            logger.info(f"Realigning: {gap_intervals}")
             ##NOTE implement deduplication here
             # make a dict of representative seqs + offset from gap_intervals?
 
@@ -365,13 +365,14 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
             syns = syri_get_syntenic(ref, org, syrify(alns))
             if syns: # do not add empty ones
                 syns_dict[org] = syns
-        logger.debug(f"Synsdict: {list(syns_dict.items())}")
+        #logger.debug(f"Synsdict: {list(syns_dict.items())}")
 
         # Find merasyn in the realignment syri calls
         msyns = None
+        print(list(syns_dict.items()))
         if syns_dict:
             msyns = intersection.reduce_find_overlaps(syns_dict.values(), cores=1)#ncores)
-        logger.debug(f"Msyns: {msyns}")
+        logger.debug(f"Found {len(msyns) if msyns else 0} Msyns")
 
         # recompute nonsyn regions, account for new multisynteny
         if msyns:
@@ -438,7 +439,10 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
         rseq = seqh.get_range(rnonsyn)
         # aln = minimap2.Aligner(...) # if implementing minimap2 dispatch could be faster
         for qnonsyn in qnonsyns:
-            if len(rnonsyn) * len(qnonsyn) <= _MAX_PARASAIL_SIZE: # should be required RAM
+            logger.debug(f"{util.siprefix(len(rnonsyn))}, {util.siprefix(len(qnonsyn))}, multiple: {util.siprefix(len(rnonsyn)*len(qnonsyn))}")
+            if (len(rnonsyn) * len(qnonsyn)) <= _MAX_PARASAIL_SIZE: # should be required RAM
+                #print("aligning")
+                #print(aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
                 alns.extend(
                         aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
             else:
@@ -511,14 +515,14 @@ cdef syri_get_syntenic(reforg, qryorg, alns):
     if not samechrids:
         alns.bChr.replace(chromq, chromr, inplace=True)
     chromo = chromr
-    logger.debug(f"alns: {alns}")
+    #logger.debug(f"alns: {alns}")
 
     coordsData = alns[(alns.aChr == chromo) & (alns.bChr == chromo) & (alns.bDir == 1)]
     syndf = apply_TS(coordsData.aStart.values, coordsData.aEnd.values, coordsData.bStart.values,
                   coordsData.bEnd.values, T)
 
-    print("syndf:", syndf)
-    print("coordsData:", coordsData)
+    #print("syndf:", syndf)
+    #print("coordsData:", coordsData)
     if coordsData.empty:
         return None
 
@@ -637,7 +641,7 @@ cdef syrify(alns):
     #alnsdf = pd.concat([[aln[0].start, aln[0].end, aln[1].start, aln[1].end, len(aln[0]), len(aln[1]), aln[2].get_identity(), 1, 1, aln[0].chrom, aln[1].chrom, aln[2]] for aln in alns])
     alnsdf.columns = ["aStart", "aEnd", "bStart", "bEnd", "aLen", "bLen", "iden", "aDir", "bDir", "aChr", "bChr", 'cigar']
     alnsdf.sort_values(['aChr', 'aStart', 'aEnd', 'bChr', 'bStart', 'bEnd'], inplace=True)
-    logger.debug(f"Alnsdf has {len(alnsdf)} entries")
+    #logger.debug(f"Alnsdf has {len(alnsdf)} entries")
     return alnsdf
 
 cdef syrify_df(alnsdf):
