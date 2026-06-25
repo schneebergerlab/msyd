@@ -651,15 +651,16 @@ def stats(args):
     logger = util.CustomFormatter.getlogger("stats")
 
     logger.info(f"Reading from {args.infile.name}.")
-    syndict = msyd.io.read_psf(args.infile.name)
+    chromcont = msyd.io.read_psf(args.infile.name)
     #print(util.get_stats(resyns), file=args.outfile)
     if args.agg:
-        for chrom, syns in syndict.items():
-            print(f"Stats for chrom {chrom}")
-            print(util.get_stats(syns), file=args.outfile)
+        print(f"# Aggregate stats", file=args.outfile)
+        print(util.get_stats(chromcont), file=args.outfile)
+        #print(util.lensdict_to_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix, header=args.header), file=args.outfile)
     else:
-        for syns in syndict.values():
-            print(util.lensdict_to_table(util.tabularize_lens_byorg(syns), sep=args.sep, si=args.siprefix, header=args.header), file=args.outfile)
+        for chrom, syns in chromcont.iter_chroms():
+            print(f"# Stats for chrom {chrom}", file=args.outfile)
+            print(util.get_stats(syns), file=args.outfile)
     logger.info(f"Finished running msyd stats, output printed to {args.outfile.name}.")
 
 def fact(args):
