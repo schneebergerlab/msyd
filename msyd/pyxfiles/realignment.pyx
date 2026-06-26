@@ -195,6 +195,8 @@ cdef compute_gaps(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendict: d
         start = prevcore.get_range(org).end +1 if prevcore else 0
         end = nextcore.get_range(org).start -1 if nextcore else lendict[org]
         assert end - start >= -1 # -1 is a gap of 0
+        if end - start < 1: # do not add empty gaps
+            continue
 
         #if end - start > _MIN_REALIGN_LEN:
         ret[org] = Range(org=org, chrom=chrom, start=start, end=end)
@@ -439,7 +441,7 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
         rseq = seqh.get_range(rnonsyn)
         # aln = minimap2.Aligner(...) # if implementing minimap2 dispatch could be faster
         for qnonsyn in qnonsyns:
-            logger.debug(f"{util.siprefix(len(rnonsyn))}, {util.siprefix(len(qnonsyn))}, multiple: {util.siprefix(len(rnonsyn)*len(qnonsyn))}")
+            #logger.debug(f"{util.siprefix(len(rnonsyn))}, {util.siprefix(len(qnonsyn))}, multiple: {util.siprefix(len(rnonsyn)*len(qnonsyn))}")
             if (len(rnonsyn) * len(qnonsyn)) <= _MAX_PARASAIL_SIZE: # should be required RAM
                 #print("aligning")
                 #print(aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
@@ -477,7 +479,7 @@ def aln_parasail(object rrng, str rseq, object qrng, str qseq):
 
         rrng = rrng.drop(rstartoff, rendoff)
         qrng = qrng.drop(qstartoff, qendoff)
-        logger.debug(f"Aln found: {rrng}, {qrng}, {cg}")
+        logger.debug(f"Aln found: {rrng}, {qrng}, {cg.get_identity():.2f}")
         assert len(rrng) == cg.get_len(ref=True)
         assert len(qrng) == cg.get_len(ref=False)
         return [(rrng, qrng, cg)]
