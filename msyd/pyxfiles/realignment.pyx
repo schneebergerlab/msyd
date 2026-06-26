@@ -441,6 +441,9 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
         rseq = seqh.get_range(rnonsyn)
         # aln = minimap2.Aligner(...) # if implementing minimap2 dispatch could be faster
         for qnonsyn in qnonsyns:
+            #NOTE prefilter by lengths?
+            # dispatch to minimap2 if appropriate?
+
             #logger.debug(f"{util.siprefix(len(rnonsyn))}, {util.siprefix(len(qnonsyn))}, multiple: {util.siprefix(len(rnonsyn)*len(qnonsyn))}")
             if (len(rnonsyn) * len(qnonsyn)) <= _MAX_PARASAIL_SIZE: # should be required RAM
                 #print("aligning")
