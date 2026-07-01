@@ -21,7 +21,6 @@ logger = util.CustomFormatter.getlogger(__name__)
 VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
 cpdef readsyriout(f):
     # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
-    logger = logging.getLogger("readsyriout")
     syri_regs = deque()
     skipvartype = ['CPG', 'CPL', 'DEL', 'DUPAL', 'HDR', 'INS', 'INVAL', 'INVDPAL', 'INVTRAL', 'NOTAL', 'SNP', 'TDM', 'TRANSAL']
     with open(f, 'r') as fin:
@@ -34,6 +33,7 @@ cpdef readsyriout(f):
                 if l[10] not in skipvartype:
                     skipvartype.append(l[10])
                     logger.warning("{} is not a valid annotation for alignments in file {}. Alignments should belong to the following classes {}. Skipping alignment.".format(l[10], f, VARS))
+                    logger.info(f"Error in line: '{l}'")
 
     #print(syri_regs)
     if len(syri_regs) == 0:
