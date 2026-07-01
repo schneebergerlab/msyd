@@ -18,11 +18,10 @@ import logging
 logger = util.CustomFormatter.getlogger(__name__)
 
 # pasted from plotsr, parsing syri output
-VARS = ['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
+VARS = ['SYNAL'] #['SYN', 'SYNAL', 'INV', 'TRANS', 'INVTR', 'DUP', 'INVDP']
 cpdef readsyriout(f):
     # Reads syri.out. Select: achr, astart, aend, bchr, bstart, bend, srtype
-    logger = logging.getLogger("readsyriout")
-    syri_regs = deque()
+    cdef list syri_regs = []
     skipvartype = ['CPG', 'CPL', 'DEL', 'DUPAL', 'HDR', 'INS', 'INVAL', 'INVDPAL', 'INVTRAL', 'NOTAL', 'SNP', 'TDM', 'TRANSAL']
     with open(f, 'r') as fin:
         for line in fin:
@@ -30,12 +29,6 @@ cpdef readsyriout(f):
             # TODO: DECIDE WHETHER TO HAVE STATIC VARS OR FLEXIBLE ANNOTATION
             if l[10] in VARS:
                 syri_regs.append(l)
-            else:
-                if l[10] not in skipvartype:
-                    skipvartype.append(l[10])
-                    logger.warning("{} is not a valid annotation for alignments in file {}. Alignments should belong to the following classes {}. Skipping alignment.".format(l[10], f, VARS))
-
-    print(syri_regs)
     if len(syri_regs) == 0:
         logger.error("No matching records in syri.out file!")        
         # better to error
@@ -47,14 +40,14 @@ cpdef readsyriout(f):
         raise ValueError("Incomplete input file {}, syri.out file should have 12 columns.".format(f))
     df = df.astype({0:'str', 5:'str', 10:'str',
                     1:'int64', 2:'int64', 6:'int64', 7:'int64', })
-    # chr ID map
-    chrid = []
-    chrid_dict = OrderedDict()
-    for i in np.unique(df[0]):
-        chrid.append((i, np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]))
-        chrid_dict[i] = np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]
+    ## chr ID map
+    #chrid = []
+    #chrid_dict = OrderedDict()
+    #for i in np.unique(df[0]):
+    #    chrid.append((i, np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]))
+    #    chrid_dict[i] = np.unique(df.loc[(df[0] == i) & (df[10] == 'SYN'), 5])[0]
     df.columns = ['achr', 'astart', 'aend', 'bchr', 'bstart', 'bend',  'type']
-    return df, chrid_dict
+    return df#, chrid_dict
 
 #cpdef extract_syri_snvs(fin):
 #    syri_regs = deque()
@@ -73,7 +66,7 @@ cpdef readsyriout(f):
 # cython-lint flags the default arg list as dangerous
 # but in this case it's fine since its static
 cpdef extract_syri_regions_from_file(fin, ref='a', anns=['SYN'], reforg='ref', qryorg='qry'): # no-cython-lint
-    raw, _chr_mapping = readsyriout(fin) #TODO? handle chr_mapping
+    raw = readsyriout(fin) #TODO? handle chr_mapping
     return extract_syri_regions(raw, ref=ref, anns=anns, reforg=reforg, qryorg=qryorg)
 
 
