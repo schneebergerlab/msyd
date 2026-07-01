@@ -34,7 +34,8 @@ from msyd.coords import Range
 cdef:
     int _MIN_REALIGN_LEN = 100 # min length to realign regions
     int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
-    int _MAX_REALIGN = 0 # max number of haplotypes to realign to; set to 0 to realign without limit
+    int _MAX_REALIGN = 5 # max number of haplotypes to realign to; set to 0 to realign without limit
+    float _MAX_LEN_RATIO = 0.05 # max ratio of segments to align
     long _MAX_PARASAIL_SIZE = 30_000_000_000 # max size of matrix to use for exact alignment; should correspond to RAM usage
     int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
     int _GAP_OPEN = 6
@@ -441,11 +442,14 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
         rseq = seqh.get_range(rnonsyn)
         # aln = minimap2.Aligner(...) # if implementing minimap2 dispatch could be faster
         for qnonsyn in qnonsyns:
-            #NOTE prefilter by lengths?
+            qlen = len(qnonsyn)
+            rlen = len(rnonsyn)
+            
+            if _MAX_LEN_RATIO > min(qlen, rlen)/max(qlen, rlen):
+                continue
             # dispatch to minimap2 if appropriate?
 
-            #logger.debug(f"{util.siprefix(len(rnonsyn))}, {util.siprefix(len(qnonsyn))}, multiple: {util.siprefix(len(rnonsyn)*len(qnonsyn))}")
-            if (len(rnonsyn) * len(qnonsyn)) <= _MAX_PARASAIL_SIZE: # should be required RAM
+            if (rlen * qlen) <= _MAX_PARASAIL_SIZE: # should be required RAM
                 #print("aligning")
                 #print(aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
                 alns.extend(
