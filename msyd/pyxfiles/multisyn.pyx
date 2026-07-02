@@ -539,10 +539,10 @@ cdef class ChromContainer:
         The ordering is guaranteed to be sorted per chromosome.
         :returns: a new ChromosomeContainer that is the result of applying fn along all chromosomes contained in this one.
         """
+        if ncores == 0: # default to 1 core per chrom
+            ncores = max(1, len(self))
         if ncores == 1:
             return self.apply_chroms(fn)
-        elif ncores == 0: # default to 1 core per chrom
-            ncores = len(self)
 
         # linearize, map, then reconstruct as apparently pool.map preserves the order
         cdef list chroms = list(self._backing.keys())
