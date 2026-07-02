@@ -388,14 +388,14 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # recompute nonsyn regions, account for new multisynteny
         if msyns:
             nonsyns_dict = subtract_nonsynsdict(nonsyns_dict, msyns)
-
-        if annotate_private:
-            # after aligning all against ref, we can call the remainder as private to ref
-            added_privs.append(sum([len(x) for x in nonsyns_dict[ref]]))
-            ret.extend([Private(rng) for rng in nonsyns_dict[ref]])
-        # no more to discover on ref
         used_refs.append(ref)
-        del nonsyns_dict[ref]
+
+        if ref in nonsyns_dict: # if nothing left, no need for anything else
+            if annotate_private:
+                # call remainder as private
+                added_privs.append(sum([len(x) for x in nonsyns_dict[ref]]))
+                ret.extend([Private(rng) for rng in nonsyns_dict[ref]])
+            del nonsyns_dict[ref]
 
         ## log length of sequences, append to ret
         if msyns:
