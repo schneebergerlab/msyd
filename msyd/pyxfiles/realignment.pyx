@@ -379,7 +379,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
 
         # recompute nonsyn regions, account for new multisynteny
         if msyns:
-            nonsyndict = subtract_nonsynsdict(nonsyns_dict, msyns)
+            nonsyns_dict = subtract_nonsynsdict(nonsyns_dict, msyns)
 
         if annotate_private:
             # after aligning all against ref, we can call the remainder as private to ref
