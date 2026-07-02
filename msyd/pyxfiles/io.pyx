@@ -615,7 +615,11 @@ cpdef object read_psf(fin): # -> ChromContainer
         if (not line) or line[0] == '#': continue
         line = line.split()
 
-        chrom = line[0]
+        chrom = line[0] if not line[0] == '.' else line[5]
+        if chrom == '.':
+            logger.error("No valid chromosome found in PSF record!")
+            logger.info(f"Occured in {line}")
+            raise ValueError("No valid chromosome found in PSF record!")
         reforg = line[4]
 
         refrng = Range('ref', line[0], int(line[1]), int(line[2])) if reforg == 'ref'\
