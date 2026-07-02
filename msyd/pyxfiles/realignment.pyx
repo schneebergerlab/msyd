@@ -11,7 +11,7 @@ from collections import deque, defaultdict
 from functools import partial
 from multiprocessing import Pool
 
-from intervaltree import IntervalTree, Interval
+#from intervaltree import IntervalTree, Interval
 
 # I added these lines to hide all of the INFO logs from syri. If those are required then these lines can be removed
 logging.getLogger('syri').setLevel(logging.WARNING)
