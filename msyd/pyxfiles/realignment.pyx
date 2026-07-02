@@ -152,19 +152,26 @@ cpdef subtract_nonsynsdict(nonsyns_dict, merasyns):
     print("Removing meras:", merasyns)
     # subtract merasyns
     for msyn in iter(merasyns):
+        logger.info(f"subtracting {msyn}")
         for org, rng in msyn.iter_orgs_ranges():
+            logger.info(f"subtracting {org}, {rng}")
             # skip until msyn is covered
             org_ind = cur_index[org]
             org_nonsyns = nonsyns_dict[org]
+            print(org, org_nonsyns)
             while org_ind < len(org_nonsyns):# and org_nonsyns[org_ind].end < rng.end:
+                print(org_ind, cur_pos[org])
                 org_rng = org_nonsyns[org_ind]
                 if org_rng.end < rng.start: # fully before, nonoverlapping
+                    print("non-ov")
                     if org_rng.end > cur_pos[org]: # skip if fully within curpos
                         ret_rng = Range(org_rng.org, org_rng.chrom, max(org_rng.start, cur_pos[org]), org_rng.end)
                         if len(ret_rng) > _MIN_REALIGN_LEN:
+                            print(ret_rng)
                             ret[org].append(ret_rng)
                 # left overlap
                 elif org_rng.start < rng.start: # left overlap
+                    print("left-ov")
                     leftov = Range(org_rng.org, org_rng.chrom, max(cur_pos[org], org_rng.start), rng.start - 1)
                     if len(leftov) > _MIN_REALIGN_LEN:
                         ret[org].append(leftov)
@@ -173,6 +180,7 @@ cpdef subtract_nonsynsdict(nonsyns_dict, merasyns):
                 #    pass
                 # break if the merasyn ends, otherwise increment index
                 if org_rng.end > rng.end:
+                    print("Breaking at:", org_rng.end, rng.end)
                     break
                 else:
                     org_ind += 1
@@ -397,6 +405,7 @@ cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_
         # counts all sequences that are still above _MIN_REALIGN_LENGTH
         if len(nonsyns_dict) <= 1 or len(used_refs) >= _MAX_REALIGN:
             break
+        print(f"Choosing to continue with {nonsyns_dict.items()}")
 
     logger.info(f"Realigned gap_intervals. Found {[util.siprefix(a) for a in added_lens]} aligning to {used_refs}")
     # log globally how much sequence was found during realignment
