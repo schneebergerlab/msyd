@@ -205,7 +205,7 @@ cdef compute_gaps(chrom: str, prevcore: Multisyn, nextcore: Multisyn, lendict: d
     return ret
 
 
-cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, SPACER_LEN=None, mp_preset='asm20', ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
+cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MAX_REALIGN=None, SPACER_LEN=None, mp_preset='asm20', ncores=1, annotate_private=False, pairwise=None, output_only_realign=False, debug_export=False):
     """
     High-level interface to the realignment functionality.
     Takes a dict of DataFrames containing per-chromosome Multisyn annotations.
@@ -249,7 +249,7 @@ cpdef realign(chrcont, qrynames, seqh, MIN_REALIGN_LEN=None, MIN_SYN_ID=None, MA
 
 #NOTE cpdef'd to enable using functools.partial.
 #NOTE Consider wrapping with cython to enable re-cdefing this?
-cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, alnparams=None, ncores=1, annotate_private=True, pairwise=None, output_only_realign=False, debug_export=False):
+cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, alnparams=None, ncores=1, annotate_private=False, pairwise=None, output_only_realign=False, debug_export=False):
     """
     Workhorse function of the realignment functionality.
     Takes a DF of multisyns, finds gaps of sufficient size between coresyn regions in the DF to process.

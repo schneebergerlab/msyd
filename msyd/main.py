@@ -404,11 +404,6 @@ def call(args):
     logger.info("Intersected synteny")
     logger.info(f"Dropped {util.siprefix(intersection.get_dropped_bases())} across all organisms during initial intersection.")
 
-    if args.private:
-        chromsyn = priv.complement_dict(chromsyn, add=True, cores=args.cores)
-        logger.info("Annotated private regions on ref.")
-
-
     if args.realign:
         # reset counter
         intersection.start_log_dropped_bases()
@@ -422,6 +417,7 @@ def call(args):
                                       MAX_REALIGN=args.max_realign,
                                       mp_preset=args.mp_preset,
                                       ncores=args.cores,
+                                      annotate_private=args.private,
                                       # read in full pairwise alns if supplied
                                       pairwise=msyd.io.read_alnsfile(args.pairwise) \
                                               if args.pairwise else None)

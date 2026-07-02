@@ -627,6 +627,7 @@ cpdef object read_psf(fin): # -> ChromContainer
 
         syn = Multisyn(refrng, {}, None)
 
+        #NOTE handle privates here?
         for org, entry in zip(iter(orgs), line[8:]):
             if entry == '.' or org == reforg: # skip empty records and ref
                 continue
