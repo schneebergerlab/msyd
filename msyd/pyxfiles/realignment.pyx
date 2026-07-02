@@ -34,8 +34,8 @@ from msyd.coords import Range
 cdef:
     int _MIN_REALIGN_LEN = 100 # min length to realign regions
     int _MIN_SYN_ID = 80 # minimum % identity for a region to be considered syntenic
-    int _MAX_REALIGN = 5 # max number of haplotypes to realign to; set to 0 to realign without limit
-    float _MAX_LEN_RATIO = 0.05 # max ratio of segments to align
+    int _MAX_REALIGN = 10 # max number of haplotypes to realign to; set to 0 to realign without limit
+    float _MAX_LEN_RATIO = 0.01 # max ratio of segments to align
     long _MAX_PARASAIL_SIZE = 30_000_000_000 # max size of matrix to use for exact alignment; should correspond to RAM usage
     int _MIN_PRIV_THRESH = intersection.get_min_syn_thresh()
     int _GAP_OPEN = 6
