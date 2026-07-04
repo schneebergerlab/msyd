@@ -91,7 +91,9 @@ class SeqHandler:
         """
         Retrieves the sequence corresponding to the positions within this range on the organism it is described on.
         """
-        assert rng.org in self._backing
+        if not rng.org in self._backing:
+            logger.error(f"Tried to get {rng.org} from SeqHandler with only {set(self._backing.keys())}")
+            raise ValueError("Tried to get invalid org!")
         fa = self._backing[rng.org]
         end = min(fa.get_reference_length(rng.chrom), rng.end + margin + 1)
         

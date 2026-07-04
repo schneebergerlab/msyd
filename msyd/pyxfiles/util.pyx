@@ -493,7 +493,8 @@ cpdef validate_top_sort(msyncont):
 
         for org, rng in msyn.ranges_dict.items():
             if curinds[org] >= rng.start:
-                raise ValueError(f"Overlap or sorting violation in {rng}, exceeding {curinds[rng.org]}")
+                logger.error(f"Overlap or sorting violation in {rng} on {org}, exceeding {curinds[rng.org]}")
+                raise ValueError(f"Overlap or sorting violation in {rng} on {org}, exceeding {curinds[rng.org]}")
             curinds[org] = rng.end # update index
     logger.info("Topological Ordering valid!")
     return
