@@ -300,6 +300,9 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
             nonsyns_dict = extract_nonsynsdict(merasyns, gap_intervals)
             realsyns = iterate_reprocessing(nonsyns_dict, seqh, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
 
+            ## Bust hugging msyns
+            realsyns = bust_hugging(realsyns)
+
             ##NOTE reduplicate afterwards
 
             # write directly if only storing realigned;
@@ -322,6 +325,28 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
     # Done with all gaps, return as new MultisynContainer
     return MultisynContainer.from_iterable(ret)
 # END
+
+cdef list bust_hugging(Orgs orgs, list realsyns):
+    cdef list ret = list()
+    cdef curinds = {org:-1 for org in orgs}
+    #NOTE can copy from validate_topsort
+    #NOTE emit linkage info for hugs? report inversions?
+    for msyn in realsyns:
+        # error if not sorted on ref
+        if curinds[msyn.ref.org] >= msyn.ref.start:
+            raise ValueError(f"Overlap or sorting violation in {msyn.ref}, exceeding {curinds[msyn.ref.org]}")
+        curinds[msyn.ref.org] = msyn.ref.end # update index
+
+        invorgs = filter(lambda org, rng: cur_inds[org] >= rng.start, msyn.ranges_dict.items())
+        for org, rng in msyn.ranges_dict.items():
+            if curinds[org] >= rng.start:
+                # bust msyn
+                # how to handle sorting during emission?
+                # how to handle mutliple overlaps?
+                # also: fast hot path
+                # idea: first emit consistent part?
+            curinds[org] = rng.end # update index
+
 
 cdef iterate_reprocessing(nonsyns_dict, seqh, ncores=1, pairwise=None, annotate_private=False):
     global ADDED_LEN
