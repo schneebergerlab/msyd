@@ -147,6 +147,7 @@ cpdef make_graph(chrom, msyncont, seqh=None, add_private=True):
                     index = index.increment_m() # pre-increment, to avoid reusing the one as the main node
                     #logger.info(f"Retrieving private sequence between {curprevrng} and {rng}")
                     privnode = Node(index, Private(Range(org, chrom, curprevrng.end + 1, rng.start -1)), seqh=seqh)
+                    #TODO why often no sequence?
 
                     # add two back/frontlinks
                     curprev.post[org] = privnode
