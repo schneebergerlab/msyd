@@ -45,6 +45,7 @@ cdef:
     int _GAP_OPEN = 6
     int _GAP_EXTEND = 2
     object _MATRIX = parasail.matrix_create("ACGTN", 2, -1)
+    SASSY_SEARCHER = sassy.Searcher("iupac")
 
 # force Ns to never align
 for i in range(5): # slice indexing does not work for matrices
@@ -496,17 +497,16 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
 # report as issue to ragnar?
 #cpdef aln_nonsyns_sassy(list rnonsyns, list qnonsyns, object seqh):
 #
-#    searcher.search_many(patterns, texts, mode="single", threads=8)
+#    SASSY_SEARCHER.search_many(patterns, texts, mode="single", threads=8)
 #    return 
 
-searcher = sassy.Searcher("dna")
 cpdef aln_sassy(object rrng, str rseq, object qrng, str qseq):
     cdef:
         list ret = []
     # max no of tolerable mismatches
     k = int(min(len(rrng), len(qrng))*(1-(_MIN_SYN_ID/100)))
     # trimming required?
-    for match in searcher.search(bytes(qseq, encoding="UTF8"), bytes(rseq, encoding="UTF8"), k=k): 
+    for match in SASSY_SEARCHER.search(bytes(qseq, encoding="UTF8"), bytes(rseq, encoding="UTF8"), k=k): 
         cg = cigar.cigar_from_string(match.cigar)
         #TODO trim cg? handle exceptions etc?
         ret.append( (rrng.drop(match.text_start, len(rrng) - match.text_end),
