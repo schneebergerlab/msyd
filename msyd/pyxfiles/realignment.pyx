@@ -4,8 +4,12 @@
 # distutils: language = c++
 # cython: language_level = 3
 
-import pandas as pd
+# alignment backends; could make some optional?
+import sassy
 import parasail
+#import mappy
+
+import pandas as pd
 import logging
 from collections import deque, defaultdict
 from functools import partial

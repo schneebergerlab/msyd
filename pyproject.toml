@@ -21,6 +21,7 @@ dependencies = [
 	"parasail",
 	"numpy", 
 	"pandas",
+	"sassy-rs",
 	"pysam >= 0.21",
 	"scipy",
 	"syri >= 1.6.5",
