@@ -483,12 +483,39 @@ cpdef aln_nonsyns(list rnonsyns, list qnonsyns, object seqh):
                 #print("aligning")
                 #print(aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
                 alns.extend(
-                        aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
+                        #aln_parasail(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
+                        aln_sassy(rnonsyn, rseq, qnonsyn, seqh.get_range(qnonsyn)))
             else:
                 #alns.extend(aln_minimap
                 # do minimap dispatch
                 pass
     return alns
+
+#NOTE
+# search_many does not return which text the char mathced to
+# report as issue to ragnar?
+#cpdef aln_nonsyns_sassy(list rnonsyns, list qnonsyns, object seqh):
+#
+#    searcher.search_many(patterns, texts, mode="single", threads=8)
+#    return 
+
+searcher = sassy.Searcher("dna")
+cpdef aln_sassy(object rrng, str rseq, object qrng, str qseq):
+    cdef:
+        list ret = []
+    # max no of tolerable mismatches
+    k = int(min(len(rrng), len(qrng))*(1-_MIN_SYN_ID))
+    # trimming required?
+    for match in searcher.search(bytes(qseq), bytes(rseq), k=k): 
+        cg = cigar.cigar_from_string(match.cigar)
+        #TODO trim cg? handle exceptions etc?
+        ret.append( (rrng.drop(match.text_start, len(rrng) - match.text_end),
+                   qrng.drop(match.pattern_start, len(qrng) - match.pattern_end),
+                   cg) )
+    logger.debug("printing alns")
+    print(ret)
+    return ret
+
 
 def aln_parasail(object rrng, str rseq, object qrng, str qseq):
     cdef:
@@ -501,6 +528,8 @@ def aln_parasail(object rrng, str rseq, object qrng, str qseq):
             return []
 
         cg = cigar.cigar_from_string(str(aln.cigar.decode)) #NOTE if slow, use bytes directly
+        #NOTE could refactor trimming out?
+        # not sure it is necessary for sassy though
         (trimqstart, trimqend, trimrstart, trimrend, cg) = cg.trim_matching(only_pos=False)
         iden = cg.get_identity() # floating point no
         if iden*100 < _MIN_SYN_ID: # no w/ high identity found
