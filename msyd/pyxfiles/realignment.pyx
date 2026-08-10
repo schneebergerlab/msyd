@@ -301,7 +301,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
             realsyns = iterate_reprocessing(nonsyns_dict, seqh, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
 
             ## Bust hugging msyns
-            realsyns = bust_hugging(realsyns)
+            realsyns = bust_hugging(msyncont.orgs, realsyns)
 
             ##NOTE reduplicate afterwards
 
@@ -326,7 +326,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
     return MultisynContainer.from_iterable(ret)
 # END
 
-cdef list bust_hugging(Orgs orgs, list realsyns):
+cdef list bust_hugging(object orgs, list realsyns):
     cdef list ret = list()
     cdef curinds = {org:-1 for org in orgs}
     #NOTE can copy from validate_topsort
@@ -337,9 +337,10 @@ cdef list bust_hugging(Orgs orgs, list realsyns):
             raise ValueError(f"Overlap or sorting violation in {msyn.ref}, exceeding {curinds[msyn.ref.org]}")
         curinds[msyn.ref.org] = msyn.ref.end # update index
 
-        invorgs = filter(lambda org, rng: cur_inds[org] >= rng.start, msyn.ranges_dict.items())
+        invorgs = filter(lambda org, rng: curinds[org] >= rng.start, msyn.ranges_dict.items())
         for org, rng in msyn.ranges_dict.items():
             if curinds[org] >= rng.start:
+                pass
                 # bust msyn
                 # how to handle sorting during emission?
                 # how to handle mutliple overlaps?
