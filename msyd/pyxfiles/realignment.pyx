@@ -305,7 +305,7 @@ cpdef process_gaps(chrom:str, msyncont:MultisynContainer, seqh:seq.SeqHandler, a
             realsyns = iterate_reprocessing(nonsyns_dict, seqh, ncores=ncores, pairwise=pairwise, annotate_private=annotate_private)
 
             ## Bust hugging msyns
-            realsyns = bust_hugging(msyncont.orgs, realsyns)
+            #realsyns = bust_hugging(msyncont.orgs, realsyns)
 
             ##NOTE reduplicate afterwards
 
@@ -504,9 +504,9 @@ cpdef aln_sassy(object rrng, str rseq, object qrng, str qseq):
     cdef:
         list ret = []
     # max no of tolerable mismatches
-    k = int(min(len(rrng), len(qrng))*(1-_MIN_SYN_ID))
+    k = int(min(len(rrng), len(qrng))*(1-(_MIN_SYN_ID/100)))
     # trimming required?
-    for match in searcher.search(bytes(qseq), bytes(rseq), k=k): 
+    for match in searcher.search(bytes(qseq, encoding="UTF8"), bytes(rseq, encoding="UTF8"), k=k): 
         cg = cigar.cigar_from_string(match.cigar)
         #TODO trim cg? handle exceptions etc?
         ret.append( (rrng.drop(match.text_start, len(rrng) - match.text_end),
